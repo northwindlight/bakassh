@@ -1,0 +1,69 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'dev.northwind.bakassh'
+    compileSdk 34
+    ndkVersion "29.0.14206865"
+
+    defaultConfig {
+        applicationId "dev.northwind.bakassh"
+        minSdk 24
+        /*
+         * targetSdk 28 → 34：28（Android 9）会被系统和 Play Protect 判定为
+         * "专为旧版 Android 打造"并弹拦截提示。
+         * 34 需要满足的行为变更我们均已具备：activity 显式 android:exported、
+         * 无危险权限、无前台服务、无 PendingIntent、不碰非 SDK 接口。
+         * 停在 34（不上 35）：rpi5 上可用的 aapt2（AOSP 14）只支持到 34，且 35 会强制 edge-to-edge。
+         */
+        targetSdk 34
+        versionCode 1
+        versionName "0.1"
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+        externalNativeBuild {
+            ndkBuild {
+                // 关掉默认的 -Werror 之外不加料；libvterm 是干净的 C99
+                cFlags "-std=c11", "-O2", "-fPIC", "-Wall"
+            }
+        }
+    }
+
+    buildTypes {
+        debug {
+            // 用自己的 debug keystore 即可，与 Termux 无任何关系（不同包名，可共存）
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    externalNativeBuild {
+        ndkBuild {
+            path "src/main/cpp/Android.mk"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    // 纯 Java 的 SSH（mwiede 的 JSch 维护分支）。0.2.x 那条线对 Android/Java 8 最稳。
+    implementation 'com.github.mwiede:jsch:0.2.26'
+    // JSch 验证 ed25519 主机密钥需要它（Debian 13 的 sshd 默认就是 ed25519）
+    implementation 'net.i2p.crypto:eddsa:0.3.0'
+    // 从 ConnectBot v1.9.13（Apache-2.0）拷来的数据层用到 @VisibleForTesting
+    implementation 'androidx.annotation:annotation:1.8.2'
+    /*
+     * Material 3（Pixel / Material You 风格）：圆角、药丸按钮、自带波纹与深色适配。
+     * 选 1.12.0 / appcompat 1.7.0 是因为它们兼容 compileSdk 34（rpi5 的 aapt2 上限）。
+     * ConnectBot 1.9.13 用的也是 appcompat + material，fork 之后这套直接复用。
+     */
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+}

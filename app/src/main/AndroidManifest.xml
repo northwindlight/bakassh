@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="bakassh"
+        android:hardwareAccelerated="true"
+        android:theme="@style/AppTheme">
+        <!-- 主界面：主机列表（照着 ConnectBot 的样子） -->
+        <activity
+            android:name=".HostListActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- 终端界面：全屏无标题（主题单独指定，别继承主机列表的） -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="false"
+            android:theme="@style/TermTheme"
+            android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"
+            android:windowSoftInputMode="adjustResize">
+        </activity>
+    </application>
+
+</manifest>

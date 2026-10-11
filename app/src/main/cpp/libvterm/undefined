@@ -1,0 +1,99 @@
+/*
+ * 复现 app 里 libvterm 崩溃的探针。
+ * 打印 state 里每个编码槽位的指针，并逐个喂候选字节序列，找出把 enc 置 NULL 的那一个。
+ */
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+#include "vterm.h"
+#include "vterm_internal.h"
+
+static int cb_damage(VTermRect r, void *u) { (void)r; (void)u; return 1; }
+static int cb_moverect(VTermRect d, VTermRect s, void *u) { (void)d; (void)s; (void)u; return 1; }
+static int cb_movecursor(VTermPos p, VTermPos o, int v, void *u) { (void)p; (void)o; (void)v; (void)u; return 1; }
+static int cb_settermprop(VTermProp p, VTermValue *v, void *u) { (void)p; (void)v; (void)u; return 1; }
+static int cb_bell(void *u) { (void)u; return 1; }
+static int cb_resize(int rows, int cols, void *u) { (void)rows; (void)cols; (void)u; return 1; }
+static int cb_sb_pushline(int cols, const VTermScreenCell *c, void *u) { (void)cols; (void)c; (void)u; return 1; }
+static int cb_sb_popline(int cols, VTermScreenCell *c, void *u) { (void)cols; (void)c; (void)u; return 0; }
+static int cb_sb_clear(void *u) { (void)u; return 1; }
+static void cb_output(const char *s, size_t l, void *u) { (void)s; (void)l; (void)u; }
+
+static VTermState *g_state;
+
+static void dump_slots(const char *when)
+{
+    printf("[%s] utf8=%p enc[0]=%p enc[1]=%p enc[2]=%p enc[3]=%p gl=%d gr=%d gsingle=%d utf8mode=%d\n",
+           when,
+           (void *)g_state->encoding_utf8.enc,
+           (void *)g_state->encoding[0].enc, (void *)g_state->encoding[1].enc,
+           (void *)g_state->encoding[2].enc, (void *)g_state->encoding[3].enc,
+           g_state->gl_set, g_state->gr_set, g_state->gsingle_set, g_state->vt->mode.utf8);
+    fflush(stdout);
+}
+
+static void feed(const char *label, const char *bytes, size_t len)
+{
+    printf(">>> feed %-22s (%zu bytes)", label, len);
+    for (size_t i = 0; i < len; i++) printf(" %02x", (unsigned char)bytes[i]);
+    printf("\n");
+    fflush(stdout);
+    vterm_input_write(g_state->vt, bytes, len);
+    vterm_screen_flush_damage(g_state->vt->screen);
+    dump_slots(label);
+}
+
+int main(int argc, char **argv)
+{
+    int only = argc > 1 ? atoi(argv[1]) : -1;
+
+    VTerm *vt = vterm_new(76, 154);
+    vterm_set_utf8(vt, 1);
+    vterm_output_set_callback(vt, cb_output, NULL);
+    g_state = vterm_obtain_state(vt);
+    VTermScreen *sc = vterm_obtain_screen(vt);
+    vterm_screen_enable_altscreen(sc, 1);
+
+    static VTermScreenCallbacks cbs = {
+        .damage = cb_damage, .moverect = cb_moverect, .movecursor = cb_movecursor,
+        .settermprop = cb_settermprop, .bell = cb_bell, .resize = cb_resize,
+        .sb_pushline = cb_sb_pushline, .sb_popline = cb_sb_popline, .sb_clear = cb_sb_clear,
+    };
+    vterm_screen_set_callbacks(sc, &cbs, NULL);
+    vterm_screen_set_damage_merge(sc, VTERM_DAMAGE_SCROLL);
+
+    printf("lookup: utf8/u=%p B=%p 0=%p A=%p X=%p\n",
+           (void *)vterm_lookup_encoding(ENC_UTF8, 'u'),
+           (void *)vterm_lookup_encoding(ENC_SINGLE_94, 'B'),
+           (void *)vterm_lookup_encoding(ENC_SINGLE_94, '0'),
+           (void *)vterm_lookup_encoding(ENC_SINGLE_94, 'A'),
+           (void *)vterm_lookup_encoding(ENC_SINGLE_94, 'X'));
+    dump_slots("after-create");
+
+    struct { const char *name; const char *seq; } cands[] = {
+        { "plain ASCII",    "abc" },
+        { "G0 B",           "\033(B" },
+        { "G0 0",           "\033(0" },
+        { "G1 B",           "\033)B" },
+        { "G0 X (not in tbl)", "\033(X" },
+        { "SS2 ESC N",      "\033N" },
+        { "SS3 ESC O",      "\033O" },
+        { "ESC % @ utf8off","\033%@" },
+        { "ESC % G utf8on", "\033%G" },
+        { "ESC $ B",        "\033$B" },
+    };
+    int n = (int)(sizeof(cands) / sizeof(cands[0]));
+
+    for (int i = 0; i < n; i++) {
+        if (only >= 0 && only != i) continue;
+        printf("\n===== candidate %d: %s =====\n", i, cands[i].name);
+        fflush(stdout);
+        size_t len = strlen(cands[i].seq);
+        feed(cands[i].name, cands[i].seq, len);
+        feed("trailing ASCII", "x", 1);
+        printf("survived\n");
+    }
+    printf("\nDONE\n");
+    return 0;
+}

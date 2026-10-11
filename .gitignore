@@ -1,0 +1,13 @@
+# 构建产物
+build/
+.gradle/
+.cxx/
+*.apk
+*.aab
+*.so
+# 本机配置（SDK 路径等）
+local.properties
+# IDE
+.idea/
+*.iml
+.DS_Store

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- PubkeyBean 显示密钥类型用（从 ConnectBot 拷来的代码引用这些名字） -->
+    <string name="key_type_rsa_bits">RSA (%1$d 位)</string>
+    <string name="key_type_dsa_bits">DSA (%1$d 位)</string>
+    <string name="key_type_ec_bits">EC (%1$d 位)</string>
+    <string name="key_type_ed25519">ED25519</string>
+    <string name="key_type_unknown">未知类型</string>
+    <string name="key_attribute_encrypted">已加密</string>
+</resources>
