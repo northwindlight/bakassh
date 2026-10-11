@@ -10,7 +10,7 @@ public class Host {
     public String host = "";
     public int port = 22;
     public String user = "";
-    /** 连上后自动执行的命令（可空），例如 tmux attach -t zg */
+    /** 连上后自动执行的命令（可空），例如 tmux attach */
     public String startup = "";
 
     public Host() { }

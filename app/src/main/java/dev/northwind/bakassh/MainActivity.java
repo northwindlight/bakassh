@@ -61,10 +61,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private final byte[] outBuf = new byte[8192];
 
     // 连接参数（来自 Intent，缺省用一份保守默认值）
-    private String hName = "rpi5";
-    private String hHost = "rpi5.northwind.site";
+    private String hName = "";
+    private String hHost = "";
     private int hPort = 22;
-    private String hUser = "northwind";
+    private String hUser = "";
     private String hStartup = "";
 
     static void out(Activity a, String line) {

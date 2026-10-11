@@ -195,10 +195,10 @@ public class HostListActivity extends AppCompatActivity {
          * 让文字/提示色跟随主题即可；应用主题已定为深色 Material。
          */
         EditText eName = field(h.name, "名称（随意，例如 rpi5）", InputType.TYPE_CLASS_TEXT, box);
-        EditText eHost = field(h.host, "主机名或 IP（例如 rpi5.northwind.site）", InputType.TYPE_CLASS_TEXT, box);
+        EditText eHost = field(h.host, "主机名或 IP", InputType.TYPE_CLASS_TEXT, box);
         EditText ePort = field(String.valueOf(h.port), "端口", InputType.TYPE_CLASS_NUMBER, box);
         EditText eUser = field(h.user, "用户名", InputType.TYPE_CLASS_TEXT, box);
-        EditText eCmd = field(h.startup, "连上后自动执行（可空，例如 tmux attach -t zg）",
+        EditText eCmd = field(h.startup, "连上后自动执行（可空）",
                 InputType.TYPE_CLASS_TEXT, box);
 
         new AlertDialog.Builder(this)
