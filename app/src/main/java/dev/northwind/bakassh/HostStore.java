@@ -32,11 +32,7 @@ public class HostStore {
                 MainActivity.out((android.app.Activity) ctx, "HostStore.load failed: " + t);
             }
         }
-        if (list.isEmpty()) {
-            // 首次运行：放一台默认主机，省得对着一片空白
-            list.add(new Host("rpi5", "rpi5.northwind.site", 22, "northwind", "tmux attach -t zg"));
-            save(ctx, list);
-        }
+        // 首次运行不播种任何主机：不把开发者的私有主机名/会话名塞进别人的设备
         return list;
     }
 
