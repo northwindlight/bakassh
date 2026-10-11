@@ -12,9 +12,8 @@ sshterm 中的第三方代码归属
     Licensed under the Apache License, Version 2.0
     http://www.apache.org/licenses/LICENSE-2.0
 
-选用 v1.9.13 的原因：v1.10.0 起 ConnectBot 全面转向 Kotlin + Jetpack Compose + Hilt，
-而本工程是纯 Java 且受 rpi5 上 aapt2（AOSP 14，只支持 compileSdk 34）限制，
-无法引入 Compose 所需的 compileSdk 35。v1.9.13 是 Java + XML 布局 + SQLite 的最后形态。
+选用 v1.9.13 的原因：本工程是纯 Java 项目，不含 Kotlin / Compose，因此取 v1.9.13 ——
+它是 Java + XML 布局 + SQLite 的最后形态；v1.10.0 起 ConnectBot 转向 Kotlin + Jetpack Compose + Hilt。
 
 已就地修改的部分：
 - `org/connectbot/bean/HostBean.java`：去掉对 `org.connectbot.transport.TransportFactory`
