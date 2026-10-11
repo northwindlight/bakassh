@@ -1,59 +1,96 @@
-# sshterm —— Android native SSH 客户端
+# bakassh
 
-架构与实测基线见 [`../DESIGN.md`](../DESIGN.md)。本文件只讲**怎么构建**。
+一个只追求性能的 Android SSH 终端。终端仿真用 libvterm，渲染是自己写的一套「位图字体 + 行位图缓存 + 脏行追踪」，**渲染成本与格数无关**。类似 ConnectBot，但终端层完全重写。
 
-## 依赖 / 首次构建前必须做的一步
+代码主要由 AI 编写，我负责方向、真机实测与排错。
 
-libvterm（MIT）以源码形式参与编译，但**不放进仓库**。首次构建前：
+## 功能
+
+- SSH 连接（JSch），公钥认证，支持 ed25519 主机密钥
+- 终端仿真基于 libvterm（JNI 直连，不自己写 VT 解析）
+- **位图字体渲染**：字形预渲染成位图块，位置只由列号算出，永不累加字体步进
+- **行位图缓存 + 脏行追踪**：滚动只搬位图、不重新光栅化
+- 中文按 2 格精确对齐（选用的字体 CJK 步进正好是拉丁的 2 倍，不需要横向缩放变形）
+- 触摸滚动 → 鼠标滚轮事件（远端 tmux 开 `mouse on` 即可滚动）
+- 捏合缩放：手势期间实时预览，松手才重排并同步远端 pty
+- 长按选择 + 可拖动把手，复制 / 全选 / 粘贴
+- 扩展按键栏：两行可自定义，键名与 Termux 的 `extra-keys` 一致
+- 主机列表、公钥导出、终端边距与目标列数可调
+- `exit` / 断线 / 崩溃都自动回到主界面
+
+## 预览
+
+![终端与扩展按键](docs/keys-termux-like.png)
+![主机列表](docs/m3-hostlist.png)
+![选择与复制](docs/v3-selection.png)
+![终端留边](docs/inset.png)
+
+## 快速开始
+
+需要 JDK 21、Android SDK（platform 34 / build-tools）、NDK。
 
 ```bash
-cd <本工程>/app/src/main/cpp
-git clone --depth 1 git@github.com:neovim/libvterm.git libvterm
+export JAVA_HOME=/path/to/jdk21
+gradle assembleDebug
+adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-（rpi5 上 git 走 HTTPS+代理不通，走 SSH 通。）
+首次运行：主界面「＋ 新建主机」填主机/用户名/端口（「连上后自动执行」可填 `tmux attach -t zg` 这类命令），点主机即连。把「公钥」里的内容加到服务器的 `~/.ssh/authorized_keys` 即可免密登录。
 
-## rpi5 构建（本机不做重活）
+### 在 aarch64 / 16KB 页内核上构建
 
-```bash
-# 1) 推代码
-scp -r <工作区>/sshterm/app-project rpi5:~/sshterm/
+官方 `aapt2` 是 x86_64 二进制，在 16KB 页 + box64 下 `mmap` 会 `EINVAL`，改用发行版自带的原生 aapt2：
 
-# 2) 首次：把 libvterm 放进 cpp/（若还没有）
-ssh rpi5 'cd ~/sshterm/app-project/app/src/main/cpp && [ -d libvterm ] || git clone --depth 1 git@github.com:neovim/libvterm.git libvterm'
-
-# 3) local.properties 指向 SDK
-ssh rpi5 'echo sdk.dir=/home/northwind/android-sdk > ~/sshterm/app-project/local.properties'
-
-# 4) 构建
-ssh rpi5 'cd ~/sshterm/app-project && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64 PATH=/usr/lib/jvm/java-21-openjdk-arm64/bin:$PATH ~/termux-build/tools/gradle-9.2.1/bin/gradle assembleDebug --console=plain'
+```properties
+android.aapt2FromMavenOverride=/usr/bin/aapt2
 ```
 
-产物：`app/build/outputs/apk/debug/app-debug.apk`
+代价是 `compileSdk` 只能到 34。另外 `targetSdk` 不要低于 30，否则系统和 Play Protect 会把 app 当作「专为旧版 Android 打造」拦截。
 
-## 装机与取结果
+## 项目结构
 
-```powershell
-scp rpi5:~/sshterm/app-project/app/build/outputs/apk/debug/app-debug.apk D:\termux-build\sshterm-debug.apk
-& "D:\Android\Sdk\platform-tools\adb.exe" -s EQMN89G6GI4XEEXK install -r D:\termux-build\sshterm-debug.apk
-& "D:\Android\Sdk\platform-tools\adb.exe" -s EQMN89G6GI4XEEXK shell am start -n dev.northwind.sshterm/.MainActivity
-# 结果在文件里（logcat 会被系统刷屏冲掉）：
-& "D:\Android\Sdk\platform-tools\adb.exe" -s EQMN89G6GI4XEEXK pull /sdcard/Android/data/dev.northwind.sshterm/files/m1a.txt D:\termux-build\m1a.txt
+```
+app/src/main/java/dev/northwind/bakassh/
+├── HostListActivity.java    # 主界面：主机列表、设置、扩展按键定制
+├── MainActivity.java        # 终端界面：SSH、输入、滚动、缩放、选择复制
+├── TerminalView.java        # 渲染器：位图字体 + 行位图缓存 + 脏行追踪
+├── NativeTerm.java          # libvterm 的 JNI 声明
+├── SshTransport.java        # JSch 传输
+├── ExtraKeys.java           # 扩展按键栏配置与键位映射
+├── HostStore.java / Host.java
+└── KeyManager.java          # 本机密钥对
+app/src/main/java/org/connectbot/   # 从 ConnectBot 引入的数据层
+app/src/main/cpp/libvterm/          # 终端仿真（neovim 分支）
+app/src/main/cpp/libvterm_jni.c     # JNI 桥：脏行、搬运事件、单元格
+app/src/main/assets/fonts/          # 渲染用字体
 ```
 
-## rpi5 上的环境约束（踩过，别改）
+## 性能
 
-1. 内核 **16KB 页** → box64 按 4KB 对齐 x86_64 的 mmap → 官方 aapt2 会 `EINVAL`。
-   故 `gradle.properties` 里固定 `android.aapt2FromMavenOverride=/usr/bin/aapt2`（Debian 原生 aarch64）。
-2. 那个 aapt2 是 AOSP 14 → **`compileSdk` 只能 34**。
-3. NDK 用 `/opt/ndk/r29`；若出现 `bin/clang` 缺失，补 `ln -s clang-22 clang`。
+真机实测（PLB110 / 天玑9400 / 91Hz，中文内容为主）：
 
-## 代码结构
-
-| 文件 | 作用 |
+| 指标 | 数值 |
 |---|---|
-| `app/src/main/cpp/libvterm_jni.c` | libvterm ↔ JNI 桥。设 `VTERM_DAMAGE_SCROLL`：滚动以 `moverect` 事件交出，damage 只覆盖新暴露区域；事件在 C 侧累积，Java 每帧各取一次（逐帧一次 JNI） |
-| `app/src/main/cpp/Android.mk` | 编译 libvterm + 桥（`APP_ABI := arm64-v8a`） |
-| `NativeTerm.java` | JNI 声明（含批量 `getRow`：逐格调用 JNI 会吃掉全部性能收益） |
-| `TerminalView.java` | **行位图缓存渲染器**：槽位位图 + 屏幕行→槽位映射；搬运事件只轮转映射，damage 只重光栅化脏行，每帧 rows 次 `drawBitmap` |
-| `MainActivity.java` | M1a 喂数据与计时（阶段 1 整屏重画、阶段 2 滚动），结果写文件 |
+| 单格光栅化 | 1.2 µs |
+| 整屏重绘（157×84 格） | ~13 ms |
+| 滚动（行位图搬运） | 0.42 ms/帧 @ 91 fps |
+
+同一形态下 Termux 的整屏重绘约 33 ms。设计目标不是「在旗舰机上够快」，而是**成本不随格数增长**。
+
+## 依赖与来源
+
+| 依赖 | 用途 | 许可证 |
+|---|---|---|
+| [libvterm](https://github.com/neovim/libvterm)（neovim 分支） | 终端仿真，`app/src/main/cpp/libvterm/` | MIT |
+| [ConnectBot](https://github.com/connectbot/connectbot) v1.9.13 | 主机/公钥/known_hosts 数据层、`SelectionArea` 选择逻辑 | Apache-2.0 |
+| [JSch](https://github.com/mwiede/jsch) | SSH 传输 | BSD 风格 |
+| [eddsa](https://github.com/str4d/ed25519-java) | ed25519 主机密钥校验 | MIT |
+| Cascadia Mono（Windows Terminal 默认字体） | 拉丁字形 | SIL OFL 1.1 |
+| Noto Sans Mono CJK SC | 中文与等宽网格 | SIL OFL 1.1 |
+| AndroidX / Material Components | 界面 | Apache-2.0 |
+
+ConnectBot 取 v1.9.13（最后一个纯 Java + XML 版本）；v1.10 起转向 Kotlin + Compose + Hilt，需要 compileSdk 35。就地修改见 [NOTICE-third-party.md](NOTICE-third-party.md)。
+
+## License
+
+MIT License © 2026 Zhang Feng
