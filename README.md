@@ -1,62 +1,59 @@
-# bakassh
+# sshterm —— Android native SSH 客户端
 
-一个**只追求性能**的 Android SSH 终端。名字取自「バカ ssh」——笨蛋级别的实现，别的先不管。
+架构与实测基线见 [`../DESIGN.md`](../DESIGN.md)。本文件只讲**怎么构建**。
 
-## 为什么要写它
+## 依赖 / 首次构建前必须做的一步
 
-手机上用 Termux + tmux，滚动时卡到不可用（实测整屏中文重绘 **33~34ms**、tmux copy-mode 只有 3 FPS、松手停不住）。
-根因不是 GPU，是终端渲染太贵：重绘被 4KB pty 读分片绑架、零脏区追踪、非 ASCII 字符逐格 `measureText`。
-
-换 ConnectBot 也一样卡：它的 **默认网格只有 Termux 的约 1/5，却更卡** ——
-termlib 的字形宽度缓存只覆盖 Latin-1（中文逐格测量），Compose 每帧重录整棵子树。
-
-## 怎么做的
-
-| 层 | 选型 |
-|---|---|
-| SSH | JSch（mwiede 维护分支），纯 Java |
-| 终端仿真 | **libvterm**（C99 + JNI），不自己写仿真器 |
-| 渲染 | **位图字体**：字形预渲染成位图块，位置**只由列号算出**，永不累加字体步进 |
-| 缓存 | 行位图缓存 + 脏行追踪；滚动只搬位图、不重新光栅化 |
-| 选择复制 | ConnectBot 的 `SelectionArea`（两段式状态机 + 可拖动把手） |
-| 扩展按键 | 学 Termux 的 `extra-keys`，两行可自定义 |
-| 界面 | Material 3（Pixel 风格） |
-
-**实测（PLB110 / 天玑9400 / 91Hz）**：热缓存下单格 **1.2µs**；157×84 整屏重绘 **~13ms**（同规模 Termux ~33ms）；
-滚动 **0.42ms/帧 @91fps**。设计目标是「成本与格数无关」，中端机也成立。
-
-## 构建
-
-需要 Android SDK（build-tools、platform 34）与 NDK。
+libvterm（MIT）以源码形式参与编译，但**不放进仓库**。首次构建前：
 
 ```bash
-export JAVA_HOME=/path/to/jdk21
-./gradlew assembleDebug          # 或 gradle assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+cd <本工程>/app/src/main/cpp
+git clone --depth 1 git@github.com:neovim/libvterm.git libvterm
 ```
 
-**踩过的坑**（如果你也在 16KB 页内核 / aarch64 上构建）：
+（rpi5 上 git 走 HTTPS+代理不通，走 SSH 通。）
 
-* 官方 aapt2 是 x86_64 二进制，在 16KB 页内核 + box64 下 `mmap` 会 `EINVAL`
-  → 用发行版自带的原生 aapt2，并在 `gradle.properties` 里加
-  `android.aapt2FromMavenOverride=/usr/bin/aapt2`；代价是 **compileSdk 只能到 34**。
-* `targetSdk` 必须 ≥ 30 左右，否则系统和 Play Protect 会把 app 当「专为旧版 Android 打造」拦截。
+## rpi5 构建（本机不做重活）
 
-## 来源与许可
+```bash
+# 1) 推代码
+scp -r <工作区>/sshterm/app-project rpi5:~/sshterm/
 
-本项目采用 **MIT**（见 `LICENSE`），但**包含**以下第三方代码/资源，各自遵循其原许可证：
+# 2) 首次：把 libvterm 放进 cpp/（若还没有）
+ssh rpi5 'cd ~/sshterm/app-project/app/src/main/cpp && [ -d libvterm ] || git clone --depth 1 git@github.com:neovim/libvterm.git libvterm'
 
-| 来源 | 用在哪 | 许可证 |
-|---|---|---|
-| **[ConnectBot](https://github.com/connectbot/connectbot)** v1.9.13 | `app/src/main/java/org/connectbot/**`：主机/公钥/known_hosts 数据层、`SelectionArea` 选择逻辑 | Apache-2.0 |
-| **[libvterm](https://github.com/neovim/libvterm)**（neovim 分支） | `app/src/main/cpp/libvterm/**`：终端仿真 | MIT |
-| **[JSch](https://github.com/mwiede/jsch)** | SSH 传输 | BSD 风格 |
-| **[eddsa](https://github.com/str4d/ed25519-java)** | ed25519 主机密钥校验 | MIT |
-| **Cascadia Mono**（Windows Terminal 的默认字体） | `assets/fonts/CascadiaMono.ttf` | SIL OFL 1.1 |
-| **Noto Sans Mono CJK SC** | `assets/fonts/NotoSansMonoCJKsc-Regular.otf` | SIL OFL 1.1 |
-| AndroidX / Material Components | 界面 | Apache-2.0 |
+# 3) local.properties 指向 SDK
+ssh rpi5 'echo sdk.dir=/home/northwind/android-sdk > ~/sshterm/app-project/local.properties'
 
-细节与就地修改说明见 [`NOTICE-third-party.md`](NOTICE-third-party.md)。
+# 4) 构建
+ssh rpi5 'cd ~/sshterm/app-project && JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64 PATH=/usr/lib/jvm/java-21-openjdk-arm64/bin:$PATH ~/termux-build/tools/gradle-9.2.1/bin/gradle assembleDebug --console=plain'
+```
 
-> 说明：ConnectBot 取的是 **v1.9.13**（最后一个纯 Java + XML 版本）。
-> v1.10 起转向 Kotlin + Jetpack Compose + Hilt，需要 compileSdk 35，与本项目的构建约束冲突。
+产物：`app/build/outputs/apk/debug/app-debug.apk`
+
+## 装机与取结果
+
+```powershell
+scp rpi5:~/sshterm/app-project/app/build/outputs/apk/debug/app-debug.apk D:\termux-build\sshterm-debug.apk
+& "D:\Android\Sdk\platform-tools\adb.exe" -s EQMN89G6GI4XEEXK install -r D:\termux-build\sshterm-debug.apk
+& "D:\Android\Sdk\platform-tools\adb.exe" -s EQMN89G6GI4XEEXK shell am start -n dev.northwind.sshterm/.MainActivity
+# 结果在文件里（logcat 会被系统刷屏冲掉）：
+& "D:\Android\Sdk\platform-tools\adb.exe" -s EQMN89G6GI4XEEXK pull /sdcard/Android/data/dev.northwind.sshterm/files/m1a.txt D:\termux-build\m1a.txt
+```
+
+## rpi5 上的环境约束（踩过，别改）
+
+1. 内核 **16KB 页** → box64 按 4KB 对齐 x86_64 的 mmap → 官方 aapt2 会 `EINVAL`。
+   故 `gradle.properties` 里固定 `android.aapt2FromMavenOverride=/usr/bin/aapt2`（Debian 原生 aarch64）。
+2. 那个 aapt2 是 AOSP 14 → **`compileSdk` 只能 34**。
+3. NDK 用 `/opt/ndk/r29`；若出现 `bin/clang` 缺失，补 `ln -s clang-22 clang`。
+
+## 代码结构
+
+| 文件 | 作用 |
+|---|---|
+| `app/src/main/cpp/libvterm_jni.c` | libvterm ↔ JNI 桥。设 `VTERM_DAMAGE_SCROLL`：滚动以 `moverect` 事件交出，damage 只覆盖新暴露区域；事件在 C 侧累积，Java 每帧各取一次（逐帧一次 JNI） |
+| `app/src/main/cpp/Android.mk` | 编译 libvterm + 桥（`APP_ABI := arm64-v8a`） |
+| `NativeTerm.java` | JNI 声明（含批量 `getRow`：逐格调用 JNI 会吃掉全部性能收益） |
+| `TerminalView.java` | **行位图缓存渲染器**：槽位位图 + 屏幕行→槽位映射；搬运事件只轮转映射，damage 只重光栅化脏行，每帧 rows 次 `drawBitmap` |
+| `MainActivity.java` | M1a 喂数据与计时（阶段 1 整屏重画、阶段 2 滚动），结果写文件 |

@@ -112,17 +112,27 @@ public class TerminalView extends View {
                 new android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
                     @Override
                     public boolean onScale(android.view.ScaleGestureDetector d) {
-                        zoomAccum *= d.getScaleFactor();
+                        /*
+                         * 跟手的关键：手势过程中**不重建网格**（重建要重建槽位位图、清字形缓存、
+                         * 还要 resize 远端 PTY，一帧根本来不及），只在画布上做缩放预览 ——
+                         * 位图直接放大缩小，只改 Canvas 变换，90Hz 也扛得住。
+                         * 松手时才提交真实网格（列数变化 → 本地引擎 + 远端 PTY 一起 resize）。
+                         */
+                        previewScale *= d.getScaleFactor();
+                        previewFx = d.getFocusX();
+                        previewFy = d.getFocusY();
+                        invalidate();
                         return true;
                     }
 
                     @Override
                     public void onScaleEnd(android.view.ScaleGestureDetector d) {
-                        if (zoomAccum > 0.01f) {
-                            int nc = Math.round(targetCols / zoomAccum);
-                            zoomAccum = 1f;
-                            setTargetCols(nc);
+                        float s = previewScale;
+                        previewScale = 1f;
+                        if (s > 0.01f && Math.abs(s - 1f) > 0.02f) {
+                            setTargetCols(Math.round(targetCols / s));
                         }
+                        invalidate();
                     }
                 });
     }
@@ -363,7 +373,8 @@ public class TerminalView extends View {
     }
 
     private float lastTouchY, scrollAcc, touchTravel;
-    private float zoomAccum = 1f;
+    /** 捏合预览：手势期间的画布缩放倍数与焦点（松手前不动真实网格）。 */
+    private float previewScale = 1f, previewFx, previewFy;
     private long touchDownNs;
     private float touchDownX, touchDownY;
 
@@ -661,7 +672,15 @@ public class TerminalView extends View {
             return;
         }
         try {
-            drawFrame(canvas);
+            if (previewScale != 1f) {
+                // 只做画布变换：预览够跟手，松手后 setTargetCols 再落到真实网格
+                canvas.save();
+                canvas.scale(previewScale, previewScale, previewFx, previewFy);
+                drawFrame(canvas);
+                canvas.restore();
+            } else {
+                drawFrame(canvas);
+            }
         } catch (Throwable t) {
             // 渲染期异常不能把 app 打死：打日志、下一帧再试。
             // 注意只在首次异常时清空缓存：每帧都清会把行缓存彻底废掉（一次异常就退化成整屏重画）。

@@ -15,6 +15,7 @@ public class HostStore {
     private static final String PREF = "sshterm";
     private static final String KEY_HOSTS = "hosts";
     private static final String KEY_COLS = "target_cols";
+    private static final String KEY_INSET = "edge_inset";
 
     public static List<Host> load(Context ctx) {
         List<Host> list = new ArrayList<>();
@@ -57,5 +58,15 @@ public class HostStore {
     public static void setTargetCols(Context ctx, int cols) {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
                 .edit().putInt(KEY_COLS, cols).apply();
+    }
+
+    /** 终端四周留边（dp）：贴边对曲面/圆角屏不友好，做成可调。 */
+    public static int getEdgeInset(Context ctx, int def) {
+        return ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).getInt(KEY_INSET, def);
+    }
+
+    public static void setEdgeInset(Context ctx, int dp) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
+                .edit().putInt(KEY_INSET, dp).apply();
     }
 }

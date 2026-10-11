@@ -107,7 +107,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         view.setTargetCols(HostStore.getTargetCols(this, 150));
         LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
-        int inset = dp(EDGE_INSET_DP);
+        int inset = dp(HostStore.getEdgeInset(this, EDGE_INSET_DP));
         vlp.setMargins(inset, inset, inset, inset);   // 四周留边，别贴屏幕边缘
         root.addView(view, vlp);
 
@@ -178,6 +178,18 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 + " startup=\"" + hStartup + "\" cols=" + view.getCols());
         running = true;
         startIoThread();
+
+        /*
+         * 崩溃也要能回到主界面。
+         * Java 层未捕获异常：先写进日志文件（方便事后定位），再交给默认处理器。
+         * 原生 SIGSEGV 没法在进程内捕获 —— 但主机列表是启动 Activity、在任务栈底，
+         * 终端页死掉后系统会把任务退回到它，所以用户不会卡在死掉的终端页。
+         */
+        final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
+            out(this, "UNCAUGHT " + e + " @ " + (e.getStackTrace().length > 0 ? e.getStackTrace()[0] : "?"));
+            if (prev != null) prev.uncaughtException(t, e);
+        });
     }
 
     /** 选中文本时出现的操作条（复制 / 全选 / 粘贴 / 取消）—— 对应"可以复制文字"。 */
@@ -606,6 +618,18 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                             @Override
                             public void onStatus(String msg) {
                                 out(MainActivity.this, "SSH status: " + msg);
+                                /*
+                                 * 会话结束就回主界面：
+                                 *  - "channel EOF"：远端 shell 退出（用户敲了 exit）
+                                 *  - "reader stopped"：连接断了
+                                 * 否则用户会停在一个再也不会更新的死终端页上。
+                                 */
+                                if (msg.startsWith("channel EOF") || msg.startsWith("reader stopped")) {
+                                    runOnUiThread(() -> {
+                                        toast("会话结束");
+                                        finish();
+                                    });
+                                }
                             }
                         });
                 out(this, "SSH " + status);
@@ -635,6 +659,10 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     transport.disconnect();
                     transport = null;
                 }
+                // 连不上也要能回主界面（先给 2.5 秒让 toast 看得见）
+                final String why = String.valueOf(t.getMessage());
+                runOnUiThread(() -> toast("连接失败：" + why));
+                new android.os.Handler(getMainLooper()).postDelayed(this::finish, 2500);
             }
         } catch (InterruptedException ie) {
             out(this, "worker interrupted");

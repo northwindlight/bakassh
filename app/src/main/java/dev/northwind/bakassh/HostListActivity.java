@@ -94,6 +94,7 @@ public class HostListActivity extends AppCompatActivity {
         bar.addView(button("＋ 新建主机", v -> editDialog(-1)), weight());
         bar.addView(button("公钥", v -> showPubKey()), weight());
         bar.addView(button("扩展按键", v -> extraKeysDialog()), weight());
+        bar.addView(button("设置", v -> settingsDialog()), weight());
         root.addView(bar, lp(LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 0));
 
@@ -218,6 +219,35 @@ public class HostListActivity extends AppCompatActivity {
                     if (pos >= 0) hosts.set(pos, n); else hosts.add(n);
                     HostStore.save(this, hosts);
                     adapter.notifyDataSetChanged();
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /** 设置：终端边距、目标列数（都可自己调）。 */
+    private void settingsDialog() {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(8), dp(20), dp(8));
+        final EditText eInset = field(String.valueOf(HostStore.getEdgeInset(this, 3)),
+                "终端四周留边（dp，0=贴边；曲面屏建议 3~8）", InputType.TYPE_CLASS_NUMBER, box);
+        final EditText eCols = field(String.valueOf(HostStore.getTargetCols(this, 150)),
+                "目标列数（越小字越大；进终端后也能捏合缩放）", InputType.TYPE_CLASS_NUMBER, box);
+        new AlertDialog.Builder(this)
+                .setTitle("设置（保存后下次进终端生效）")
+                .setView(box)
+                .setPositiveButton("保存", (d, w) -> {
+                    try {
+                        HostStore.setEdgeInset(this,
+                                Integer.parseInt(eInset.getText().toString().trim()));
+                    } catch (Throwable ignored) {
+                    }
+                    try {
+                        HostStore.setTargetCols(this,
+                                Integer.parseInt(eCols.getText().toString().trim()));
+                    } catch (Throwable ignored) {
+                    }
+                    Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("取消", null)
                 .show();
