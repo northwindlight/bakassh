@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <application
-        android:label="bakassh"
+        android:label="bakaSSH"
         android:hardwareAccelerated="true"
         android:theme="@style/AppTheme">
         <!-- 主界面：主机列表（照着 ConnectBot 的样子） -->

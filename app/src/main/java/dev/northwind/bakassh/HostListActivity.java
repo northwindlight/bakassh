@@ -44,7 +44,7 @@ public class HostListActivity extends AppCompatActivity {
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(0xFF121216);
 
-        root.addView(title("bakassh"), lp(LinearLayout.LayoutParams.MATCH_PARENT,
+        root.addView(title("bakaSSH"), lp(LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT, 0));
         TextView hint = new TextView(this);
         hint.setText("点一台主机连接 · 长按编辑/删除");
@@ -283,7 +283,7 @@ public class HostListActivity extends AppCompatActivity {
         try {
             String pub = KeyManager.ensureKey(this);
             ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-            if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("bakassh pubkey", pub));
+            if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("bakaSSH 公钥", pub));
             new AlertDialog.Builder(this)
                     .setTitle("本机公钥（已复制到剪贴板）")
                     .setMessage(pub)

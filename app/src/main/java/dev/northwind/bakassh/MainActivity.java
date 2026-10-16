@@ -9,7 +9,6 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputType;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -17,6 +16,7 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputConnectionWrapper;
 import android.view.inputmethod.InputMethodManager;
@@ -49,16 +49,14 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private Button ctrlButton;
     private Button altButton;
     private Button shiftButton;
-    private LinearLayout selBar;
+    private android.view.ActionMode selectionActionMode;
     private long handle;
     private Thread worker;
     private volatile boolean running;
     private volatile boolean sessionStarted;
-    private SshTransport transport;
+    private volatile SshTransport transport;
     /** 粘滞修饰键：点一下点亮，作用于下一个输入的键。 */
     private boolean ctrlOn, altOn, shiftOn;
-    private boolean clearingInput;
-    private final byte[] outBuf = new byte[8192];
 
     // 连接参数（来自 Intent，缺省用一份保守默认值）
     private String hName = "";
@@ -111,26 +109,40 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         vlp.setMargins(inset, inset, inset, inset);   // 四周留边，别贴屏幕边缘
         root.addView(view, vlp);
 
-        selBar = buildSelectionBar();
-        selBar.setVisibility(View.GONE);
-        root.addView(selBar);
         root.addView(buildExtraKeys());
 
         /*
-         * 输入框是个"中转站"：打字走 TextWatcher，退格/方向/回车这类不给文本的按键
-         * 走 InputConnection 与键事件。
-         *
-         * 之前只监听文本变化 —— 输入框永远是空的，所以软键盘退格只发 deleteSurroundingText，
-         * 我们什么都没发给远端，退格就是坏的。下面两条路径都要拦。
+         * 输入框保存输入法的组词内容，只在 commitText / finishComposingText 时发给远端。
+         * 空输入框里的退格和方向键另外转发为终端按键。
          */
-        input = new EditText(this) {
+        input = new androidx.appcompat.widget.AppCompatEditText(this) {
             @Override
             public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
                 InputConnection ic = super.onCreateInputConnection(outAttrs);
                 if (ic == null) return null;
                 return new InputConnectionWrapper(ic, true) {
                     @Override
+                    public boolean commitText(CharSequence text, int newCursorPosition) {
+                        if (text != null && text.length() > 0) sendTyped(text.toString());
+                        // Keep composing text local; only committed text goes to SSH.
+                        super.commitText("", 1);
+                        input.getText().clear();
+                        return true;
+                    }
+
+                    @Override
+                    public boolean finishComposingText() {
+                        Editable pending = input.getText();
+                        String text = pending.toString();
+                        boolean ok = super.finishComposingText();
+                        if (!text.isEmpty()) sendTyped(text);
+                        pending.clear();
+                        return ok;
+                    }
+
+                    @Override
                     public boolean deleteSurroundingText(int beforeLength, int afterLength) {
+                        if (input.length() > 0) return super.deleteSurroundingText(beforeLength, afterLength);
                         if (beforeLength > 0 && afterLength == 0) {
                             for (int i = 0; i < beforeLength; i++) sendTerminalKey(KeyEvent.KEYCODE_DEL);
                             return true;
@@ -139,9 +151,16 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     }
 
                     @Override
+                    public boolean deleteSurroundingTextInCodePoints(int beforeLength, int afterLength) {
+                        if (input.length() > 0)
+                            return super.deleteSurroundingTextInCodePoints(beforeLength, afterLength);
+                        return deleteSurroundingText(beforeLength, afterLength);
+                    }
+
+                    @Override
                     public boolean sendKeyEvent(KeyEvent event) {
-                        if (event.getAction() == KeyEvent.ACTION_DOWN
-                                && sendTerminalKey(event.getKeyCode())) {
+                        if (input.length() == 0 && isTerminalKey(event.getKeyCode())) {
+                            if (event.getAction() == KeyEvent.ACTION_DOWN) sendTerminalKey(event.getKeyCode());
                             return true;
                         }
                         return super.sendKeyEvent(event);
@@ -158,18 +177,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         input.setImeOptions(EditorInfo.IME_ACTION_NONE
                 | EditorInfo.IME_FLAG_NO_FULLSCREEN
                 | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-        input.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
-            @Override public void afterTextChanged(Editable s) { }
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (clearingInput || count <= 0) return;
-                String added = s.subSequence(start, start + count).toString();
-                sendTyped(added);
-                clearingInput = true;
-                input.setText("");
-                clearingInput = false;
-            }
-        });
         root.addView(input, new LinearLayout.LayoutParams(1, 1));
 
         setContentView(root);
@@ -179,44 +186,47 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         running = true;
         startIoThread();
 
-        /*
-         * 崩溃也要能回到主界面。
-         * Java 层未捕获异常：先写进日志文件（方便事后定位），再交给默认处理器。
-         * 原生 SIGSEGV 没法在进程内捕获 —— 但主机列表是启动 Activity、在任务栈底，
-         * 终端页死掉后系统会把任务退回到它，所以用户不会卡在死掉的终端页。
-         */
-        final Thread.UncaughtExceptionHandler prev = Thread.getDefaultUncaughtExceptionHandler();
-        Thread.setDefaultUncaughtExceptionHandler((t, e) -> {
-            out(this, "UNCAUGHT " + e + " @ " + (e.getStackTrace().length > 0 ? e.getStackTrace()[0] : "?"));
-            if (prev != null) prev.uncaughtException(t, e);
-        });
     }
 
-    /** 选中文本时出现的操作条（复制 / 全选 / 粘贴 / 取消）—— 对应"可以复制文字"。 */
-    private LinearLayout buildSelectionBar() {
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setBackgroundColor(0xFF23304A);
-        bar.addView(smallButton("复制", v -> copySelection()), weight());
-        bar.addView(smallButton("全选", v -> view.selectAll()), weight());
-        bar.addView(smallButton("粘贴", v -> pasteFromClipboard()), weight());
-        bar.addView(smallButton("取消", v -> view.clearSelection()), weight());
-        return bar;
-    }
-
-    private LinearLayout.LayoutParams weight() {
-        return new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-    }
-
-    private Button smallButton(String label, View.OnClickListener l) {
-        Button b = keyButton(label);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
-        g.setColor(0xFF24406B);            // 操作条用偏蓝，和按键区分开
-        g.setCornerRadius(dp(6));
-        b.setBackground(g);
-        b.setOnClickListener(l);
-        return b;
+    private void updateSelectionToolbar(boolean active) {
+        if (!active) {
+            android.view.ActionMode mode = selectionActionMode;
+            selectionActionMode = null;
+            if (mode != null) mode.finish();
+            return;
+        }
+        if (selectionActionMode != null) {
+            selectionActionMode.invalidateContentRect();
+            return;
+        }
+        selectionActionMode = view.startActionMode(new android.view.ActionMode.Callback2() {
+            @Override
+            public boolean onCreateActionMode(android.view.ActionMode mode, android.view.Menu menu) {
+                menu.add(0, android.R.id.copy, 0, "复制").setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS);
+                menu.add(0, android.R.id.selectAll, 1, "全选").setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS);
+                menu.add(0, android.R.id.paste, 2, "粘贴").setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS);
+                return true;
+            }
+            @Override
+            public boolean onPrepareActionMode(android.view.ActionMode mode, android.view.Menu menu) { return false; }
+            @Override
+            public boolean onActionItemClicked(android.view.ActionMode mode, android.view.MenuItem item) {
+                if (item.getItemId() == android.R.id.copy) copySelection();
+                else if (item.getItemId() == android.R.id.selectAll) view.selectAll();
+                else if (item.getItemId() == android.R.id.paste) pasteFromClipboard();
+                else return false;
+                return true;
+            }
+            @Override
+            public void onDestroyActionMode(android.view.ActionMode mode) {
+                selectionActionMode = null;
+                view.clearSelection();
+            }
+            @Override
+            public void onGetContentRect(android.view.ActionMode mode, View target, android.graphics.Rect rect) {
+                view.getSelectionBounds(rect);
+            }
+        }, android.view.ActionMode.TYPE_FLOATING);
     }
 
     private void copySelection() {
@@ -226,9 +236,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             return;
         }
         ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("sshterm", t));
-        out(this, "COPIED chars=" + t.length() + " head=" + t.substring(0, Math.min(40, t.length()))
-                .replace("\n", "\\n"));
+        if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("bakaSSH", t));
+        out(this, "COPIED chars=" + t.length());
         toast("已复制 " + t.length() + " 字符");
         view.clearSelection();
     }
@@ -284,11 +293,38 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         return true;
     }
 
+    private boolean isTerminalKey(int keyCode) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DEL: case KeyEvent.KEYCODE_FORWARD_DEL:
+            case KeyEvent.KEYCODE_ENTER: case KeyEvent.KEYCODE_NUMPAD_ENTER:
+            case KeyEvent.KEYCODE_TAB: case KeyEvent.KEYCODE_ESCAPE:
+            case KeyEvent.KEYCODE_DPAD_UP: case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_RIGHT: case KeyEvent.KEYCODE_DPAD_LEFT:
+            case KeyEvent.KEYCODE_MOVE_HOME: case KeyEvent.KEYCODE_MOVE_END:
+            case KeyEvent.KEYCODE_PAGE_UP: case KeyEvent.KEYCODE_PAGE_DOWN:
+                return true;
+            default: return false;
+        }
+    }
+
     /** 硬键盘/系统按键：直接喂终端，别让输入框吃掉。 */
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
-        if (handle != 0 && e.getAction() == KeyEvent.ACTION_DOWN && sendTerminalKey(e.getKeyCode())) {
-            return true;
+        if (handle != 0 && input != null && BaseInputConnection.getComposingSpanStart(input.getText()) < 0) {
+            if (isTerminalKey(e.getKeyCode())) {
+                if (e.getAction() == KeyEvent.ACTION_DOWN) sendTerminalKey(e.getKeyCode());
+                return true;
+            }
+            // Physical keyboards produce KeyEvents instead of commitText.
+            int cp = e.getUnicodeChar(e.getMetaState() & ~KeyEvent.META_CTRL_MASK);
+            if (cp > 0 && Character.isValidCodePoint(cp)) {
+                if (e.getAction() == KeyEvent.ACTION_DOWN) {
+                    ctrlOn |= e.isCtrlPressed();
+                    altOn |= e.isAltPressed();
+                    sendTyped(new String(Character.toChars(cp)));
+                }
+                return true;
+            }
         }
         return super.dispatchKeyEvent(e);
     }
@@ -437,7 +473,14 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
     private void sendBytes(byte[] b) {
         final SshTransport t = transport;
-        if (t == null) return;
+        if (t == null || !running) return;
+        // Preserve protocol reply order before user input, including replies
+        // generated by mouse events.
+        pumpOutput();
+        queueBytes(t, b);
+    }
+
+    private void queueBytes(SshTransport t, byte[] b) {
         // 关键：绝不能在这里直接写 socket —— UI 线程做网络 IO 会抛 NetworkOnMainThreadException。
         postIo(() -> {
             try {
@@ -446,32 +489,21 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 out(this, "io write failed: " + ex);
             }
         });
-        pumpOutput();
     }
 
     /** 把 libvterm 产生、需要回给宿主的数据（DSR 应答、鼠标序列等）投递给 IO 线程。 */
     private void pumpOutput() {
-        if (handle == 0) return;
-        final SshTransport t = transport;
-        if (t == null) return;
-        int n;
-        while ((n = NativeTerm.takeOutput(handle, outBuf)) > 0) {
-            final byte[] chunk = new byte[n];
-            System.arraycopy(outBuf, 0, chunk, 0, n);
-            postIo(() -> {
-                try {
-                    t.write(chunk);
-                } catch (Throwable ex) {
-                    out(this, "io pump failed: " + ex);
-                }
-            });
+        synchronized (NativeTerm.class) {
+            final SshTransport t = transport;
+            if (handle == 0 || t == null || !running) return;
+            NativeTerm.drainOutput(handle, bytes -> queueBytes(t, bytes));
         }
     }
 
     // ---------------- 专用 IO 线程 ----------------
 
-    private final java.util.concurrent.ArrayBlockingQueue<Runnable> ioQueue =
-            new java.util.concurrent.ArrayBlockingQueue<>(256);
+    private final java.util.concurrent.LinkedBlockingQueue<Runnable> ioQueue =
+            new java.util.concurrent.LinkedBlockingQueue<>();
     private Thread ioThread;
 
     private void startIoThread() {
@@ -492,7 +524,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private void postIo(Runnable r) {
-        if (!ioQueue.offer(r)) out(this, "io queue full, dropped");
+        if (running) ioQueue.offer(r);
     }
 
     private void showIme() {
@@ -545,7 +577,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
         // 选择状态 → 显示/隐藏操作条
         view.setSelectionListener((active, hasRange) -> {
-            selBar.setVisibility(active ? View.VISIBLE : View.GONE);
+            updateSelectionToolbar(active);
             out(this, "SELECTION active=" + active + " hasRange=" + hasRange);
         });
 
@@ -563,6 +595,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private void startSessionOnce() {
         if (sessionStarted || handle == 0) return;
         sessionStarted = true;
+        transport = new SshTransport();
         worker = new Thread(this::sessionRunner, "session");
         worker.start();
     }
@@ -570,48 +603,55 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
+        // Pausing (Home, app switch, screen lock) keeps this session alive.
+        // Activity destruction is the boundary at which we release it.
+    }
+
+    @Override
+    protected void onDestroy() {
         running = false;
-        sessionStarted = false;
+        if (view != null) view.clearSelection();
         if (transport != null) {
             transport.disconnect();
-            transport = null;
         }
         if (worker != null) {
             worker.interrupt();
             worker = null;
         }
-    }
-
-    @Override
-    protected void onDestroy() {
+        if (ioThread != null) ioThread.interrupt();
+        ioQueue.clear();
+        synchronized (NativeTerm.class) {
+            handle = 0;
+            if (view != null) view.destroy();
+        }
         super.onDestroy();
-        if (view != null) view.destroy();
-        handle = 0;
     }
 
     private void sessionRunner() {
         try {
             Thread.sleep(800);
-            if (handle == 0) return;
+            if (!running) return;
 
-            String pub;
             try {
-                pub = KeyManager.ensureKey(this);
-                out(this, "PUBKEY " + pub);
+                KeyManager.ensureKey(this);
             } catch (Throwable t) {
                 out(this, "keygen FAILED: " + t);
                 return;
             }
 
             try {
-                transport = new SshTransport();
-                String status = transport.connect(hHost, hPort, hUser,
+                final SshTransport t = transport;
+                if (!running) return;
+                String status = t.connect(hHost, hPort, hUser,
                         KeyManager.privFile(this).getAbsolutePath(),
                         view.getCols(), view.getRows(),
                         new SshTransport.Listener() {
                             @Override
                             public void onBytes(byte[] buf, int len) {
-                                NativeTerm.pushBytes(handle, buf, len);
+                                synchronized (NativeTerm.class) {
+                                    if (!running || handle == 0) return;
+                                    NativeTerm.receive(handle, buf, len, bytes -> queueBytes(t, bytes));
+                                }
                                 view.notifyNewData();
                             }
 
@@ -626,8 +666,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                                  */
                                 if (msg.startsWith("channel EOF") || msg.startsWith("reader stopped")) {
                                     runOnUiThread(() -> {
-                                        toast("会话结束");
-                                        finish();
+                                        if (running) { toast("会话结束"); finish(); }
                                     });
                                 }
                             }
@@ -636,7 +675,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
                 Thread.sleep(1500);   // 等提示符
                 if (hStartup != null && !hStartup.isEmpty() && running) {
-                    final SshTransport t = transport;
                     String cmd = hStartup.endsWith("\n") ? hStartup : hStartup + "\n";
                     final byte[] bytes = cmd.getBytes(StandardCharsets.UTF_8);
                     postIo(() -> {
@@ -654,6 +692,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 out(this, "SESSION rx_bytes=" + transport.getRxBytes());
                 out(this, "DONE");
             } catch (Throwable t) {
+                if (!running) return;
                 out(this, "SSH FAILED: " + t);
                 if (transport != null) {
                     transport.disconnect();

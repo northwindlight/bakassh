@@ -1,4 +1,4 @@
-# bakassh
+# bakaSSH
 
 Android 上的 SSH 终端。终端仿真用 libvterm，渲染自己实现：字形预渲染成位图块，整行缓存，只重画脏行。
 
@@ -25,10 +25,10 @@ Android 上的 SSH 终端。终端仿真用 libvterm，渲染自己实现：字�
 - 中文按 2 格对齐
 - 触摸滚动转滚轮事件
 - 捏合缩放字号
-- 长按选择、复制 / 全选 / 粘贴
+- 长按选择连续文本，浮动菜单复制 / 全选 / 粘贴；选择期间保留画面快照，不向 tmux 发送鼠标事件
 - 扩展按键两行，可自定义，键名与 Termux 的 `extra-keys` 相同
 - 主机列表、导出公钥、终端边距与列数可调
-- `exit`、断线、崩溃退回主界面
+- `exit`、断线退回主界面；切到后台后返回保留原会话
 
 ## 快速开始
 
@@ -40,6 +40,10 @@ gradle assembleDebug
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+本地回归与本次修复说明见 [tests/host/README.md](tests/host/README.md) 和
+[修复记录](docs/修复记录-20261016.md)。
+下一阶段需求见 [后续计划](docs/后续计划.md)。
+
 ## 项目结构
 
 ```
@@ -47,6 +51,7 @@ app/src/main/java/dev/northwind/bakassh/
 ├── HostListActivity.java   主机列表、设置、扩展按键定制
 ├── MainActivity.java       终端界面：SSH、输入、滚动、缩放、选择复制
 ├── TerminalView.java       渲染器（位图字体 + 行缓存 + 脏行）
+├── TerminalSelection.java  连续文本选择与复制快照
 ├── NativeTerm.java         libvterm 的 JNI 声明
 ├── SshTransport.java       JSch 传输
 ├── ExtraKeys.java          扩展按键配置与键位映射
@@ -63,7 +68,7 @@ app/src/main/assets/fonts/          渲染用字体
 | 依赖 | 用途 | 许可证 |
 |---|---|---|
 | [libvterm](https://github.com/neovim/libvterm)（neovim 分支） | 终端仿真 | MIT |
-| [ConnectBot](https://github.com/connectbot/connectbot) v1.9.13 | 主机/公钥/known_hosts 数据层、选择逻辑 | Apache-2.0 |
+| [ConnectBot](https://github.com/connectbot/connectbot) v1.9.13 | 主机/公钥/known_hosts 数据层 | Apache-2.0 |
 | [JSch](https://github.com/mwiede/jsch) | SSH 传输 | BSD 风格 |
 | [eddsa](https://github.com/str4d/ed25519-java) | ed25519 主机密钥校验 | MIT |
 | Cascadia Mono（Windows Terminal 默认字体） | 拉丁字形 | SIL OFL 1.1 |

@@ -82,7 +82,10 @@ public class TerminalView extends View {
     /** 默认字号（px）。手机上大致 27px 对应 ~50 列，和 Termux 观感接近。 */
     private float fontPx = 27f;
 
-    public void setGridListener(GridListener l) { this.gridListener = l; }
+    public void setGridListener(GridListener l) {
+        this.gridListener = l;
+        if (l != null && slots != null) l.onGridChanged(cols, rows);
+    }
 
     public void setFontPx(float px) {
         fontPx = px;
@@ -169,7 +172,8 @@ public class TerminalView extends View {
 
     private SelectionListener selListener;
     private ZoomListener zoomListener;
-    private final org.connectbot.bean.SelectionArea selArea = new org.connectbot.bean.SelectionArea();
+    private TerminalSelection selection;
+    private Bitmap selectionSnapshot;
     private boolean selActive;
     /** 正在拖哪个把手：0 无、1 起点、2 终点。 */
     private int handleDrag;
@@ -280,49 +284,39 @@ public class TerminalView extends View {
 
     public boolean isSelecting() { return selActive; }
 
+    private void captureSelection() {
+        synchronized (NativeTerm.class) {
+            int[][] cells = new int[rows][cols * 5];
+            for (int r = 0; r < rows; r++) NativeTerm.getRow(handle, r, cells[r]);
+            selection = new TerminalSelection(cols, cells);
+            selectionSnapshot = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+            drawFrame(new Canvas(selectionSnapshot));
+        }
+    }
+
     private void startSelection(int row, int col) {
-        // ConnectBot 的两段式：先定起点（selectingOrigin=true，此时 setRow/setColumn 同时设起止），
-        // 之后第一次移动才 finishSelectingOrigin()，再拖动只动终点。
-        selArea.setBounds(cols, rows);
-        selArea.reset();
-        selArea.setRow(row);
-        selArea.setColumn(col);
+        if (handle == 0 || getWidth() <= 0 || getHeight() <= 0) return;
+        captureSelection();
+        selection.selectWord(row, col);
         selActive = true;
         gestureStartedSelection = true;
+        performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
         notifySelection();
         invalidate();
     }
 
-    /** 拖动中：把终点移到 (row,col)。 */
-    private void extendSelection(int row, int col) {
-        if (selArea.isSelectingOrigin()) selArea.finishSelectingOrigin();
-        selArea.setRow(row);
-        selArea.setColumn(col);
-        notifySelection();
-        invalidate();
-    }
-
-    /** 拖动起点把手：重设起点、保留原终点。 */
-    private void moveOriginHandle(int row, int col) {
-        int b = selArea.getBottom(), r = selArea.getRight();
-        selArea.reset();
-        selArea.setRow(row);
-        selArea.setColumn(col);
-        selArea.finishSelectingOrigin();
-        selArea.setRow(b);
-        selArea.setColumn(r);
+    private void moveSelectionHandle(int row, int col) {
+        if (selection == null) return;
+        if (handleDrag == 1) selection.moveAnchor(row, col);
+        else selection.moveFocus(row, col);
         notifySelection();
         invalidate();
     }
 
     public void selectAll() {
-        selArea.setBounds(cols, rows);
-        selArea.reset();
-        selArea.setRow(0);
-        selArea.setColumn(0);
-        selArea.finishSelectingOrigin();
-        selArea.setRow(Math.max(0, rows - 1));
-        selArea.setColumn(Math.max(0, cols - 1));
+        if (handle == 0) return;
+        if (!selActive) captureSelection();
+        selection.selectAll();
         selActive = true;
         notifySelection();
         invalidate();
@@ -331,134 +325,123 @@ public class TerminalView extends View {
     public void clearSelection() {
         if (!selActive) return;
         selActive = false;
+        selection = null;
+        if (selectionSnapshot != null) { selectionSnapshot.recycle(); selectionSnapshot = null; }
         notifySelection();
         invalidate();
     }
 
     private void notifySelection() {
-        if (selListener != null) selListener.onSelection(selActive, hasRange());
+        if (selListener != null) selListener.onSelection(selActive, selActive && selection.start() != selection.end());
     }
 
-    private boolean hasRange() {
-        return selArea.getTop() != selArea.getBottom() || selArea.getLeft() != selArea.getRight();
-    }
-
-    /** 取选中区域的文本（按屏幕当前内容；行尾空格会去掉）。 */
     public String getSelectionText() {
-        if (!selActive || handle == 0) return "";
-        ensureRowBuf();
-        int r0 = selArea.getTop(), r1 = selArea.getBottom();
-        int cA = selArea.getLeft(), cB = selArea.getRight();
-        StringBuilder out = new StringBuilder();
-        for (int r = r0; r <= r1 && r < rows; r++) {
-            int n = NativeTerm.getRow(handle, r, rowBuf);
-            if (n <= 0) continue;
-            int from = cA;          // SelectionArea 是矩形选择：每行都取 [left..right]
-            int to = cB;
-            StringBuilder line = new StringBuilder();
-            for (int c = Math.max(0, from); c <= to && c < n; ) {
-                int base = c * 5;
-                int w = rowBuf[base + 4];
-                if (w <= 0) { c++; continue; }
-                line.appendCodePoint(sanitizeCp(rowBuf[base]));
-                c += Math.max(1, w);
-            }
-            while (line.length() > 0 && line.charAt(line.length() - 1) == ' ') {
-                line.setLength(line.length() - 1);
-            }
-            out.append(line);
-            if (r < r1) out.append('\n');
-        }
-        return out.toString();
+        return selActive && selection != null ? selection.text() : "";
     }
 
-    private float lastTouchY, scrollAcc, touchTravel;
-    /** 捏合预览：手势期间的画布缩放倍数与焦点（松手前不动真实网格）。 */
-    private float previewScale = 1f, previewFx, previewFy;
-    private long touchDownNs;
-    private float touchDownX, touchDownY;
+    public void getSelectionBounds(Rect rect) {
+        if (!selActive || selection == null) { rect.set(0, 0, getWidth(), 1); return; }
+        int first = selection.start() / cols, last = selection.end() / cols;
+        rect.set((int) (selection.firstColumn(first) * cellW), (int) (first * cellH),
+                (int) ((selection.lastColumn(first) + 1) * cellW),
+                Math.min(getHeight(), (int) ((last + 1) * cellH)));
+    }
 
-    /**
-     * 触摸滚动 → 鼠标滚轮事件。
-     *
-     * 走 libvterm 的鼠标 API 而不是手拼序列：它是按「应用是否开启鼠标上报」来决定要不要产生序列的
-     * （vterm_mouse_button 里有 `if(!state->mouse_flags) return;`），所以普通 shell 里拖屏幕无害；
-     * tmux（mouse on）会自己上报开启，滚轮事件就能被正确解析成滚动。
-     * 约定：手指下移 = 内容下移 = 上滚（button 4），反之 button 5。
-     */
+    private float lastTouchY, scrollAcc;
+    private boolean touchPressed, touchMoved, touchSuppressed, touchSelecting;
+    private float touchDownX, touchDownY;
+    private float previewScale = 1f, previewFx, previewFy;
+    private final Runnable longPress = () -> {
+        if (touchPressed && !touchMoved && !touchSuppressed && !selActive) {
+            int row = Math.max(0, Math.min(rows - 1, (int) (touchDownY / cellH)));
+            int col = Math.max(0, Math.min(cols - 1, (int) (touchDownX / cellW)));
+            startSelection(row, col);
+            handleDrag = 2;
+        }
+    };
+
+    /** Local selection consumes its entire gesture. Only a confirmed single
+     * finger scroll produces remote wheel events; cancel/pinch never become taps. */
     @Override
     public boolean onTouchEvent(android.view.MotionEvent e) {
         if (inputSink == null || handle == 0) return super.onTouchEvent(e);
-        if (scaleDetector != null) scaleDetector.onTouchEvent(e);
-        // 双指捏合期间不做选择/滚动
-        if (e.getPointerCount() > 1 || (scaleDetector != null && scaleDetector.isInProgress())) {
+        int action = e.getActionMasked();
+        if (action == android.view.MotionEvent.ACTION_CANCEL) {
+            removeCallbacks(longPress);
+            touchPressed = false;
+            handleDrag = 0;
             scrollAcc = 0;
+            touchSuppressed = true;
+            if (scaleDetector != null) scaleDetector.onTouchEvent(e);
+            previewScale = 1f;
+            invalidate();
+            return true;
+        }
+        if (scaleDetector != null) scaleDetector.onTouchEvent(e);
+        if (e.getPointerCount() > 1 || (scaleDetector != null && scaleDetector.isInProgress())) {
+            removeCallbacks(longPress);
+            touchSuppressed = true;
+            handleDrag = 0;
+            scrollAcc = 0;
+            clearSelection();
             return true;
         }
         final int row = Math.max(0, Math.min(rows - 1, (int) (e.getY() / cellH)));
         final int col = Math.max(0, Math.min(cols - 1, (int) (e.getX() / cellW)));
-        switch (e.getActionMasked()) {
+        final float slop = android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop();
+        switch (action) {
             case android.view.MotionEvent.ACTION_DOWN:
-                lastTouchY = e.getY();
-                scrollAcc = 0;
-                touchTravel = 0;
-                touchDownNs = System.nanoTime();
+                touchPressed = true;
+                touchMoved = touchSuppressed = false;
+                touchSelecting = selActive;
+                lastTouchY = touchDownY = e.getY();
                 touchDownX = e.getX();
-                touchDownY = e.getY();
+                scrollAcc = 0;
                 gestureStartedSelection = false;
                 handleDrag = 0;
                 if (selActive) {
-                    // 先看是不是按在把手上（把手画在选区左上/右下）
-                    float rad = Math.max(cellW * 1.8f, cellH);
-                    float ox = selArea.getLeft() * cellW;
-                    float oy = selArea.getTop() * cellH + cellH / 2f;
-                    float ex = (selArea.getRight() + 1) * cellW;
-                    float ey = selArea.getBottom() * cellH + cellH / 2f;
-                    if (Math.hypot(e.getX() - ox, e.getY() - oy) < rad) handleDrag = 1;
-                    else if (Math.hypot(e.getX() - ex, e.getY() - ey) < rad) handleDrag = 2;
-                }
+                    float radius = 24f * getResources().getDisplayMetrics().density;
+                    int start = selection.start(), end = selection.end();
+                    float sx = (start % cols) * cellW, sy = (start / cols + 1) * cellH;
+                    float ex = (end % cols + 1) * cellW, ey = (end / cols + 1) * cellH;
+                    double ds = Math.hypot(e.getX() - sx, e.getY() - sy);
+                    double de = Math.hypot(e.getX() - ex, e.getY() - ey);
+                    if (Math.min(ds, de) <= radius)
+                        handleDrag = ds <= de ? selection.startHandle() : 3 - selection.startHandle();
+                } else postDelayed(longPress, android.view.ViewConfiguration.getLongPressTimeout());
                 return true;
             case android.view.MotionEvent.ACTION_MOVE: {
-                long heldMs = (System.nanoTime() - touchDownNs) / 1_000_000L;
-                float dy = e.getY() - lastTouchY;
-                lastTouchY = e.getY();
-                touchTravel += Math.abs(dy);
-                if (handleDrag == 1) { moveOriginHandle(row, col); return true; }
-                if (handleDrag == 2) { extendSelection(row, col); return true; }
-                if (selActive) { extendSelection(row, col); return true; }
-                // 按住不放就进入选择（同一次手势里可以接着拖），比"抬手才选"顺手
-                if (heldMs > 550 && touchTravel < cellH * 1.5f) {
-                    startSelection(row, col);
+                if (touchSuppressed) return true;
+                boolean wasMoved = touchMoved;
+                if (Math.hypot(e.getX() - touchDownX, e.getY() - touchDownY) > slop) {
+                    touchMoved = true;
+                    removeCallbacks(longPress);
+                }
+                if (selActive || touchSelecting || gestureStartedSelection) {
+                    if (selActive && handleDrag != 0 && touchMoved) moveSelectionHandle(row, col);
                     return true;
                 }
-                scrollAcc += dy;
+                float dy = e.getY() - lastTouchY;
+                lastTouchY = e.getY();
+                if (!touchMoved) return true;
+                scrollAcc += wasMoved ? dy : e.getY() - touchDownY;
                 while (scrollAcc >= cellH) { inputSink.mouse(row, col, 4, true); scrollAcc -= cellH; }
                 while (scrollAcc <= -cellH) { inputSink.mouse(row, col, 5, true); scrollAcc += cellH; }
                 return true;
             }
             case android.view.MotionEvent.ACTION_UP:
-            case android.view.MotionEvent.ACTION_CANCEL: {
-                long heldMs = (System.nanoTime() - touchDownNs) / 1_000_000L;
-                if (handleDrag != 0) {
-                    handleDrag = 0;                       // 松开把手：保留选择
-                } else if (selActive) {
-                    /*
-                     * 关键修复：启动选择的那次抬手不能被当成"点击取消"，
-                     * 否则操作条一闪就没（实测日志 active=true 后立刻 false）。
-                     * 只有"在没启动选择的手势里轻点一下"才取消。
-                     */
-                    if (!gestureStartedSelection && touchTravel < cellH * 0.4f) clearSelection();
-                } else if (heldMs > 550 && touchTravel < cellH * 0.4f) {
-                    startSelection(row, col);             // 没产生 MOVE 的慢按也算长按
-                } else if (touchTravel < cellH * 0.4f) {
-                    inputSink.tap();                      // 轻点：弹键盘
+                removeCallbacks(longPress);
+                touchPressed = false;
+                if (!touchSuppressed && !touchMoved && !gestureStartedSelection) {
+                    if (selActive && handleDrag == 0) clearSelection();
+                    else if (!selActive && !touchSelecting) inputSink.tap();
                 }
+                handleDrag = 0;
                 scrollAcc = 0;
                 gestureStartedSelection = false;
                 return true;
-            }
             default:
-                return super.onTouchEvent(e);
+                return true;
         }
     }
 
@@ -511,7 +494,7 @@ public class TerminalView extends View {
             cellW = textPaint.measureText("X");
             cellH = textPaint.getFontSpacing();
             newCols = Math.max(2, (int) (w / cellW));
-            newRows = Math.max(2, (int) (h / cellH));   // 至少 2 行：1 行的终端没有意义（还会把远端 PTY 设坏）
+            newRows = Math.min(NativeTerm.MAX_ROWS, Math.max(2, (int) (h / cellH)));
             cellW = (float) w / newCols;
             cellH = (float) h / newRows;
         } else {
@@ -520,7 +503,7 @@ public class TerminalView extends View {
             float adv = textPaint.measureText("X");
             float sp = textPaint.getFontSpacing();
             newCols = Math.max(2, (int) (w / adv));
-            newRows = Math.max(1, (int) (h / sp));
+            newRows = Math.min(NativeTerm.MAX_ROWS, Math.max(1, (int) (h / sp)));
             cellW = (float) w / newCols;
             cellH = (float) h / newRows;
         }
@@ -537,8 +520,8 @@ public class TerminalView extends View {
         rows = newRows;
         slotCount = rows + SLOT_EXTRA;
         rowBitmapH = (int) Math.ceil(cellH);
-        // 几何变了，选区的行列索引就失效了
-        if (selActive) { selActive = false; notifySelection(); }
+        // Geometric changes end the frozen selection before rebuilding caches.
+        clearSelection();
 
         // 槽位位图按新几何重建
         if (slots != null) {
@@ -672,6 +655,11 @@ public class TerminalView extends View {
             return;
         }
         try {
+            if (selActive && selectionSnapshot != null) {
+                canvas.drawBitmap(selectionSnapshot, 0f, 0f, null);
+                drawSelectionOverlay(canvas);
+                return;
+            }
             if (previewScale != 1f) {
                 // 只做画布变换：预览够跟手，松手后 setTargetCols 再落到真实网格
                 canvas.save();
@@ -693,6 +681,12 @@ public class TerminalView extends View {
     }
 
     private void drawFrame(Canvas canvas) {
+        synchronized (NativeTerm.class) {
+            drawFrameLocked(canvas);
+        }
+    }
+
+    private void drawFrameLocked(Canvas canvas) {
         long t0 = System.nanoTime();
         ensureRowBuf();
 
@@ -820,7 +814,7 @@ public class TerminalView extends View {
             if (width <= 0) { col++; continue; }   // 全宽字符的尾随占位格，跳过
             int cp = sanitizeCp(rowBuf[base]);
 
-            if (bg != 0) paintSegmentBg(c, col, col + width, bg);
+            paintSegmentBg(c, col, col + width, bg);
 
             // 位图字体：非空格格子一次 blit，位置只由列号决定，宽度必然 = width*cellW
             if (cp != ' ') {
@@ -855,7 +849,6 @@ public class TerminalView extends View {
     }
 
     private void paintSegmentBg(Canvas c, int col0, int col1, int bg) {
-        if (bg == 0) return;
         rowBgPaint.setColor(bg | 0xFF000000);
         c.drawRect(col0 * cellW, 0f, col1 * cellW, cellH, rowBgPaint);
     }
@@ -869,20 +862,27 @@ public class TerminalView extends View {
         if (st != curStrike) { textPaint.setStrikeThruText(st); curStrike = st; }
     }
 
-    /** 选区高亮 + 两个可拖动把手（学 ConnectBot：矩形选区，指针在起点/终点）。 */
+    /** Continuous text selection, with handles below the text instead of over it. */
     private void drawSelectionOverlay(Canvas canvas) {
-        if (!selActive) return;
-        int r0 = selArea.getTop(), r1 = selArea.getBottom();
-        int c0 = selArea.getLeft(), c1 = selArea.getRight();
-        for (int r = r0; r <= r1 && r < rows; r++) {
-            float y = r * cellH;
-            canvas.drawRect(c0 * cellW, y, (c1 + 1) * cellW, y + cellH, selPaint);
+        if (!selActive || selection == null) return;
+        int start = selection.start(), end = selection.end();
+        for (int r = start / cols; r <= end / cols; r++) {
+            canvas.drawRect(selection.firstColumn(r) * cellW, r * cellH,
+                    (selection.lastColumn(r) + 1) * cellW, (r + 1) * cellH, selPaint);
         }
-        // 把手：起点在左上角，终点在右下角（和 ConnectBot 的指针位置一致）
-        float rad = Math.max(6f, cellW * 0.8f);
+        float radius = 6f * getResources().getDisplayMetrics().density;
         handlePaint.setColor(0xFF33AAFF);
-        canvas.drawCircle(c0 * cellW, r0 * cellH + cellH / 2f, rad, handlePaint);
-        canvas.drawCircle((c1 + 1) * cellW, r1 * cellH + cellH / 2f, rad, handlePaint);
+        float sx = start % cols * cellW, sy = (start / cols + 1) * cellH;
+        float ex = (end % cols + 1) * cellW, ey = (end / cols + 1) * cellH;
+        drawSelectionHandle(canvas, sx, sy, radius, -1);
+        drawSelectionHandle(canvas, ex, ey, radius, 1);
+    }
+
+    private void drawSelectionHandle(Canvas canvas, float x, float y, float radius, int side) {
+        float cy = Math.min(getHeight() - radius, y + radius);
+        float cx = Math.max(radius, Math.min(getWidth() - radius, x + side * radius));
+        canvas.drawRect(x - 1f, y - cellH, x + 1f, cy, handlePaint);
+        canvas.drawCircle(cx, cy, radius, handlePaint);
     }
 
     private void drawCursor(Canvas canvas) {
@@ -899,9 +899,14 @@ public class TerminalView extends View {
     }
 
     public void destroy() {
-        if (handle != 0) {
-            NativeTerm.destroy(handle);
-            handle = 0;
+        removeCallbacks(longPress);
+        touchPressed = false;
+        clearSelection();
+        synchronized (NativeTerm.class) {
+            if (handle != 0) {
+                NativeTerm.destroy(handle);
+                handle = 0;
+            }
         }
         if (slots != null) {
             for (Bitmap b : slots) if (b != null) b.recycle();

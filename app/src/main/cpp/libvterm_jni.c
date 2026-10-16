@@ -47,8 +47,8 @@ typedef struct {
     int cursor_shape;
 
     /* 终端回给宿主的数据（DSR/OSC 应答等），M1b 接到 SSH 通道 */
-    char outbuf[4096];
-    size_t outlen;
+    char *outbuf;
+    size_t outlen, outcap;
 
     /* 默认色 */
     int default_fg, default_bg;
@@ -66,11 +66,27 @@ static int cb_damage(VTermRect rect, void *user) {
 
 static int cb_moverect(VTermRect dest, VTermRect src, void *user) {
     TermCtx *t = (TermCtx *) user;
+    /* Dirty rows describe the old screen until this move is applied. Carry
+     * those flags with the rows, or a changed row can become a valid stale
+     * bitmap at its destination between two display frames. */
+    if (dest.start_col != 0 || src.start_col != 0 ||
+            dest.end_col != t->cols || src.end_col != t->cols) {
+        return cb_damage(dest, user);
+    }
+    int count = dest.end_row - dest.start_row;
+    if (count > 0 && dest.start_row >= 0 && src.start_row >= 0 &&
+            dest.end_row <= t->rows && src.start_row + count <= t->rows) {
+        memmove(t->dirty + dest.start_row, t->dirty + src.start_row, (size_t) count);
+    }
+    if (t->need_full) return 1;
     if (t->move_count < MAX_MOVE_OPS) {
         int *o = t->move_ops + t->move_count * 8;
         o[0] = dest.start_row; o[1] = dest.start_col; o[2] = dest.end_row; o[3] = dest.end_col;
         o[4] = src.start_row;  o[5] = src.start_col;  o[6] = src.end_row;  o[7] = src.end_col;
         t->move_count++;
+    } else {
+        t->move_count = 0;
+        t->need_full = 1;
     }
     return 1;
 }
@@ -108,6 +124,7 @@ static int cb_resize(int rows, int cols, void *user) {
     t->rows = rows > MAX_ROWS ? MAX_ROWS : rows;
     t->cols = cols;
     t->need_full = 1;
+    t->move_count = 0; /* queued moves use the previous geometry */
     memset(t->dirty, 1, (size_t) t->rows);
     LOGI("libvterm resize -> %dx%d", cols, rows);
     return 1;
@@ -127,10 +144,18 @@ static int cb_sb_clear(void *user) { (void) user; return 1; }
 
 static void cb_output(const char *s, size_t len, void *user) {
     TermCtx *t = (TermCtx *) user;
-    if (t->outlen + len <= sizeof(t->outbuf)) {
-        memcpy(t->outbuf + t->outlen, s, len);
-        t->outlen += len;
+    if (len == 0) return;
+    if (len > SIZE_MAX - t->outlen) return;
+    size_t need = t->outlen + len;
+    if (need > t->outcap) {
+        size_t cap = need > 4096 ? need : 4096;
+        char *buf = realloc(t->outbuf, cap);
+        if (!buf) return;
+        t->outbuf = buf;
+        t->outcap = cap;
     }
+    memcpy(t->outbuf + t->outlen, s, len);
+    t->outlen += len;
 }
 
 static VTermScreenCallbacks g_screen_cbs = {
@@ -235,6 +260,7 @@ Java_dev_northwind_bakassh_NativeTerm_destroy(JNIEnv *env, jclass clazz, jlong h
     TermCtx *t = (TermCtx *) (intptr_t) h;
     if (!t) return;
     if (t->vt) vterm_free(t->vt);
+    free(t->outbuf);
     free(t);
 }
 
@@ -243,6 +269,7 @@ Java_dev_northwind_bakassh_NativeTerm_pushBytes(JNIEnv *env, jclass clazz, jlong
     (void) clazz;
     TermCtx *t = (TermCtx *) (intptr_t) h;
     if (!t || !data || len <= 0) return;
+    if (len > (*env)->GetArrayLength(env, data)) len = (*env)->GetArrayLength(env, data);
     jbyte *buf = (*env)->GetByteArrayElements(env, data, NULL);
     if (!buf) return;
     vterm_input_write(t->vt, (const char *) buf, (size_t) len);
@@ -270,8 +297,14 @@ JNIEXPORT jint JNICALL
 Java_dev_northwind_bakassh_NativeTerm_takeMoveOps(JNIEnv *env, jclass clazz, jlong h, jintArray out) {
     (void) clazz;
     TermCtx *t = (TermCtx *) (intptr_t) h;
-    if (!t) return 0;
+    if (!t || !out) return 0;
     jint cap = (*env)->GetArrayLength(env, out) / 8;
+    /* A truncated move stream cannot reconstruct the final screen. */
+    if (t->need_full || t->move_count > cap) {
+        t->need_full = 1;
+        t->move_count = 0;
+        return 0;
+    }
     jint n = t->move_count < cap ? t->move_count : cap;
     if (n > 0) (*env)->SetIntArrayRegion(env, out, 0, n * 8, (const jint *) t->move_ops);
     t->move_count = 0;
@@ -283,11 +316,12 @@ JNIEXPORT jint JNICALL
 Java_dev_northwind_bakassh_NativeTerm_takeDamageRows(JNIEnv *env, jclass clazz, jlong h, jintArray out) {
     (void) clazz;
     TermCtx *t = (TermCtx *) (intptr_t) h;
-    if (!t) return 0;
+    if (!t || !out) return 0;
     collect_dirty(t);
     jint cap = (*env)->GetArrayLength(env, out);
     jint n = t->dirty_count < cap ? t->dirty_count : cap;
     if (n > 0) (*env)->SetIntArrayRegion(env, out, 0, n, (const jint *) t->dirty_rows);
+    for (int i = n; i < t->dirty_count; i++) t->dirty[t->dirty_rows[i]] = 1;
     return n;
 }
 
@@ -344,7 +378,7 @@ JNIEXPORT jint JNICALL
 Java_dev_northwind_bakassh_NativeTerm_getRow(JNIEnv *env, jclass clazz, jlong h, jint row, jintArray out) {
     (void) clazz;
     TermCtx *t = (TermCtx *) (intptr_t) h;
-    if (!t) return 0;
+    if (!t || !out) return 0;
     if (row < 0 || row >= t->rows) return 0;
     jint cap = (*env)->GetArrayLength(env, out) / 5;
     int n = cap < t->cols ? (int) cap : t->cols;
@@ -365,18 +399,10 @@ JNIEXPORT jint JNICALL
 Java_dev_northwind_bakassh_NativeTerm_getCell(JNIEnv *env, jclass clazz, jlong h, jint row, jint col, jintArray out) {
     (void) clazz;
     TermCtx *t = (TermCtx *) (intptr_t) h;
-    if (!t) return 0;
-    VTermPos pos = { .row = row, .col = col };
-    VTermScreenCell cell;
-    memset(&cell, 0, sizeof(cell));
-    if (!vterm_screen_get_cell(t->screen, pos, &cell)) return 0;
-
+    if (!t || !out || (*env)->GetArrayLength(env, out) < 5 ||
+            row < 0 || row >= t->rows || col < 0 || col >= t->cols) return 0;
     jint v[5];
-    v[0] = (jint) cell.chars[0];
-    v[1] = color_to_rgb(t, cell.fg);
-    v[2] = color_to_rgb(t, cell.bg);
-    v[3] = cell_attrs(&cell);
-    v[4] = cell.width;
+    fill_cell(t, row, col, v);
     (*env)->SetIntArrayRegion(env, out, 0, 5, v);
     return 1;
 }
@@ -386,7 +412,7 @@ JNIEXPORT void JNICALL
 Java_dev_northwind_bakassh_NativeTerm_getCursor(JNIEnv *env, jclass clazz, jlong h, jintArray out) {
     (void) clazz;
     TermCtx *t = (TermCtx *) (intptr_t) h;
-    if (!t) return;
+    if (!t || !out || (*env)->GetArrayLength(env, out) < 4) return;
     VTermPos pos;
     vterm_state_get_cursorpos(t->state, &pos);
     jint v[4];
@@ -402,11 +428,12 @@ JNIEXPORT jint JNICALL
 Java_dev_northwind_bakassh_NativeTerm_takeOutput(JNIEnv *env, jclass clazz, jlong h, jbyteArray out) {
     (void) clazz;
     TermCtx *t = (TermCtx *) (intptr_t) h;
-    if (!t || t->outlen == 0) return 0;
+    if (!t || !out || t->outlen == 0) return 0;
     jint cap = (*env)->GetArrayLength(env, out);
     jint n = (jint) (t->outlen < (size_t) cap ? t->outlen : (size_t) cap);
     (*env)->SetByteArrayRegion(env, out, 0, n, (const jbyte *) t->outbuf);
-    t->outlen = 0;
+    t->outlen -= (size_t) n;
+    memmove(t->outbuf, t->outbuf + n, t->outlen);
     return n;
 }
 
