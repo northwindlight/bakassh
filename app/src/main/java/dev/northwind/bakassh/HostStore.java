@@ -15,6 +15,7 @@ public class HostStore {
     private static final String PREF = "sshterm";
     private static final String KEY_HOSTS = "hosts";
     private static final String KEY_COLS = "target_cols";
+    private static final String KEY_ZOOM_COLS = "zoom_columns";
     private static final String KEY_INSET = "edge_inset";
 
     public static List<Host> load(Context ctx) {
@@ -53,7 +54,17 @@ public class HostStore {
 
     public static void setTargetCols(Context ctx, int cols) {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
-                .edit().putInt(KEY_COLS, cols).apply();
+                .edit().putInt(KEY_COLS, cols).remove(KEY_ZOOM_COLS).apply();
+    }
+
+    public static float getZoomColumns(Context ctx, int def) {
+        SharedPreferences prefs = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+        return prefs.getFloat(KEY_ZOOM_COLS, prefs.getInt(KEY_COLS, def));
+    }
+
+    public static void setZoomColumns(Context ctx, float columns) {
+        ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE).edit()
+                .putFloat(KEY_ZOOM_COLS, columns).putInt(KEY_COLS, Math.round(columns)).apply();
     }
 
     /** 终端四周留边（dp）：贴边对曲面/圆角屏不友好，做成可调。 */

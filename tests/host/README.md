@@ -9,6 +9,7 @@ bash tests/host/run.sh
 
 覆盖固定 TUI 行与滚动边界、帧间脏行迁移、搬运事件溢出、分段及突发终端应答、
 XTVERSION 即时回包，以及连续文本选择、反向拖选、中文双宽字符和不可变复制快照。
+还覆盖逐帧浮点字号/网格、取消与指针切换、尺寸通知合并和 300 帧真实 JNI resize。
 
 SSH 回归需要 Python 3 + Paramiko、ssh-keygen 和项目使用的 JSch JAR：
 
@@ -24,4 +25,13 @@ PTY 请求、版本查询应答、键入、窗口大小变更与 EOF；不登录
 
 ```bash
 gradle assembleDebug lintDebug
+```
+
+Android 真机文字缩放与手势回归（主机侧回归不代替这项验收）：
+
+```bash
+gradle assembleDebug assembleDebugAndroidTest
+adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+adb shell am instrument -w dev.northwind.bakassh.test/dev.northwind.bakassh.ZoomInstrumentation
 ```

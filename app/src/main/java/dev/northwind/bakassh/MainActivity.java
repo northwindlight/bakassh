@@ -55,6 +55,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private volatile boolean running;
     private volatile boolean sessionStarted;
     private volatile SshTransport transport;
+    private final PendingResize pendingResize = new PendingResize();
     /** 粘滞修饰键：点一下点亮，作用于下一个输入的键。 */
     private boolean ctrlOn, altOn, shiftOn;
 
@@ -102,7 +103,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         root.setBackgroundColor(0xFF101014);
 
         view = new TerminalView(this);
-        view.setTargetCols(HostStore.getTargetCols(this, 150));
+        view.setPreferredColumns(HostStore.getZoomColumns(this, 150));
         LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
         int inset = dp(HostStore.getEdgeInset(this, EDGE_INSET_DP));
@@ -423,8 +424,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             else { shiftOn = !shiftOn; label(shiftButton, "SHIFT", shiftOn); }
             return;
         }
-        if (n.equals("FONT-")) { view.setTargetCols(view.getCols() + 15); return; }   // 列少 = 字大
-        if (n.equals("FONT+")) { view.setTargetCols(view.getCols() - 15); return; }
+        if (n.equals("FONT-")) { view.scaleFontBy(1f / 1.1f); return; }
+        if (n.equals("FONT+")) { view.scaleFontBy(1.1f); return; }
         if (n.equals("KEYBOARD")) { showIme(); return; }
         if (n.equals("PASTE")) { pasteFromClipboard(); return; }
         byte[] b = ExtraKeys.bytesFor(key);
@@ -553,10 +554,11 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 startSessionOnce();
             } else {
                 NativeTerm.resize(handle, c, r);
-                final int nc = c, nr = r;
                 final SshTransport t = transport;
-                if (t != null) postIo(() -> t.resize(nc, nr));   // resize 也要走 IO 线程
-                out(this, "GRID resize -> " + c + "x" + r);
+                if (t != null && pendingResize.offer(c, r)) postIo(() -> {
+                    int[] size;
+                    while ((size = pendingResize.poll()) != null) t.resize(size[0], size[1]);
+                });
             }
         });
 
@@ -583,9 +585,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
 
         // 捏合缩放后持久化列数（下次进来还是这个字号）
         view.setZoomListener(cols -> {
-            HostStore.setTargetCols(this, cols);
+            HostStore.setZoomColumns(this, cols);
             out(this, "ZOOM targetCols=" + cols);
-            toast("列数 " + cols);
         });
 
         if (handle != 0) startSessionOnce();

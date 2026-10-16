@@ -12,6 +12,11 @@ gcc -std=c11 -shared -fPIC -O2 -Wall -Wno-maybe-uninitialized \
     -o "$test_dir/libbakasshterm.so"
 "$jdk_dir/bin/javac" -d "$test_dir" "$root_dir/app/src/main/java/dev/northwind/bakassh/NativeTerm.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalSelection.java" \
-    "$root_dir/tests/host/NativeRegression.java" "$root_dir/tests/host/SelectionRegression.java"
+    "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalZoom.java" \
+    "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalGeometry.java" \
+    "$root_dir/app/src/main/java/dev/northwind/bakassh/PendingResize.java" \
+    "$root_dir/tests/host/NativeRegression.java" "$root_dir/tests/host/SelectionRegression.java" \
+    "$root_dir/tests/host/ZoomRegression.java"
 "$jdk_dir/bin/java" -Djava.library.path="$test_dir" -cp "$test_dir" dev.northwind.bakassh.NativeRegression
 "$jdk_dir/bin/java" -Djava.library.path="$test_dir" -cp "$test_dir" dev.northwind.bakassh.SelectionRegression
+"$jdk_dir/bin/java" -Djava.library.path="$test_dir" -cp "$test_dir" dev.northwind.bakassh.ZoomRegression

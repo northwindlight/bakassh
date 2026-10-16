@@ -81,6 +81,9 @@ public class TerminalView extends View {
     private GridListener gridListener;
     /** 默认字号（px）。手机上大致 27px 对应 ~50 列，和 Termux 观感接近。 */
     private float fontPx = 27f;
+    private float latinAdvance100, fontSpacing100;
+    private final TerminalZoom zoom = new TerminalZoom();
+    private boolean geometryPending, bitmapGeometryDirty;
 
     public void setGridListener(GridListener l) {
         this.gridListener = l;
@@ -88,14 +91,16 @@ public class TerminalView extends View {
     }
 
     public void setFontPx(float px) {
-        fontPx = px;
-        if (getWidth() > 0 && getHeight() > 0) onSizeChanged(getWidth(), getHeight(), 0, 0);
+        if (px > 0 && getWidth() > 0) setPreferredColumns(getWidth() * 100f / (px * latinAdvance100));
     }
 
     public TerminalView(Context context) {
         super(context);
         loadFonts(context);
         textPaint.setTypeface(latinTf);
+        textPaint.setTextSize(100f);
+        latinAdvance100 = Math.max(1f, textPaint.measureText("X"));
+        fontSpacing100 = Math.max(1f, textPaint.getFontSpacing());
         bgPaint.setColor(defaultBg);
         rowBgPaint.setColor(defaultBg);
         cursorPaint.setColor(0xFFFFFFFF);
@@ -110,34 +115,29 @@ public class TerminalView extends View {
 
         selPaint.setColor(0x5533AAFF);
 
-        // 捏合缩放：和 Termux 调字号一个意思 —— 直接改目标列数（列少则字大）
         scaleDetector = new android.view.ScaleGestureDetector(context,
                 new android.view.ScaleGestureDetector.SimpleOnScaleGestureListener() {
                     @Override
-                    public boolean onScale(android.view.ScaleGestureDetector d) {
-                        /*
-                         * 跟手的关键：手势过程中**不重建网格**（重建要重建槽位位图、清字形缓存、
-                         * 还要 resize 远端 PTY，一帧根本来不及），只在画布上做缩放预览 ——
-                         * 位图直接放大缩小，只改 Canvas 变换，90Hz 也扛得住。
-                         * 松手时才提交真实网格（列数变化 → 本地引擎 + 远端 PTY 一起 resize）。
-                         */
-                        previewScale *= d.getScaleFactor();
-                        previewFx = d.getFocusX();
-                        previewFy = d.getFocusY();
-                        invalidate();
+                    public boolean onScaleBegin(android.view.ScaleGestureDetector detector) {
+                        clearSelection();
+                        float max = TerminalGeometry.maximumColumns(getWidth(), latinAdvance100);
+                        zoom.begin(targetColumns, Math.min(TerminalGeometry.MIN_COLUMNS, max), max);
+                        postInvalidateOnAnimation();
                         return true;
                     }
 
                     @Override
-                    public void onScaleEnd(android.view.ScaleGestureDetector d) {
-                        float s = previewScale;
-                        previewScale = 1f;
-                        if (s > 0.01f && Math.abs(s - 1f) > 0.02f) {
-                            setTargetCols(Math.round(targetCols / s));
-                        }
-                        invalidate();
+                    public boolean onScale(android.view.ScaleGestureDetector detector) {
+                        zoom.scale(detector.getScaleFactor());
+                        postInvalidateOnAnimation();
+                        return true;
                     }
+
+                    // Pointer-up may end one detector segment while fingers are
+                    // still down. Commit only when the whole touch gesture ends.
                 });
+        scaleDetector.setQuickScaleEnabled(false);
+        scaleDetector.setStylusScaleEnabled(false);
     }
 
     public void attachNative(long handle) {
@@ -164,11 +164,11 @@ public class TerminalView extends View {
      * 目标列数：列数定死 → 字号由列数反解 → 行数随可用高度自适应（真终端的行为）。
      * 捏合缩放直接改这个值（和 Termux 调字号是一回事），并持久化到 HostStore。
      */
-    private int targetCols = 150;
+    private float targetColumns = 150f;
 
     /** 选择与缩放的回调（主界面据此显示"复制/全选/粘贴/取消"条）。 */
     public interface SelectionListener { void onSelection(boolean active, boolean hasRange); }
-    public interface ZoomListener { void onZoomed(int cols); }
+    public interface ZoomListener { void onZoomed(float columns); }
 
     private SelectionListener selListener;
     private ZoomListener zoomListener;
@@ -186,13 +186,52 @@ public class TerminalView extends View {
     public void setSelectionListener(SelectionListener l) { this.selListener = l; }
     public void setZoomListener(ZoomListener l) { this.zoomListener = l; }
 
-    public void setTargetCols(int cols) {
-        int c = Math.max(20, Math.min(400, cols));
-        if (c == targetCols) return;
-        targetCols = c;
+    public void setTargetCols(int cols) { setPreferredColumns(cols); }
+
+    public void setPreferredColumns(float columns) {
+        if (!Float.isFinite(columns)) return;
+        cancelZoom();
+        float next = Math.max(TerminalGeometry.MIN_COLUMNS, Math.min(TerminalGeometry.MAX_COLUMNS, columns));
+        if (Math.abs(next - targetColumns) < 0.0001f) return;
+        targetColumns = next;
         clearSelection();
-        if (getWidth() > 0 && getHeight() > 0) onSizeChanged(getWidth(), getHeight(), 0, 0);
-        if (zoomListener != null) zoomListener.onZoomed(targetCols);
+        if (getWidth() > 0 && getHeight() > 0) updateGeometry(true);
+        if (zoomListener != null) zoomListener.onZoomed(targetColumns);
+        postInvalidateOnAnimation();
+    }
+
+    public void scaleFontBy(float factor) {
+        if (Float.isFinite(factor) && factor > 0) setPreferredColumns(targetColumns / factor);
+    }
+
+    private void finishZoom(boolean cancelled) {
+        if (!zoom.isActive()) return;
+        targetColumns = zoom.finish(cancelled);
+        geometryPending = true;
+        if (!cancelled && zoomListener != null) zoomListener.onZoomed(targetColumns);
+        postInvalidateOnAnimation();
+    }
+
+    private void cancelZoom() { finishZoom(true); }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasWindowFocus) {
+        super.onWindowFocusChanged(hasWindowFocus);
+        if (!hasWindowFocus) {
+            removeCallbacks(longPress);
+            touchPressed = false;
+            touchSuppressed = true;
+            cancelZoom();
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        removeCallbacks(longPress);
+        touchPressed = false;
+        touchSuppressed = true;
+        cancelZoom();
+        super.onDetachedFromWindow();
     }
 
     // ---------------- 位图字体（字形位图缓存）----------------
@@ -212,6 +251,8 @@ public class TerminalView extends View {
     private float asciiScale = 1f;
     private float baseAdvance = 1f;
     private int glyphCount;
+    private final java.util.HashMap<Long, Float> naturalAdvances = new java.util.HashMap<>();
+    private char[] liveRun = new char[0];
 
     private void loadFonts(Context ctx) {
         try {
@@ -272,7 +313,7 @@ public class TerminalView extends View {
     }
 
     public String getGridInfo() {
-        return "cols=" + targetCols + " grid=" + cols + "x" + rows
+        return "cols=" + targetColumns + " grid=" + cols + "x" + rows
                 + " cell=" + String.format(Locale.US, "%.2fx%.2f", cellW, cellH)
                 + " font=" + String.format(Locale.US, "%.1f", fontPx)
                 + " cellW/advance=" + String.format(Locale.US, "%.3f", asciiScale)
@@ -285,6 +326,9 @@ public class TerminalView extends View {
     public boolean isSelecting() { return selActive; }
 
     private void captureSelection() {
+        finishZoom(false);
+        if (geometryPending) updateGeometry(true);
+        else if (bitmapGeometryDirty) rebuildRowCache();
         synchronized (NativeTerm.class) {
             int[][] cells = new int[rows][cols * 5];
             for (int r = 0; r < rows; r++) NativeTerm.getRow(handle, r, cells[r]);
@@ -350,7 +394,6 @@ public class TerminalView extends View {
     private float lastTouchY, scrollAcc;
     private boolean touchPressed, touchMoved, touchSuppressed, touchSelecting;
     private float touchDownX, touchDownY;
-    private float previewScale = 1f, previewFx, previewFy;
     private final Runnable longPress = () -> {
         if (touchPressed && !touchMoved && !touchSuppressed && !selActive) {
             int row = Math.max(0, Math.min(rows - 1, (int) (touchDownY / cellH)));
@@ -372,12 +415,20 @@ public class TerminalView extends View {
             handleDrag = 0;
             scrollAcc = 0;
             touchSuppressed = true;
+            cancelZoom();
             if (scaleDetector != null) scaleDetector.onTouchEvent(e);
-            previewScale = 1f;
             invalidate();
             return true;
         }
+        if (action == android.view.MotionEvent.ACTION_POINTER_DOWN) {
+            removeCallbacks(longPress);
+            touchSuppressed = true;
+            handleDrag = 0;
+            scrollAcc = 0;
+            clearSelection();
+        }
         if (scaleDetector != null) scaleDetector.onTouchEvent(e);
+        if (action == android.view.MotionEvent.ACTION_UP) finishZoom(false);
         if (e.getPointerCount() > 1 || (scaleDetector != null && scaleDetector.isInProgress())) {
             removeCallbacks(longPress);
             touchSuppressed = true;
@@ -470,54 +521,39 @@ public class TerminalView extends View {
             return;
         }
 
-        /*
-         * 网格与单元格。
-         * 两种模式：预设固定网格（列/行由用户定，单元格 = 视图/格数），或自动（先定字号再算格数）。
-         * 不管哪种，最后都要把 ASCII 步进用 textScaleX 强制到 cellW —— 这是"缩进和位置不对"的根治：
-         * 之前靠字体自然步进累加，一旦某个字符来自 CJK/符号回退字体（步进不是 0.6em），整行就逐步跑偏。
-         */
-        int wantCols = targetCols;
-        int newCols, newRows;
-        // 几何一律按拉丁主字体的度量算（glyphFor 会临时换成别的字体，不能污染这里）
+        cancelZoom();
+        touchSuppressed = true;
+        updateGeometry(true);
+    }
+
+    private void updateGeometry(boolean rebuildBitmaps) {
+        TerminalGeometry geometry = new TerminalGeometry(getWidth(), getHeight(), targetColumns,
+                latinAdvance100, fontSpacing100, NativeTerm.MAX_ROWS);
+        boolean gridChanged = geometry.cols != cols || geometry.rows != rows;
+        targetColumns = geometry.preferredColumns;
+        fontPx = geometry.fontPx;
+        cellW = geometry.cellW;
+        cellH = geometry.cellH;
+        cols = geometry.cols;
+        rows = geometry.rows;
         textPaint.setTypeface(latinTf);
+        textPaint.setTextSize(fontPx);
+        textPaint.setTextScaleX(1f);
         textPaint.setTextSkewX(0f);
         textPaint.setFakeBoldText(false);
-        textPaint.setTextScaleX(1f);
-        if (wantCols > 0) {
-            // 列数定死 → 反解字号。字体度量与字号成正比：先在 100px 上量一次，再按比例缩。
-            textPaint.setTextSize(100f);
-            float adv100 = textPaint.measureText("X");
-            float sp100 = textPaint.getFontSpacing();
-            if (adv100 < 1f) adv100 = 60f;
-            fontPx = Math.max(6f, (w / (float) wantCols) * 100f / adv100);
-            textPaint.setTextSize(fontPx);
-            cellW = textPaint.measureText("X");
-            cellH = textPaint.getFontSpacing();
-            newCols = Math.max(2, (int) (w / cellW));
-            newRows = Math.min(NativeTerm.MAX_ROWS, Math.max(2, (int) (h / cellH)));
-            cellW = (float) w / newCols;
-            cellH = (float) h / newRows;
-        } else {
-            fontPx = 27f;
-            textPaint.setTextSize(fontPx);
-            float adv = textPaint.measureText("X");
-            float sp = textPaint.getFontSpacing();
-            newCols = Math.max(2, (int) (w / adv));
-            newRows = Math.min(NativeTerm.MAX_ROWS, Math.max(1, (int) (h / sp)));
-            cellW = (float) w / newCols;
-            cellH = (float) h / newRows;
-        }
         Paint.FontMetrics fm0 = textPaint.getFontMetrics();
-        baseAdvance = textPaint.measureText("X");
-        asciiScale = baseAdvance > 0.05f ? cellW / baseAdvance : 1f;
+        baseAdvance = fontPx * latinAdvance100 / 100f;
+        asciiScale = 1f;
+        baseline = (cellH - (-fm0.ascent + fm0.descent)) / 2f - fm0.ascent;
+        geometryPending = false;
+        bitmapGeometryDirty = true;
+        if (rebuildBitmaps) rebuildRowCache();
+        if (gridChanged && gridListener != null) gridListener.onGridChanged(cols, rows);
+    }
+
+    private void rebuildRowCache() {
         clearGlyphCache();        // 字号/网格变了，旧字形位图作废
         glyphCount = 0;
-        // 垂直居中：格子高常常大于字高，顶对齐会显得很空
-        baseline = (cellH - (-fm0.ascent + fm0.descent)) / 2f - fm0.ascent;
-
-        boolean gridChanged = (newCols != cols || newRows != rows);
-        cols = newCols;
-        rows = newRows;
         slotCount = rows + SLOT_EXTRA;
         rowBitmapH = (int) Math.ceil(cellH);
         // Geometric changes end the frozen selection before rebuilding caches.
@@ -540,13 +576,13 @@ public class TerminalView extends View {
         rowBuf = null;
         invalidateAllRows();
 
-        String msg = "GEOM view=" + w + "x" + h + " " + getGridInfo()
+        bitmapGeometryDirty = false;
+        String msg = "GEOM view=" + getWidth() + "x" + getHeight() + " " + getGridInfo()
                 + " slots=" + slotCount
-                + " cache_MB=" + (w * rowBitmapH * 4L * slotCount / 1024 / 1024);
+                + " cache_MB=" + (getWidth() * rowBitmapH * 4L * slotCount / 1024 / 1024);
         Log.i(TAG, msg);
         try { MainActivity.out((android.app.Activity) getContext(), msg); } catch (Throwable ignored) {}
 
-        if (gridChanged && gridListener != null) gridListener.onGridChanged(cols, rows);
     }
 
     private void invalidateAllRows() {
@@ -648,6 +684,100 @@ public class TerminalView extends View {
 
     // ---------------- 绘制 ----------------
 
+    private Typeface liveTypeface(int variant) {
+        switch (variant) {
+            case 1: return latinTfBold;
+            case 2: return cjkTf;
+            case 3: return cjkTfBold;
+            default: return latinTf;
+        }
+    }
+
+    private float naturalAdvance(int cp, int variant) {
+        long key = ((long) cp << 2) | variant;
+        Float cached = naturalAdvances.get(key);
+        if (cached != null) return cached;
+        textPaint.setTypeface(liveTypeface(variant));
+        textPaint.setTextSize(100f);
+        textPaint.setTextScaleX(1f);
+        textPaint.setTextSkewX(0f);
+        textPaint.setFakeBoldText(false);
+        int n = Character.toChars(cp, cpBuf, 0);
+        float advance = Math.max(0.1f, textPaint.measureText(cpBuf, 0, n));
+        if (naturalAdvances.size() >= 6000) naturalAdvances.clear();
+        naturalAdvances.put(key, advance);
+        return advance;
+    }
+
+    /** During a pinch, draw text at the frame's real font size. Runs share
+     * style and advance; no old glyph/row bitmap is enlarged or rebuilt. */
+    private void drawLiveText(Canvas canvas) {
+        long startNs = System.nanoTime();
+        canvas.drawColor(defaultBg);
+        ensureRowBuf();
+        if (liveRun.length < cols * 2) liveRun = new char[cols * 2];
+        textPaint.setUnderlineText(false);
+        textPaint.setStrikeThruText(false);
+        synchronized (NativeTerm.class) {
+            // The bitmap cache will be rebuilt at the final geometry.
+            NativeTerm.takeMoveOps(handle, moveOps);
+            NativeTerm.takeDamageRows(handle, damageRows);
+            for (int row = 0; row < rows; row++) {
+                int n = NativeTerm.getRow(handle, row, rowBuf);
+                float y = row * cellH;
+                for (int col = 0; col < n; ) {
+                    int bg = rowBuf[col * 5 + 2], end = col + 1;
+                    while (end < n && rowBuf[end * 5 + 2] == bg) end++;
+                    rowBgPaint.setColor(bg | 0xff000000);
+                    canvas.drawRect(col * cellW, y, end * cellW, y + cellH, rowBgPaint);
+                    col = end;
+                }
+                for (int col = 0; col < n; ) {
+                    int base = col * 5, width = rowBuf[base + 4];
+                    if (width <= 0 || rowBuf[base] == -1) { col++; continue; }
+                    int cp = sanitizeCp(rowBuf[base]);
+                    if (cp == ' ') { col += width; continue; }
+                    int fg = rowBuf[base + 1], style = rowBuf[base + 3] & 5;
+                    int variant = (width >= 2 ? 2 : 0) | (style & 1);
+                    float advance = naturalAdvance(cp, variant);
+                    int end = col, chars = 0;
+                    while (end < n) {
+                        int p = end * 5;
+                        if (rowBuf[p + 4] != width || rowBuf[p + 1] != fg ||
+                                (rowBuf[p + 3] & 5) != style || rowBuf[p] == -1) break;
+                        int next = sanitizeCp(rowBuf[p]);
+                        if (Math.abs(naturalAdvance(next, variant) - advance) > 0.001f) break;
+                        chars += Character.toChars(next, liveRun, chars);
+                        end += width;
+                    }
+                    textPaint.setTypeface(liveTypeface(variant));
+                    textPaint.setTextSize(fontPx);
+                    textPaint.setTextScaleX(width * cellW * 100f / (advance * fontPx));
+                    textPaint.setTextSkewX((style & 4) != 0 ? -0.25f : 0f);
+                    textPaint.setColor(fg | 0xff000000);
+                    canvas.drawText(liveRun, 0, chars, col * cellW, y + baseline, textPaint);
+                    col = end;
+                }
+                for (int col = 0; col < n; ) {
+                    int p = col * 5, width = rowBuf[p + 4], attrs = rowBuf[p + 3];
+                    if (width <= 0 || rowBuf[p] == -1) { col++; continue; }
+                    decoPaint.setColor(rowBuf[p + 1] | 0xff000000);
+                    float stroke = Math.max(1f, fontPx / 18f);
+                    if ((attrs & 2) != 0) canvas.drawRect(col * cellW, y + baseline + stroke,
+                            (col + width) * cellW, y + baseline + stroke * 2f, decoPaint);
+                    if ((attrs & 32) != 0) canvas.drawRect(col * cellW, y + baseline - fontPx * 0.3f,
+                            (col + width) * cellW, y + baseline - fontPx * 0.3f + stroke, decoPaint);
+                    col += width;
+                }
+            }
+            drawCursor(canvas);
+        }
+        frameCount++;
+        framesSinceLog++;
+        accDrawNs += System.nanoTime() - startNs;
+        maybeLog();
+    }
+
     @Override
     protected void onDraw(Canvas canvas) {
         if (handle == 0 || slots == null || slotValid == null || screenToSlot == null) {
@@ -660,13 +790,17 @@ public class TerminalView extends View {
                 drawSelectionOverlay(canvas);
                 return;
             }
-            if (previewScale != 1f) {
-                // 只做画布变换：预览够跟手，松手后 setTargetCols 再落到真实网格
-                canvas.save();
-                canvas.scale(previewScale, previewScale, previewFx, previewFy);
-                drawFrame(canvas);
-                canvas.restore();
+            if (zoom.isActive()) {
+                float columns = zoom.takeFrame();
+                if (Float.isFinite(columns)) {
+                    targetColumns = columns;
+                    updateGeometry(false);
+                }
+                drawLiveText(canvas);
             } else {
+                if (geometryPending) updateGeometry(true);
+                else if (bitmapGeometryDirty) rebuildRowCache();
+                canvas.drawColor(defaultBg);
                 drawFrame(canvas);
             }
         } catch (Throwable t) {
@@ -899,6 +1033,7 @@ public class TerminalView extends View {
     }
 
     public void destroy() {
+        cancelZoom();
         removeCallbacks(longPress);
         touchPressed = false;
         clearSelection();
