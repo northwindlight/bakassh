@@ -95,7 +95,16 @@ public class TerminalView extends View {
     }
 
     public TerminalView(Context context) {
-        super(context);
+        this(context, null);
+    }
+
+    /** XML 布局膨胀入口：缺这个构造函数会直接 InflateException 闪退。 */
+    public TerminalView(Context context, android.util.AttributeSet attrs) {
+        this(context, attrs, 0);
+    }
+
+    public TerminalView(Context context, android.util.AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
         loadFonts(context);
         textPaint.setTypeface(latinTf);
         textPaint.setTextSize(100f);

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 深色 Material 3 调色板（Pixel 风格），只在系统深色模式下覆盖。 -->
+    <color name="md_theme_primary">#A8C7FA</color>
+    <color name="md_theme_onPrimary">#00315B</color>
+    <color name="md_theme_primaryContainer">#0842A0</color>
+    <color name="md_theme_onPrimaryContainer">#D3E3FD</color>
+
+    <color name="md_theme_secondary">#BCC7DB</color>
+    <color name="md_theme_onSecondary">#263141</color>
+    <color name="md_theme_secondaryContainer">#3D4758</color>
+    <color name="md_theme_onSecondaryContainer">#D8E3F8</color>
+
+    <color name="md_theme_tertiary">#6DD58C</color>
+    <color name="md_theme_onTertiary">#0A3818</color>
+    <color name="md_theme_tertiaryContainer">#1E522D</color>
+    <color name="md_theme_onTertiaryContainer">#A8F2B5</color>
+
+    <color name="md_theme_error">#F2B8B5</color>
+    <color name="md_theme_onError">#601410</color>
+    <color name="md_theme_errorContainer">#8C1D18</color>
+    <color name="md_theme_onErrorContainer">#F9DEDC</color>
+
+    <color name="md_theme_background">#111318</color>
+    <color name="md_theme_onBackground">#E2E2E6</color>
+    <color name="md_theme_surface">#111318</color>
+    <color name="md_theme_onSurface">#E2E2E6</color>
+    <color name="md_theme_surfaceVariant">#44474E</color>
+    <color name="md_theme_onSurfaceVariant">#C4C6D0</color>
+
+    <color name="md_theme_surfaceContainerLowest">#0C0E13</color>
+    <color name="md_theme_surfaceContainerLow">#191C20</color>
+    <color name="md_theme_surfaceContainer">#1D2024</color>
+    <color name="md_theme_surfaceContainerHigh">#282A2F</color>
+    <color name="md_theme_surfaceContainerHighest">#33353A</color>
+
+    <color name="md_theme_outline">#8E9099</color>
+    <color name="md_theme_outlineVariant">#44474E</color>
+</resources>

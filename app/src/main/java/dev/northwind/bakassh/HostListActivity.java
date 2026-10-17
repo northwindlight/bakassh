@@ -5,15 +5,11 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.EditText;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
@@ -24,9 +20,11 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.color.DynamicColors;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +44,8 @@ public class HostListActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        // 只给主机列表启用壁纸取色；终端界面固定深色，不参与 DynamicColors。
+        DynamicColors.applyToActivityIfAvailable(this);
         setContentView(R.layout.activity_host_list);
 
         hosts = HostStore.load(this);
@@ -76,29 +76,31 @@ public class HostListActivity extends AppCompatActivity {
                 Host h = hosts.get(i);
                 TextView tvTitle = row.findViewById(R.id.tv_host_title);
                 TextView tvEndpoint = row.findViewById(R.id.tv_host_endpoint);
-                TextView tvChipAuth = row.findViewById(R.id.tv_chip_auth);
-                TextView tvChipStartup = row.findViewById(R.id.tv_chip_startup);
+                TextView tvMeta = row.findViewById(R.id.tv_host_meta);
                 ImageButton btnMore = row.findViewById(R.id.btn_host_more);
 
                 tvTitle.setText(h.title());
                 tvEndpoint.setText(h.user + "@" + h.host + ":" + h.port);
 
+                String meta;
                 if ("password".equalsIgnoreCase(h.authType)) {
-                    tvChipAuth.setText("🔒 密码认证");
+                    meta = "密码认证";
                 } else {
                     KeyItem boundKey = KeyManager.getKey(HostListActivity.this, h.keyId);
-                    String keyName = boundKey != null ? boundKey.name : "默认密钥";
-                    tvChipAuth.setText("🔑 " + keyName);
+                    meta = "公钥 · " + (boundKey != null ? boundKey.name : "默认密钥");
                 }
-
                 if (h.startup != null && !h.startup.trim().isEmpty()) {
-                    tvChipStartup.setVisibility(View.VISIBLE);
-                    tvChipStartup.setText("▸ " + h.startup.trim());
-                } else {
-                    tvChipStartup.setVisibility(View.GONE);
+                    meta += " · " + h.startup.trim();
                 }
+                tvMeta.setText(meta);
 
                 btnMore.setOnClickListener(v -> showHostActionSheet(i));
+                // ListView 的 OnItemClick 会被 clickable 的卡片吃掉，这里显式绑定。
+                row.setOnClickListener(v -> connect(h));
+                row.setOnLongClickListener(v -> {
+                    showHostActionSheet(i);
+                    return true;
+                });
 
                 return row;
             }
@@ -141,6 +143,17 @@ public class HostListActivity extends AppCompatActivity {
         it.putExtra("password", h.password);
         MainActivity.out(this, "CONNECT " + h.user + "@" + h.host + ":" + h.port + " [" + h.authType + "]");
         startActivity(it);
+    }
+
+    /** 显示底部抽屉，并让窗口在输入法弹出时收缩，避免表单被键盘盖住。 */
+    private void showSheet(BottomSheetDialog dialog) {
+        dialog.setOnShowListener(d -> {
+            android.view.Window w = dialog.getWindow();
+            if (w != null) {
+                w.setSoftInputMode(android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+            }
+        });
+        dialog.show();
     }
 
     /** 弹出主机操作抽屉 (Pixel 底部操作表) */
@@ -307,7 +320,7 @@ public class HostListActivity extends AppCompatActivity {
             Toast.makeText(this, "已保存主机配置", Toast.LENGTH_SHORT).show();
         });
 
-        dialog.show();
+        showSheet(dialog);
     }
 
     /** 密钥管理：展示所有密钥、生成新密钥、导入私钥、查看公钥与设置默认 */
@@ -367,7 +380,7 @@ public class HostListActivity extends AppCompatActivity {
         root.findViewById(R.id.btn_import_key).setOnClickListener(v -> importKeyDialog(refreshList));
         root.findViewById(R.id.btn_close_key_mgr).setOnClickListener(v -> dialog.dismiss());
 
-        dialog.show();
+        showSheet(dialog);
     }
 
     private void keyActionMenu(KeyItem k, Runnable onRefresh) {
@@ -418,7 +431,7 @@ public class HostListActivity extends AppCompatActivity {
         });
 
         root.findViewById(R.id.btn_close_detail).setOnClickListener(v -> dialog.dismiss());
-        dialog.show();
+        showSheet(dialog);
     }
 
     private void generateKeyDialog(Runnable onRefresh) {
@@ -476,7 +489,7 @@ public class HostListActivity extends AppCompatActivity {
             }).start();
         });
 
-        dialog.show();
+        showSheet(dialog);
     }
 
     private void importKeyDialog(Runnable onRefresh) {
@@ -515,17 +528,27 @@ public class HostListActivity extends AppCompatActivity {
             }
         });
 
-        dialog.show();
+        showSheet(dialog);
     }
 
     private void renameKeyDialog(KeyItem k, Runnable onRefresh) {
+        TextInputLayout inputLayout = new TextInputLayout(this);
+        inputLayout.setHint("新密钥名称");
         TextInputEditText et = new TextInputEditText(this);
         et.setText(k.name);
-        et.setHint("新密钥名称");
+        inputLayout.addView(et, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        int pad = (int) (24 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, 0, pad, 0);
+        box.addView(inputLayout, new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
         new MaterialAlertDialogBuilder(this)
                 .setTitle("重命名密钥")
-                .setView(et)
+                .setView(box)
                 .setPositiveButton("保存", (d, w) -> {
                     String newName = et.getText() != null ? et.getText().toString().trim() : "";
                     if (!newName.isEmpty()) {
@@ -603,7 +626,7 @@ public class HostListActivity extends AppCompatActivity {
             Toast.makeText(this, "已保存终端设置", Toast.LENGTH_SHORT).show();
         });
 
-        dialog.show();
+        showSheet(dialog);
     }
 
     /** 扩展按键定制：Pixel 风格 BottomSheet 抽屉 */
@@ -628,6 +651,6 @@ public class HostListActivity extends AppCompatActivity {
             Toast.makeText(this, "已保存扩展按键", Toast.LENGTH_SHORT).show();
         });
 
-        dialog.show();
+        showSheet(dialog);
     }
 }

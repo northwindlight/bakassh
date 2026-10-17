@@ -1,55 +1,67 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Pixel Material 3 (Monet-inspired) 色彩系统 -->
+    <!--
+      浅色 Material 3 调色板（Pixel 风格）。
+      深色值在 values-night/colors.xml；布局一律用 ?attr/ 引用，
+      所以系统深色模式与 Android 12+ 的壁纸取色（Monet）都会自动生效。
+    -->
+    <color name="md_theme_primary">#0B57D0</color>
+    <color name="md_theme_onPrimary">#FFFFFF</color>
+    <color name="md_theme_primaryContainer">#D3E3FD</color>
+    <color name="md_theme_onPrimaryContainer">#041E49</color>
 
-    <!-- 主色与高亮 (Google Blue) -->
-    <color name="md_theme_primary">#A8C7FA</color>
-    <color name="md_theme_onPrimary">#00315B</color>
-    <color name="md_theme_primaryContainer">#004A77</color>
-    <color name="md_theme_onPrimaryContainer">#C2E7FF</color>
+    <color name="md_theme_secondary">#565E71</color>
+    <color name="md_theme_onSecondary">#FFFFFF</color>
+    <color name="md_theme_secondaryContainer">#DAE2F9</color>
+    <color name="md_theme_onSecondaryContainer">#131C2B</color>
 
-    <!-- 次主色 -->
-    <color name="md_theme_secondary">#BCC7DB</color>
-    <color name="md_theme_onSecondary">#263141</color>
-    <color name="md_theme_secondaryContainer">#3D4758</color>
-    <color name="md_theme_onSecondaryContainer">#D8E3F8</color>
+    <color name="md_theme_tertiary">#146C2E</color>
+    <color name="md_theme_onTertiary">#FFFFFF</color>
+    <color name="md_theme_tertiaryContainer">#C4EED0</color>
+    <color name="md_theme_onTertiaryContainer">#072711</color>
 
-    <!-- 三级/强调色 (Pixel 薄荷绿/绿松石) -->
-    <color name="md_theme_tertiary">#6DD58C</color>
-    <color name="md_theme_onTertiary">#0A3818</color>
-    <color name="md_theme_tertiaryContainer">#1E522D</color>
-    <color name="md_theme_onTertiaryContainer">#A8F2B5</color>
+    <color name="md_theme_error">#BA1A1A</color>
+    <color name="md_theme_onError">#FFFFFF</color>
+    <color name="md_theme_errorContainer">#FFDAD6</color>
+    <color name="md_theme_onErrorContainer">#410002</color>
 
-    <!-- 错误色 -->
-    <color name="md_theme_error">#F2B8B5</color>
-    <color name="md_theme_onError">#601410</color>
-    <color name="md_theme_errorContainer">#8C1D18</color>
-    <color name="md_theme_onErrorContainer">#F9DEDC</color>
+    <color name="md_theme_background">#FDFBFF</color>
+    <color name="md_theme_onBackground">#1A1C1E</color>
+    <color name="md_theme_surface">#FDFBFF</color>
+    <color name="md_theme_onSurface">#1A1C1E</color>
+    <color name="md_theme_surfaceVariant">#E1E2EC</color>
+    <color name="md_theme_onSurfaceVariant">#44474E</color>
 
-    <!-- 表面与背景 (Pixel 深色模式多级色阶) -->
-    <color name="md_theme_background">#111318</color>
-    <color name="md_theme_onBackground">#E2E2E6</color>
+    <color name="md_theme_surfaceContainerLowest">#FFFFFF</color>
+    <color name="md_theme_surfaceContainerLow">#F7F8FC</color>
+    <color name="md_theme_surfaceContainer">#F1F3F9</color>
+    <color name="md_theme_surfaceContainerHigh">#ECEEF4</color>
+    <color name="md_theme_surfaceContainerHighest">#E6E8EE</color>
 
-    <color name="md_theme_surface">#111318</color>
-    <color name="md_theme_onSurface">#E2E2E6</color>
-    <color name="md_theme_surfaceVariant">#44474E</color>
-    <color name="md_theme_onSurfaceVariant">#C4C6D0</color>
+    <color name="md_theme_outline">#74777F</color>
+    <color name="md_theme_outlineVariant">#C4C6D0</color>
 
-    <color name="md_theme_surfaceContainerLowest">#0C0E13</color>
-    <color name="md_theme_surfaceContainerLow">#191C20</color>
-    <color name="md_theme_surfaceContainer">#1D2024</color>
-    <color name="md_theme_surfaceContainerHigh">#282A2F</color>
-    <color name="md_theme_surfaceContainerHighest">#33353A</color>
+    <!-- 终端界面固定为深色（终端本来就该是深色，不跟随系统） -->
+    <color name="term_background">#0C0E12</color>
+    <color name="term_surface">#111318</color>
+    <color name="term_surface_container">#1D2024</color>
+    <color name="term_surface_container_high">#282A2F</color>
+    <color name="term_surface_container_highest">#33353A</color>
+    <color name="term_on_surface">#E2E2E6</color>
+    <color name="term_on_surface_variant">#C4C6D0</color>
+    <color name="term_outline">#8E9099</color>
+    <color name="term_outline_variant">#44474E</color>
+    <color name="term_primary">#A8C7FA</color>
+    <color name="term_on_primary">#00315B</color>
+    <color name="term_primary_container">#004A77</color>
+    <color name="term_on_primary_container">#C2E7FF</color>
+    <color name="term_secondary_container">#3D4758</color>
+    <color name="term_on_secondary_container">#D8E3F8</color>
+    <color name="term_error">#F2B8B5</color>
+    <color name="term_on_error">#601410</color>
 
-    <color name="md_theme_outline">#8E9099</color>
-    <color name="md_theme_outlineVariant">#44474E</color>
-
-    <!-- 辅助/特殊状态色 -->
-    <color name="key_default_badge_bg">#3E381A</color>
-    <color name="key_default_badge_text">#FFDF70</color>
-    <color name="status_connected_dot">#6DD58C</color>
-    <color name="status_bar_bg">#1A1D22</color>
     <color name="terminal_extra_key_bg">#252930</color>
     <color name="terminal_extra_key_active_bg">#004A77</color>
     <color name="terminal_extra_key_active_text">#C2E7FF</color>
+    <color name="status_bar_bg">#1A1D22</color>
 </resources>

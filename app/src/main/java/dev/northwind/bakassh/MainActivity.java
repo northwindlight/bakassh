@@ -30,6 +30,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -95,6 +97,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_terminal);
+
+        // 全屏终端：把内容让开刘海/挖孔和底部手势条，否则顶栏会被摄像头挖孔盖住。
+        final View terminalRoot = findViewById(R.id.root_terminal);
+        ViewCompat.setOnApplyWindowInsetsListener(terminalRoot, (v, insets) -> {
+            androidx.core.graphics.Insets cutout =
+                    insets.getInsets(WindowInsetsCompat.Type.displayCutout());
+            androidx.core.graphics.Insets nav =
+                    insets.getInsets(WindowInsetsCompat.Type.navigationBars());
+            v.setPadding(cutout.left, cutout.top, cutout.right, nav.bottom);
+            return insets;
+        });
 
         Intent it = getIntent();
         if (it != null) {
@@ -385,7 +398,7 @@ public class MainActivity extends AppCompatActivity {
         b.setAllCaps(false);
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         b.setSingleLine(true);
-        b.setTextColor(getResources().getColor(R.color.md_theme_onSurface));
+        b.setTextColor(getResources().getColor(R.color.term_on_surface));
         b.setPadding(0, dp(4), 0, dp(4));
         b.setMinWidth(0);
         b.setMinimumWidth(0);
@@ -460,7 +473,7 @@ public class MainActivity extends AppCompatActivity {
             b.setTextColor(getResources().getColor(R.color.terminal_extra_key_active_text));
         } else {
             b.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.terminal_extra_key_bg)));
-            b.setTextColor(getResources().getColor(R.color.md_theme_onSurface));
+            b.setTextColor(getResources().getColor(R.color.term_on_surface));
         }
     }
 
@@ -662,16 +675,15 @@ public class MainActivity extends AppCompatActivity {
 
                         TextInputLayout textInputLayout = new TextInputLayout(this);
                         textInputLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_FILLED);
-                        textInputLayout.setBoxBackgroundColor(getResources().getColor(R.color.md_theme_surfaceContainerHighest));
-                        textInputLayout.setBoxCornerRadii(dp(14), dp(14), dp(14), dp(14));
-                        textInputLayout.setPasswordVisibilityToggleEnabled(true);
-                        textInputLayout.setPasswordVisibilityToggleTintList(ColorStateList.valueOf(getResources().getColor(R.color.md_theme_onSurfaceVariant)));
+                        textInputLayout.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
+                        textInputLayout.setEndIconTintList(ColorStateList.valueOf(getResources().getColor(R.color.term_on_surface_variant)));
                         textInputLayout.setHint("请输入主机登录密码");
 
                         TextInputEditText et = new TextInputEditText(this);
                         et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                        et.setTextColor(getResources().getColor(R.color.md_theme_onSurface));
-                        textInputLayout.addView(et);
+                        et.setTextColor(getResources().getColor(R.color.term_on_surface));
+                        textInputLayout.addView(et, new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                         box.addView(textInputLayout);
 
                         new MaterialAlertDialogBuilder(this)
@@ -714,16 +726,15 @@ public class MainActivity extends AppCompatActivity {
 
                         TextInputLayout textInputLayout = new TextInputLayout(this);
                         textInputLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_FILLED);
-                        textInputLayout.setBoxBackgroundColor(getResources().getColor(R.color.md_theme_surfaceContainerHighest));
-                        textInputLayout.setBoxCornerRadii(dp(14), dp(14), dp(14), dp(14));
-                        textInputLayout.setPasswordVisibilityToggleEnabled(true);
-                        textInputLayout.setPasswordVisibilityToggleTintList(ColorStateList.valueOf(getResources().getColor(R.color.md_theme_onSurfaceVariant)));
+                        textInputLayout.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
+                        textInputLayout.setEndIconTintList(ColorStateList.valueOf(getResources().getColor(R.color.term_on_surface_variant)));
                         textInputLayout.setHint("私钥保护口令");
 
                         TextInputEditText et = new TextInputEditText(this);
                         et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                        et.setTextColor(getResources().getColor(R.color.md_theme_onSurface));
-                        textInputLayout.addView(et);
+                        et.setTextColor(getResources().getColor(R.color.term_on_surface));
+                        textInputLayout.addView(et, new LinearLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
                         box.addView(textInputLayout);
 
                         new MaterialAlertDialogBuilder(this)

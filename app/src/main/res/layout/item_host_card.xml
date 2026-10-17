@@ -6,17 +6,15 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginStart="16dp"
-    android:layout_marginTop="5dp"
+    android:layout_marginTop="4dp"
     android:layout_marginEnd="16dp"
-    android:layout_marginBottom="5dp"
+    android:layout_marginBottom="4dp"
     android:clickable="true"
     android:focusable="true"
-    android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="@color/md_theme_surfaceContainer"
-    app:cardCornerRadius="20dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainer"
+    app:cardCornerRadius="16dp"
     app:cardElevation="0dp"
-    app:strokeColor="@color/md_theme_outlineVariant"
-    app:strokeWidth="1dp">
+    app:rippleColor="?attr/colorPrimary">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -25,28 +23,29 @@
         android:orientation="horizontal"
         android:paddingStart="16dp"
         android:paddingTop="14dp"
-        android:paddingEnd="12dp"
+        android:paddingEnd="8dp"
         android:paddingBottom="14dp">
 
-        <!-- 左侧圆角 Avatar 图标 -->
+        <!-- 左侧圆形图标（Pixel 的联系人/应用图标式头像） -->
         <FrameLayout
-            android:layout_width="44dp"
-            android:layout_height="44dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@drawable/bg_avatar_host">
 
             <ImageView
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
                 android:layout_gravity="center"
+                android:contentDescription="@null"
                 android:src="@drawable/ic_server"
-                app:tint="@color/md_theme_primary" />
+                app:tint="?attr/colorOnSecondaryContainer" />
         </FrameLayout>
 
-        <!-- 中间文本与标签区 -->
+        <!-- 标题与说明 -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="14dp"
+            android:layout_marginStart="16dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
@@ -54,54 +53,36 @@
                 android:id="@+id/tv_host_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:fontFamily="sans-serif-medium"
+                android:singleLine="true"
                 android:text="个人服务器"
-                android:textColor="@color/md_theme_onSurface"
-                android:textSize="17sp"
-                android:textStyle="bold"
-                android:fontFamily="sans-serif-medium" />
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="16sp" />
 
             <TextView
                 android:id="@+id/tv_host_endpoint"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:singleLine="true"
                 android:text="northwind@192.168.1.100:22"
-                android:textColor="@color/md_theme_onSurfaceVariant"
-                android:textSize="13sp" />
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="14sp" />
 
-            <!-- 胶囊 Chip 区域 -->
-            <LinearLayout
+            <TextView
+                android:id="@+id/tv_host_meta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <!-- 认证方式 Chip -->
-                <TextView
-                    android:id="@+id/tv_chip_auth"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_chip_tag"
-                    android:text="公钥认证"
-                    android:textColor="@color/md_theme_onSurface"
-                    android:textSize="11sp" />
-
-                <!-- 自动启动命令 Chip -->
-                <TextView
-                    android:id="@+id/tv_chip_startup"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:background="@drawable/bg_chip_tag"
-                    android:text="▸ tmux a"
-                    android:textColor="@color/md_theme_onSurfaceVariant"
-                    android:textSize="11sp"
-                    android:visibility="gone" />
-            </LinearLayout>
+                android:layout_marginTop="2dp"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:text="公钥认证"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="12sp" />
         </LinearLayout>
 
-        <!-- 右侧操作入口 (三点菜单按钮) -->
         <ImageButton
             android:id="@+id/btn_host_more"
             android:layout_width="40dp"
@@ -110,7 +91,7 @@
             android:contentDescription="操作选项"
             android:padding="8dp"
             android:src="@drawable/ic_more_vert"
-            app:tint="@color/md_theme_onSurfaceVariant" />
+            app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
 
 </com.google.android.material.card.MaterialCardView>

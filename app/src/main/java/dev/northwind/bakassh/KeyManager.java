@@ -259,6 +259,9 @@ public final class KeyManager {
         }
 
         boolean hasPass = passphrase != null && !passphrase.trim().isEmpty();
+        // 记住「落盘的原文件是否加密」：decrypt() 会把 KeyPair 的 encrypted 标志清掉，
+        // 但写进 files/keys 的仍是原始密文，连接时必须继续提示口令。
+        boolean storedEncrypted = kp.isEncrypted();
         if (kp.isEncrypted()) {
             if (!hasPass) {
                 throw new IllegalArgumentException("该私钥已被口令加密，请输入密码口令");
@@ -283,7 +286,7 @@ public final class KeyManager {
 
         String type = kp.getKeyTypeString();
         String fp = kp.getFingerPrint();
-        KeyItem item = new KeyItem(id, name.trim(), type, fp, pubStr, kp.isEncrypted(), false, System.currentTimeMillis());
+        KeyItem item = new KeyItem(id, name.trim(), type, fp, pubStr, storedEncrypted, false, System.currentTimeMillis());
 
         List<KeyItem> keys = getKeys(c);
         keys.add(item);

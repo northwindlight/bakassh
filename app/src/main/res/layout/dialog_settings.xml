@@ -4,8 +4,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_drag_handle"
-    android:backgroundTint="@color/md_theme_surfaceContainerHigh"
     android:orientation="vertical"
     android:paddingStart="24dp"
     android:paddingTop="12dp"
@@ -24,9 +22,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="终端设置"
-        android:textColor="@color/md_theme_onSurface"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="22sp"
-        android:textStyle="bold"
         android:fontFamily="sans-serif-medium" />
 
     <TextView
@@ -35,8 +32,8 @@
         android:layout_marginTop="2dp"
         android:layout_marginBottom="16dp"
         android:text="配置屏幕边距与目标列数，保存后下次进入终端生效"
-        android:textColor="@color/md_theme_onSurfaceVariant"
-        android:textSize="13sp" />
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp" />
 
     <!-- 终端四周留边 -->
     <com.google.android.material.textfield.TextInputLayout
@@ -44,22 +41,14 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"
         android:hint="屏幕边缘留边 (dp，0=贴边，曲面屏建议 3~8)"
-        app:boxBackgroundMode="filled"
-        app:boxBackgroundColor="@color/md_theme_surfaceContainerHighest"
-        app:boxCornerRadiusTopStart="14dp"
-        app:boxCornerRadiusTopEnd="14dp"
-        app:boxCornerRadiusBottomStart="14dp"
-        app:boxCornerRadiusBottomEnd="14dp"
-        app:boxStrokeWidth="0dp"
-        app:boxStrokeWidthFocused="1.5dp"
-        app:boxStrokeColor="@color/md_theme_primary">
+        app:boxBackgroundMode="filled">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_settings_inset"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="number"
-            android:textColor="@color/md_theme_onSurface"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="14sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -68,22 +57,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:hint="默认目标列数 (越小字越大，进终端亦可双指捏合缩放)"
-        app:boxBackgroundMode="filled"
-        app:boxBackgroundColor="@color/md_theme_surfaceContainerHighest"
-        app:boxCornerRadiusTopStart="14dp"
-        app:boxCornerRadiusTopEnd="14dp"
-        app:boxCornerRadiusBottomStart="14dp"
-        app:boxCornerRadiusBottomEnd="14dp"
-        app:boxStrokeWidth="0dp"
-        app:boxStrokeWidthFocused="1.5dp"
-        app:boxStrokeColor="@color/md_theme_primary">
+        app:boxBackgroundMode="filled">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_settings_cols"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="number"
-            android:textColor="@color/md_theme_onSurface"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="14sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -92,29 +73,23 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
+        android:gravity="end"
         android:orientation="horizontal">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_cancel_settings"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:text="取消"
-            android:textColor="@color/md_theme_onSecondaryContainer"
-            app:cornerRadius="24dp" />
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="取消" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_save_settings"
             style="@style/Widget.Material3.Button"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
             android:layout_marginStart="12dp"
-            android:layout_weight="1"
-            android:text="保存设置"
-            android:textColor="@color/md_theme_onPrimary"
-            app:backgroundTint="@color/md_theme_primary"
-            app:cornerRadius="24dp" />
+            android:text="保存设置" />
     </LinearLayout>
 
 </LinearLayout>

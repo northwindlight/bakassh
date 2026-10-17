@@ -3,18 +3,16 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/card_key"
+    app:rippleColor="?attr/colorPrimary"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:layout_marginTop="4dp"
     android:layout_marginBottom="4dp"
     android:clickable="true"
     android:focusable="true"
-    android:foreground="?attr/selectableItemBackground"
-    app:cardBackgroundColor="@color/md_theme_surfaceContainer"
+    app:cardBackgroundColor="?attr/colorSurfaceContainer"
     app:cardCornerRadius="16dp"
-    app:cardElevation="0dp"
-    app:strokeColor="@color/md_theme_outlineVariant"
-    app:strokeWidth="1dp">
+    app:cardElevation="0dp">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -27,8 +25,8 @@
         android:paddingBottom="12dp">
 
         <FrameLayout
-            android:layout_width="38dp"
-            android:layout_height="38dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
             android:background="@drawable/bg_avatar_host">
 
             <ImageView
@@ -36,7 +34,7 @@
                 android:layout_height="20dp"
                 android:layout_gravity="center"
                 android:src="@drawable/ic_key"
-                app:tint="@color/md_theme_primary" />
+                app:tint="?attr/colorOnSecondaryContainer" />
         </FrameLayout>
 
         <LinearLayout
@@ -57,9 +55,8 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="个人密钥"
-                    android:textColor="@color/md_theme_onSurface"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnSurface"
+                    android:textSize="16sp"
                     android:fontFamily="sans-serif-medium" />
 
                 <!-- 默认密钥高亮标签 -->
@@ -70,7 +67,7 @@
                     android:layout_marginStart="8dp"
                     android:background="@drawable/bg_badge_default"
                     android:text="默认密钥"
-                    android:textColor="@color/key_default_badge_text"
+                    android:textColor="?attr/colorOnTertiaryContainer"
                     android:textSize="10sp"
                     android:textStyle="bold"
                     android:visibility="gone" />
@@ -82,8 +79,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
                 android:text="RSA-3072 · SHA256:abcd..."
-                android:textColor="@color/md_theme_onSurfaceVariant"
-                android:textSize="12sp" />
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="13sp" />
         </LinearLayout>
 
         <ImageButton
@@ -94,7 +91,7 @@
             android:contentDescription="密钥操作"
             android:padding="6dp"
             android:src="@drawable/ic_more_vert"
-            app:tint="@color/md_theme_onSurfaceVariant" />
+            app:tint="?attr/colorOnSurfaceVariant" />
 
     </LinearLayout>
 

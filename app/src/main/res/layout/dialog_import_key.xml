@@ -4,8 +4,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/bg_drag_handle"
-    android:backgroundTint="@color/md_theme_surfaceContainerHigh"
     android:orientation="vertical"
     android:paddingStart="24dp"
     android:paddingTop="12dp"
@@ -24,9 +22,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="导入已有私钥"
-        android:textColor="@color/md_theme_onSurface"
+        android:textColor="?attr/colorOnSurface"
         android:textSize="22sp"
-        android:textStyle="bold"
         android:fontFamily="sans-serif-medium" />
 
     <TextView
@@ -35,8 +32,8 @@
         android:layout_marginTop="2dp"
         android:layout_marginBottom="16dp"
         android:text="支持 OpenSSH / PEM 格式（含 RSA、ECDSA 与 ED25519）"
-        android:textColor="@color/md_theme_onSurfaceVariant"
-        android:textSize="13sp" />
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:textSize="14sp" />
 
     <!-- 密钥名称 -->
     <com.google.android.material.textfield.TextInputLayout
@@ -44,22 +41,14 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="10dp"
         android:hint="密钥名称（例如：id_ed25519 / GitHub）"
-        app:boxBackgroundMode="filled"
-        app:boxBackgroundColor="@color/md_theme_surfaceContainerHighest"
-        app:boxCornerRadiusTopStart="14dp"
-        app:boxCornerRadiusTopEnd="14dp"
-        app:boxCornerRadiusBottomStart="14dp"
-        app:boxCornerRadiusBottomEnd="14dp"
-        app:boxStrokeWidth="0dp"
-        app:boxStrokeWidthFocused="1.5dp"
-        app:boxStrokeColor="@color/md_theme_primary">
+        app:boxBackgroundMode="filled">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_import_key_name"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="text"
-            android:textColor="@color/md_theme_onSurface"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="14sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -69,15 +58,7 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="10dp"
         android:hint="私钥内容 (-----BEGIN ... PRIVATE KEY-----)"
-        app:boxBackgroundMode="filled"
-        app:boxBackgroundColor="@color/md_theme_surfaceContainerHighest"
-        app:boxCornerRadiusTopStart="14dp"
-        app:boxCornerRadiusTopEnd="14dp"
-        app:boxCornerRadiusBottomStart="14dp"
-        app:boxCornerRadiusBottomEnd="14dp"
-        app:boxStrokeWidth="0dp"
-        app:boxStrokeWidthFocused="1.5dp"
-        app:boxStrokeColor="@color/md_theme_primary">
+        app:boxBackgroundMode="filled">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_import_key_content"
@@ -88,7 +69,7 @@
             android:inputType="textMultiLine"
             android:minLines="5"
             android:maxLines="8"
-            android:textColor="@color/md_theme_onSurface"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="12sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -98,23 +79,15 @@
         android:layout_height="wrap_content"
         android:hint="私钥口令（若未加密可留空）"
         app:boxBackgroundMode="filled"
-        app:boxBackgroundColor="@color/md_theme_surfaceContainerHighest"
-        app:boxCornerRadiusTopStart="14dp"
-        app:boxCornerRadiusTopEnd="14dp"
-        app:boxCornerRadiusBottomStart="14dp"
-        app:boxCornerRadiusBottomEnd="14dp"
-        app:boxStrokeWidth="0dp"
-        app:boxStrokeWidthFocused="1.5dp"
-        app:boxStrokeColor="@color/md_theme_primary"
-        app:passwordToggleEnabled="true"
-        app:passwordToggleTint="@color/md_theme_onSurfaceVariant">
+        app:endIconMode="password_toggle"
+        app:endIconTint="?attr/colorOnSurfaceVariant">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_import_key_pass"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:inputType="textPassword"
-            android:textColor="@color/md_theme_onSurface"
+            android:textColor="?attr/colorOnSurface"
             android:textSize="14sp" />
     </com.google.android.material.textfield.TextInputLayout>
 
@@ -123,29 +96,23 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="20dp"
+        android:gravity="end"
         android:orientation="horizontal">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_cancel_import"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
-            android:layout_weight="1"
-            android:text="取消"
-            android:textColor="@color/md_theme_onSecondaryContainer"
-            app:cornerRadius="24dp" />
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="取消" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_confirm_import"
             style="@style/Widget.Material3.Button"
-            android:layout_width="0dp"
-            android:layout_height="48dp"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
             android:layout_marginStart="12dp"
-            android:layout_weight="1"
-            android:text="导入私钥"
-            android:textColor="@color/md_theme_onPrimary"
-            app:backgroundTint="@color/md_theme_primary"
-            app:cornerRadius="24dp" />
+            android:text="导入私钥" />
     </LinearLayout>
 
 </LinearLayout>
