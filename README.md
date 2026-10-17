@@ -53,7 +53,8 @@ ConnectBot 1.11.0 因本次 tmux 场景无法正常滚动，未形成有效帧�
 
 ## 功能
 
-- SSH 连接（JSch），密钥登录，支持 ed25519 主机密钥
+- SSH 连接（JSch），公钥与密码双认证，支持 ed25519 主机密钥
+- 密钥与账户管理：多密钥生成（RSA/ECDSA）、私钥导入（OpenSSH/PEM）、公钥导出与主机独立认证绑定
 - 终端仿真基于 libvterm（JNI）
 - 位图字体渲染 + 行位图缓存 + 脏行追踪，按终端滚动区域复用缓存
 - 中文按 2 格对齐
@@ -77,6 +78,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 本地回归与本次修复说明见 [tests/host/README.md](tests/host/README.md) 和
 [修复记录](docs/修复记录-20261016.md)。
 逐帧文字缩放见 [0.1.2 修复记录](docs/缩放修复-0.1.2.md)。
+密钥与账户管理见 [密钥与账户管理说明](docs/密钥与账户管理.md)。
 下一阶段需求见 [后续计划](docs/后续计划.md)。
 
 ## 项目结构

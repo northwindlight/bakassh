@@ -16,12 +16,17 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Real Android View/font/MotionEvent regression. No third-party test runner needed. */
 public final class ZoomInstrumentation extends Instrumentation {
+    private Bundle arguments;
     private long eventTime = 1000;
     private int mouseEvents, taps, commits;
 
-    @Override public void onCreate(Bundle args) { super.onCreate(args); start(); }
+    @Override public void onCreate(Bundle args) { arguments = args; super.onCreate(args); start(); }
 
     @Override public void onStart() {
+        if (arguments != null && "matched-grid".equals(arguments.getString("mode"))) {
+            new MatchedGridBenchmark(this).run(arguments);
+            return;
+        }
         Bundle result = new Bundle();
         AtomicReference<Throwable> failure = new AtomicReference<>();
         runOnMainSync(() -> { try { verify(); } catch (Throwable t) { failure.set(t); } });
@@ -42,7 +47,10 @@ public final class ZoomInstrumentation extends Instrumentation {
         f.setAccessible(true);
         return f.get(instance);
     }
-    private void touch(TerminalView view, int action, int count, float span) {
+    private void touch(TerminalView view, int action, int count, float multiplier) {
+        float baseSpan = Math.max(view.getWidth() * .45f,
+                android.view.ViewConfiguration.get(view.getContext()).getScaledMinimumScalingSpan() * 1.1f);
+        float span = baseSpan * multiplier;
         MotionEvent.PointerProperties[] props = new MotionEvent.PointerProperties[count];
         MotionEvent.PointerCoords[] coords = new MotionEvent.PointerCoords[count];
         for (int i = 0; i < count; i++) {
@@ -61,8 +69,8 @@ public final class ZoomInstrumentation extends Instrumentation {
     }
 
     private void begin(TerminalView view) {
-        touch(view, MotionEvent.ACTION_DOWN, 1, 200);
-        touch(view, MotionEvent.ACTION_POINTER_DOWN | (1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT), 2, 200);
+        touch(view, MotionEvent.ACTION_DOWN, 1, 1f);
+        touch(view, MotionEvent.ACTION_POINTER_DOWN | (1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT), 2, 1f);
     }
     private static void layout(TerminalView view, int width) {
         view.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
@@ -93,7 +101,7 @@ public final class ZoomInstrumentation extends Instrumentation {
             int glyphs = ((Map<?, ?>) field(view, "glyphCache")).size();
             begin(view);
             for (int frame = 0; frame < 20; frame++) {
-                touch(view, MotionEvent.ACTION_MOVE, 2, 250 + frame * 10);
+                touch(view, MotionEvent.ACTION_MOVE, 2, 1.05f + frame * .02f);
                 view.draw(canvas);
                 check(NativeTerm.getRow(view.getHandle(), view.getRows() - 1,
                         new int[view.getCols() * 5]) == view.getCols(), "native grid lags a frame");
@@ -102,31 +110,59 @@ public final class ZoomInstrumentation extends Instrumentation {
             check(liveFont > initialFont && view.getCols() < initialCols, "font/grid only changed after release");
             check(((Map<?, ?>) field(view, "glyphCache")).size() == glyphs, "bitmap glyphs rebuilt during pinch");
             check(commits == 0, "preferences committed during pinch");
-            touch(view, MotionEvent.ACTION_POINTER_UP | (1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT), 2, 440);
-            touch(view, MotionEvent.ACTION_MOVE, 1, 800);
+            touch(view, MotionEvent.ACTION_POINTER_UP | (1 << MotionEvent.ACTION_POINTER_INDEX_SHIFT), 2, 1.43f);
+            touch(view, MotionEvent.ACTION_MOVE, 1, 1.43f);
             check(commits == 0, "first lifted finger prematurely committed zoom");
-            touch(view, MotionEvent.ACTION_UP, 1, 800);
+            touch(view, MotionEvent.ACTION_UP, 1, 1.43f);
             view.draw(canvas);
             check(Math.abs((float) field(view, "fontPx") - liveFont) < .001f, "font snapped on release");
             check(commits == 1 && mouseEvents == 0 && taps == 0, "pinch leaked into mouse/tap or duplicate commit");
 
             begin(view);
-            touch(view, MotionEvent.ACTION_MOVE, 2, 300);
-            touch(view, MotionEvent.ACTION_MOVE, 2, 400);
+            touch(view, MotionEvent.ACTION_MOVE, 2, 1.2f);
+            touch(view, MotionEvent.ACTION_MOVE, 2, 1.4f);
             view.draw(canvas);
-            touch(view, MotionEvent.ACTION_CANCEL, 2, 400);
+            touch(view, MotionEvent.ACTION_CANCEL, 2, 1.4f);
             view.draw(canvas);
             check(Math.abs((float) field(view, "fontPx") - liveFont) < .001f && commits == 1,
                     "cancel committed a detector end callback");
 
             begin(view);
-            touch(view, MotionEvent.ACTION_MOVE, 2, 300);
-            touch(view, MotionEvent.ACTION_MOVE, 2, 400);
+            touch(view, MotionEvent.ACTION_MOVE, 2, 1.2f);
+            touch(view, MotionEvent.ACTION_MOVE, 2, 1.4f);
             view.draw(canvas);
             layout(view, 1000);
-            touch(view, MotionEvent.ACTION_UP, 1, 400);
+            touch(view, MotionEvent.ACTION_UP, 1, 1.4f);
             view.draw(canvas);
             check(commits == 1 && mouseEvents == 0 && taps == 0, "viewport change committed a stale pinch");
+
+            // Key and Host authentication regressions
+            java.util.List<KeyItem> initialKeys = KeyManager.getKeys(getTargetContext());
+            check(!initialKeys.isEmpty(), "initial keys must not be empty");
+            KeyItem defKey = KeyManager.getDefaultKey(getTargetContext());
+            check(defKey != null && defKey.isDefault, "default key must exist");
+
+            KeyItem generated = KeyManager.generateKey(getTargetContext(), "test-rsa-reg", "RSA-2048", null, "test-reg");
+            check(generated != null && "test-rsa-reg".equals(generated.name), "generated key name mismatch");
+            check(KeyManager.getPrivFile(getTargetContext(), generated.id).exists(), "generated priv file missing");
+            check(KeyManager.getPubFile(getTargetContext(), generated.id).exists(), "generated pub file missing");
+
+            KeyManager.setDefaultKey(getTargetContext(), generated.id);
+            check(generated.id.equals(KeyManager.getDefaultKey(getTargetContext()).id), "setDefaultKey failed");
+
+            Host host = new Host("test", "127.0.0.1", 22, "root", "", "publickey", generated.id, "");
+            org.json.JSONObject json = host.toJson();
+            Host restored = Host.fromJson(json);
+            check("publickey".equals(restored.authType) && generated.id.equals(restored.keyId), "host key binding failed");
+
+            Host pwdHost = new Host("test2", "127.0.0.1", 22, "root", "", "password", "default", "secretPass");
+            Host restoredPwd = Host.fromJson(pwdHost.toJson());
+            check("password".equals(restoredPwd.authType) && "secretPass".equals(restoredPwd.password), "host pwd auth failed");
+
+            boolean deleted = KeyManager.deleteKey(getTargetContext(), generated.id);
+            check(deleted, "deleteKey failed");
+            check(!KeyManager.getPrivFile(getTargetContext(), generated.id).exists(), "deleted priv file still exists");
+            KeyManager.setDefaultKey(getTargetContext(), defKey.id);
         } finally { view.destroy(); bitmap.recycle(); }
     }
 }

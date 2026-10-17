@@ -45,6 +45,12 @@ public class SshTransport {
 
     public String connect(String host, int port, String user, String keyPath,
                           int cols, int rows, Listener listener) throws Exception {
+        return connect(host, port, user, "publickey", keyPath, null, null, cols, rows, listener);
+    }
+
+    public String connect(String host, int port, String user, String authType,
+                          String keyPath, String keyPassphrase, String password,
+                          int cols, int rows, Listener listener) throws Exception {
         synchronized (this) {
             if (closed) throw new IOException("connection cancelled");
             this.cols = cols;
@@ -52,7 +58,15 @@ public class SshTransport {
         }
 
         JSch jsch = new JSch();
-        jsch.addIdentity(keyPath);
+        boolean isPubkey = !"password".equalsIgnoreCase(authType);
+
+        if (isPubkey && keyPath != null && !keyPath.isEmpty()) {
+            if (keyPassphrase != null && !keyPassphrase.isEmpty()) {
+                jsch.addIdentity(keyPath, keyPassphrase.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            } else {
+                jsch.addIdentity(keyPath);
+            }
+        }
 
         Session connectedSession = jsch.getSession(user, host, port);
         synchronized (this) {
@@ -61,7 +75,20 @@ public class SshTransport {
         }
         try {
             connectedSession.setConfig("StrictHostKeyChecking", "no");
-            connectedSession.setConfig("PreferredAuthentications", "publickey");
+            if (isPubkey) {
+                connectedSession.setConfig("PreferredAuthentications", "publickey");
+            } else {
+                if (password != null) connectedSession.setPassword(password);
+                connectedSession.setConfig("PreferredAuthentications", "password,keyboard-interactive,publickey");
+                connectedSession.setUserInfo(new com.jcraft.jsch.UserInfo() {
+                    @Override public String getPassphrase() { return null; }
+                    @Override public String getPassword() { return password; }
+                    @Override public boolean promptPassword(String message) { return true; }
+                    @Override public boolean promptPassphrase(String message) { return true; }
+                    @Override public boolean promptYesNo(String message) { return true; }
+                    @Override public void showMessage(String message) {}
+                });
+            }
             connectedSession.connect(15000);
             if (closed) throw new IOException("connection cancelled");
 

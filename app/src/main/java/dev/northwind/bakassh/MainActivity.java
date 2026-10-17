@@ -65,6 +65,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private int hPort = 22;
     private String hUser = "";
     private String hStartup = "";
+    private String hAuthType = "publickey";
+    private String hKeyId = "default";
+    private String hPassword = "";
 
     static void out(Activity a, String line) {
         Log.i(TAG, line);
@@ -90,6 +93,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             hPort = it.getIntExtra("port", hPort);
             hUser = it.getStringExtra("user") != null ? it.getStringExtra("user") : hUser;
             hStartup = it.getStringExtra("startup") != null ? it.getStringExtra("startup") : hStartup;
+            hAuthType = it.getStringExtra("auth_type") != null ? it.getStringExtra("auth_type") : hAuthType;
+            hKeyId = it.getStringExtra("key_id") != null ? it.getStringExtra("key_id") : hKeyId;
+            hPassword = it.getStringExtra("password") != null ? it.getStringExtra("password") : hPassword;
         }
 
         try {
@@ -633,18 +639,80 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             Thread.sleep(800);
             if (!running) return;
 
-            try {
-                KeyManager.ensureKey(this);
-            } catch (Throwable t) {
-                out(this, "keygen FAILED: " + t);
-                return;
+            String keyPath = null;
+            String keyPassphrase = null;
+
+            if ("password".equalsIgnoreCase(hAuthType)) {
+                if (hPassword == null || hPassword.isEmpty()) {
+                    final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+                    final String[] pwdResult = new String[]{""};
+                    final boolean[] cancelled = new boolean[]{false};
+                    runOnUiThread(() -> {
+                        android.widget.EditText input = new android.widget.EditText(this);
+                        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                        input.setHint("请输入密码");
+                        new androidx.appcompat.app.AlertDialog.Builder(this)
+                                .setTitle("SSH 密码认证 (" + hUser + "@" + hHost + ")")
+                                .setView(input)
+                                .setCancelable(false)
+                                .setPositiveButton("连接", (d, w) -> {
+                                    pwdResult[0] = input.getText().toString();
+                                    latch.countDown();
+                                })
+                                .setNegativeButton("取消", (d, w) -> {
+                                    cancelled[0] = true;
+                                    latch.countDown();
+                                    finish();
+                                })
+                                .show();
+                    });
+                    latch.await();
+                    if (cancelled[0] || !running) return;
+                    hPassword = pwdResult[0];
+                }
+            } else {
+                KeyItem key;
+                try {
+                    key = KeyManager.getKey(this, hKeyId);
+                } catch (Throwable t) {
+                    out(this, "getKey FAILED: " + t);
+                    return;
+                }
+                keyPath = KeyManager.getPrivFile(this, key.id).getAbsolutePath();
+                if (key.encrypted) {
+                    final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+                    final String[] passResult = new String[]{""};
+                    final boolean[] cancelled = new boolean[]{false};
+                    runOnUiThread(() -> {
+                        android.widget.EditText input = new android.widget.EditText(this);
+                        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                        input.setHint("私钥口令");
+                        new androidx.appcompat.app.AlertDialog.Builder(this)
+                                .setTitle("解锁密钥：" + key.name)
+                                .setView(input)
+                                .setCancelable(false)
+                                .setPositiveButton("确定", (d, w) -> {
+                                    passResult[0] = input.getText().toString();
+                                    latch.countDown();
+                                })
+                                .setNegativeButton("取消", (d, w) -> {
+                                    cancelled[0] = true;
+                                    latch.countDown();
+                                    finish();
+                                })
+                                .show();
+                    });
+                    latch.await();
+                    if (cancelled[0] || !running) return;
+                    keyPassphrase = passResult[0];
+                }
             }
 
             try {
                 final SshTransport t = transport;
                 if (!running) return;
-                String status = t.connect(hHost, hPort, hUser,
-                        KeyManager.privFile(this).getAbsolutePath(),
+                String status = t.connect(hHost, hPort, hUser, hAuthType,
+                        keyPath, keyPassphrase, hPassword,
                         view.getCols(), view.getRows(),
                         new SshTransport.Listener() {
                             @Override

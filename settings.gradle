@@ -13,3 +13,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "sshterm"
 include ':app'
+include ':benchmark-driver'
+project(':benchmark-driver').projectDir = file('benchmarks/driver')

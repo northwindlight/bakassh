@@ -1,0 +1,4 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application android:label="Terminal benchmark driver" android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
+    <instrumentation android:name=".Driver" android:targetPackage="dev.northwind.terminalbench" android:functionalTest="true" />
+</manifest>

@@ -76,4 +76,14 @@ public class HostStore {
         ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE)
                 .edit().putInt(KEY_INSET, dp).apply();
     }
+
+    public static List<Host> getHostsUsingKey(Context ctx, String keyId) {
+        List<Host> matched = new ArrayList<>();
+        for (Host h : load(ctx)) {
+            if ("publickey".equalsIgnoreCase(h.authType) && keyId != null && keyId.equals(h.keyId)) {
+                matched.add(h);
+            }
+        }
+        return matched;
+    }
 }
