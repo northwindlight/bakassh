@@ -1,152 +1,132 @@
 package dev.northwind.bakassh;
 
-import android.app.Activity;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.os.Bundle;
-import android.text.InputType;
-import android.util.TypedValue;
-import android.view.Gravity;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
-import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 主界面：主机列表与密钥管理。
- * 点一台主机进终端；长按可编辑/删除；底部能新建主机、管理与绑定密钥。
+ * 主界面：Pixel / Material 3 风格的主机列表与密钥管理。
+ * 遵循 Material You 规范：大标题顶栏、大圆角卡片、药丸操作按钮与底部抽屉（BottomSheet）。
  */
 public class HostListActivity extends AppCompatActivity {
 
     private List<Host> hosts;
     private BaseAdapter adapter;
     private ListView list;
+    private View emptyStateView;
+    private TextView subtitleView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_host_list);
+
         hosts = HostStore.load(this);
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(0xFF121216);
+        list = findViewById(R.id.list_hosts);
+        emptyStateView = findViewById(R.id.layout_empty_state);
+        subtitleView = findViewById(R.id.tv_host_subtitle);
 
-        root.addView(title("bakaSSH"), lp(LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 0));
-        TextView hint = new TextView(this);
-        hint.setText("点一台主机连接 · 长按编辑/删除");
-        hint.setTextColor(0xFF8A8A94);
-        hint.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        hint.setPadding(dp(16), 0, dp(16), dp(8));
-        root.addView(hint);
+        ExtendedFloatingActionButton fabAdd = findViewById(R.id.fab_add_host);
+        fabAdd.setOnClickListener(v -> editDialog(-1));
 
-        list = new ListView(this);
-        list.setDividerHeight(1);
-        list.setBackgroundColor(0xFF121216);
+        findViewById(R.id.chip_manage_keys).setOnClickListener(v -> manageKeysDialog());
+        findViewById(R.id.chip_extra_keys).setOnClickListener(v -> extraKeysDialog());
+        findViewById(R.id.chip_settings).setOnClickListener(v -> settingsDialog());
+
         adapter = new BaseAdapter() {
             @Override public int getCount() { return hosts.size(); }
             @Override public Object getItem(int i) { return hosts.get(i); }
             @Override public long getItemId(int i) { return i; }
-            @Override public View getView(int i, View convert, ViewGroup parent) {
-                LinearLayout row = new LinearLayout(HostListActivity.this);
-                row.setOrientation(LinearLayout.VERTICAL);
-                row.setPadding(dp(16), dp(10), dp(16), dp(10));
-                row.setBackgroundColor(0xFF17171C);
-                Host h = hosts.get(i);
-                TextView t1 = new TextView(HostListActivity.this);
-                t1.setText(h.title());
-                t1.setTextColor(0xFFE8E8EC);
-                t1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
+            @Override
+            public View getView(int i, View convertView, ViewGroup parent) {
+                View row = convertView;
+                if (row == null) {
+                    row = LayoutInflater.from(HostListActivity.this)
+                            .inflate(R.layout.item_host_card, parent, false);
+                }
 
-                TextView t2 = new TextView(HostListActivity.this);
-                String authDesc;
+                Host h = hosts.get(i);
+                TextView tvTitle = row.findViewById(R.id.tv_host_title);
+                TextView tvEndpoint = row.findViewById(R.id.tv_host_endpoint);
+                TextView tvChipAuth = row.findViewById(R.id.tv_chip_auth);
+                TextView tvChipStartup = row.findViewById(R.id.tv_chip_startup);
+                ImageButton btnMore = row.findViewById(R.id.btn_host_more);
+
+                tvTitle.setText(h.title());
+                tvEndpoint.setText(h.user + "@" + h.host + ":" + h.port);
+
                 if ("password".equalsIgnoreCase(h.authType)) {
-                    authDesc = "[密码]";
+                    tvChipAuth.setText("🔒 密码认证");
                 } else {
                     KeyItem boundKey = KeyManager.getKey(HostListActivity.this, h.keyId);
-                    authDesc = "[公钥: " + (boundKey != null ? boundKey.name : "默认") + "]";
+                    String keyName = boundKey != null ? boundKey.name : "默认密钥";
+                    tvChipAuth.setText("🔑 " + keyName);
                 }
-                String sub = h.user + "@" + h.host + ":" + h.port + "  " + authDesc;
-                if (h.startup != null && !h.startup.isEmpty()) sub += "   ▸ " + h.startup;
-                t2.setText(sub);
-                t2.setTextColor(0xFF8A8A94);
-                t2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
 
-                row.addView(t1);
-                row.addView(t2);
+                if (h.startup != null && !h.startup.trim().isEmpty()) {
+                    tvChipStartup.setVisibility(View.VISIBLE);
+                    tvChipStartup.setText("▸ " + h.startup.trim());
+                } else {
+                    tvChipStartup.setVisibility(View.GONE);
+                }
+
+                btnMore.setOnClickListener(v -> showHostActionSheet(i));
+
                 return row;
             }
         };
+
         list.setAdapter(adapter);
-        list.setOnItemClickListener((p, v, pos, id) -> connect(hosts.get(pos)));
-        list.setOnItemLongClickListener((p, v, pos, id) -> {
-            editMenu(pos);
+        list.setOnItemClickListener((parent, view, position, id) -> connect(hosts.get(position)));
+        list.setOnItemLongClickListener((parent, view, position, id) -> {
+            showHostActionSheet(position);
             return true;
         });
-        root.addView(list, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f));
 
-        LinearLayout bar = new LinearLayout(this);
-        bar.setOrientation(LinearLayout.HORIZONTAL);
-        bar.setBackgroundColor(0xFF1C1C22);
-        bar.addView(button("＋ 新建主机", v -> editDialog(-1)), weight());
-        bar.addView(button("密钥管理", v -> manageKeysDialog()), weight());
-        bar.addView(button("扩展按键", v -> extraKeysDialog()), weight());
-        bar.addView(button("设置", v -> settingsDialog()), weight());
-        root.addView(bar, lp(LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 0));
+        updateListState();
 
-        setContentView(root);
         MainActivity.out(this, "HOSTLIST shown, hosts=" + hosts.size()
                 + " cols=" + HostStore.getTargetCols(this, 150));
     }
 
-    private LinearLayout.LayoutParams lp(int w, int h, float weight) {
-        return new LinearLayout.LayoutParams(w, h, weight);
-    }
-
-    private LinearLayout.LayoutParams weight() {
-        return new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-    }
-
-    private int dp(int v) {
-        return (int) (v * getResources().getDisplayMetrics().density);
-    }
-
-    private TextView title(String s) {
-        TextView t = new TextView(this);
-        t.setText(s);
-        t.setTextColor(0xFFF0F0F4);
-        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
-        t.setPadding(dp(16), dp(16), dp(16), dp(4));
-        return t;
-    }
-
-    private Button button(String label, View.OnClickListener l) {
-        com.google.android.material.button.MaterialButton b =
-                new com.google.android.material.button.MaterialButton(this);
-        b.setText(label);
-        b.setAllCaps(false);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
-        b.setCornerRadius(dp(12));
-        b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF2A2A31));
-        b.setTextColor(0xFFE6E6EA);
-        b.setOnClickListener(l);
-        return b;
+    private void updateListState() {
+        if (hosts.isEmpty()) {
+            emptyStateView.setVisibility(View.VISIBLE);
+            list.setVisibility(View.GONE);
+            subtitleView.setText("还没有配置远程主机 · 点击下方新建");
+        } else {
+            emptyStateView.setVisibility(View.GONE);
+            list.setVisibility(View.VISIBLE);
+            subtitleView.setText("已保存 " + hosts.size() + " 台主机 · 点按卡片快速连接");
+        }
     }
 
     private void connect(Host h) {
@@ -163,90 +143,117 @@ public class HostListActivity extends AppCompatActivity {
         startActivity(it);
     }
 
-    private void editMenu(int pos) {
+    /** 弹出主机操作抽屉 (Pixel 底部操作表) */
+    private void showHostActionSheet(int pos) {
         Host h = hosts.get(pos);
-        new AlertDialog.Builder(this)
+        String[] actions = new String[]{"立即连接", "编辑配置", "复制 SSH 命令", "删除主机"};
+        new MaterialAlertDialogBuilder(this)
                 .setTitle(h.title())
-                .setItems(new String[]{"编辑", "删除"}, (d, which) -> {
-                    if (which == 0) editDialog(pos);
-                    else confirmDelete(pos);
+                .setItems(actions, (dialog, which) -> {
+                    switch (which) {
+                        case 0:
+                            connect(h);
+                            break;
+                        case 1:
+                            editDialog(pos);
+                            break;
+                        case 2:
+                            copySshCommand(h);
+                            break;
+                        case 3:
+                            confirmDelete(pos);
+                            break;
+                    }
                 })
                 .show();
     }
 
+    private void copySshCommand(Host h) {
+        String cmd = "ssh " + (h.port != 22 ? "-p " + h.port + " " : "") + h.user + "@" + h.host;
+        ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        if (cm != null) {
+            cm.setPrimaryClip(ClipData.newPlainText("SSH Command", cmd));
+            Toast.makeText(this, "已复制连接命令: " + cmd, Toast.LENGTH_SHORT).show();
+        }
+    }
+
     private void confirmDelete(int pos) {
         Host h = hosts.get(pos);
-        new AlertDialog.Builder(this)
-                .setTitle("删除 " + h.title() + "？")
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("删除主机")
+                .setMessage("确认删除主机 \"" + h.title() + "\"？此操作无法撤销。")
                 .setPositiveButton("删除", (d, w) -> {
                     hosts.remove(pos);
                     HostStore.save(this, hosts);
                     adapter.notifyDataSetChanged();
+                    updateListState();
+                    Toast.makeText(this, "已删除主机", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("取消", null)
                 .show();
     }
 
-    private EditText field(String value, String hint, int inputType, LinearLayout parent) {
-        EditText e = new EditText(this);
-        e.setText(value == null ? "" : value);
-        e.setHint(hint);
-        e.setInputType(inputType);
-        parent.addView(e, lp(LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 0));
-        return e;
-    }
-
+    /** 新建 / 编辑主机：Pixel 风格 BottomSheet 抽屉 */
     private void editDialog(int pos) {
         Host h = pos >= 0 ? hosts.get(pos) : new Host("", "", 22, "", "", "publickey", "default", "");
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(8), dp(20), dp(8));
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_edit_host, null);
+        dialog.setContentView(root);
 
-        EditText eName = field(h.name, "名称（随意，例如 rpi5）", InputType.TYPE_CLASS_TEXT, box);
-        EditText eHost = field(h.host, "主机名或 IP", InputType.TYPE_CLASS_TEXT, box);
-        EditText ePort = field(String.valueOf(h.port), "端口", InputType.TYPE_CLASS_NUMBER, box);
-        EditText eUser = field(h.user, "用户名", InputType.TYPE_CLASS_TEXT, box);
-        EditText eCmd = field(h.startup, "连上后自动执行（可空）", InputType.TYPE_CLASS_TEXT, box);
+        TextView tvTitle = root.findViewById(R.id.tv_dialog_title);
+        TextInputEditText etName = root.findViewById(R.id.et_host_name);
+        TextInputEditText etIp = root.findViewById(R.id.et_host_ip);
+        TextInputEditText etPort = root.findViewById(R.id.et_host_port);
+        TextInputEditText etUser = root.findViewById(R.id.et_host_user);
+        TextInputEditText etStartup = root.findViewById(R.id.et_host_startup);
+        TextInputEditText etPassword = root.findViewById(R.id.et_host_password);
+
+        MaterialButtonToggleGroup toggleAuth = root.findViewById(R.id.toggle_auth_type);
+        View layoutSelectKey = root.findViewById(R.id.layout_select_key);
+        View layoutPassword = root.findViewById(R.id.layout_password_input);
+        TextView tvSelectedKeyName = root.findViewById(R.id.tv_selected_key_name);
+
+        tvTitle.setText(pos >= 0 ? "编辑主机" : "新建主机");
+        etName.setText(h.name);
+        etIp.setText(h.host);
+        etPort.setText(String.valueOf(h.port));
+        etUser.setText(h.user);
+        etStartup.setText(h.startup);
+        etPassword.setText(h.password);
 
         final String[] currentAuth = new String[]{h.authType != null ? h.authType : "publickey"};
         final String[] selectedKeyId = new String[]{h.keyId != null ? h.keyId : "default"};
 
-        Button bAuth = button("认证方式：" + ("password".equalsIgnoreCase(currentAuth[0]) ? "密码认证" : "公钥认证"), null);
-        bAuth.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
-        box.addView(bAuth, lp(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT, 0));
-
-        KeyItem currentKey = KeyManager.getKey(this, selectedKeyId[0]);
-        String keyBtnText = "绑定密钥：" + (currentKey != null ? currentKey.name : "默认密钥");
-        Button bKey = button(keyBtnText, null);
-        bKey.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
-        box.addView(bKey, lp(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT, 0));
-
-        EditText ePwd = field(h.password, "密码（留空则连接时询问）",
-                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD, box);
-
-        Runnable updateAuthUi = () -> {
-            boolean isPassword = "password".equalsIgnoreCase(currentAuth[0]);
-            bAuth.setText("认证方式：" + (isPassword ? "密码认证" : "公钥认证"));
-            bKey.setVisibility(isPassword ? View.GONE : View.VISIBLE);
-            ePwd.setVisibility(isPassword ? View.VISIBLE : View.GONE);
+        Runnable updateKeyDisplay = () -> {
+            KeyItem k = KeyManager.getKey(this, selectedKeyId[0]);
+            tvSelectedKeyName.setText("绑定密钥：" + (k != null ? k.name : "默认密钥"));
         };
-        updateAuthUi.run();
+        updateKeyDisplay.run();
 
-        bAuth.setOnClickListener(v -> {
-            String[] options = new String[]{"公钥认证（推荐）", "密码认证"};
-            int checked = "password".equalsIgnoreCase(currentAuth[0]) ? 1 : 0;
-            new AlertDialog.Builder(this)
-                    .setTitle("选择认证方式")
-                    .setSingleChoiceItems(options, checked, (d, which) -> {
-                        currentAuth[0] = (which == 1) ? "password" : "publickey";
-                        updateAuthUi.run();
-                        d.dismiss();
-                    })
-                    .show();
+        Runnable updateAuthView = () -> {
+            boolean isPassword = "password".equalsIgnoreCase(currentAuth[0]);
+            layoutSelectKey.setVisibility(isPassword ? View.GONE : View.VISIBLE);
+            layoutPassword.setVisibility(isPassword ? View.VISIBLE : View.GONE);
+            if (isPassword) {
+                toggleAuth.check(R.id.btn_toggle_password);
+            } else {
+                toggleAuth.check(R.id.btn_toggle_pubkey);
+            }
+        };
+        updateAuthView.run();
+
+        toggleAuth.addOnButtonCheckedListener((group, checkedId, isChecked) -> {
+            if (isChecked) {
+                if (checkedId == R.id.btn_toggle_password) {
+                    currentAuth[0] = "password";
+                } else {
+                    currentAuth[0] = "publickey";
+                }
+                updateAuthView.run();
+            }
         });
 
-        bKey.setOnClickListener(v -> {
+        layoutSelectKey.setOnClickListener(v -> {
             List<KeyItem> keyList = KeyManager.getKeys(this);
             String[] names = new String[keyList.size()];
             int checked = 0;
@@ -255,78 +262,99 @@ public class HostListActivity extends AppCompatActivity {
                 names[i] = k.name + (k.isDefault ? " [全局默认]" : "") + " (" + k.type + ")";
                 if (k.id.equals(selectedKeyId[0])) checked = i;
             }
-            new AlertDialog.Builder(this)
+            new MaterialAlertDialogBuilder(this)
                     .setTitle("选择绑定的公钥密钥")
                     .setSingleChoiceItems(names, checked, (d, which) -> {
                         selectedKeyId[0] = keyList.get(which).id;
-                        bKey.setText("绑定密钥：" + keyList.get(which).name);
+                        updateKeyDisplay.run();
                         d.dismiss();
                     })
                     .show();
         });
 
-        new AlertDialog.Builder(this)
-                .setTitle(pos >= 0 ? "编辑主机" : "新建主机")
-                .setView(box)
-                .setPositiveButton("保存", (d, w) -> {
-                    Host n = new Host();
-                    n.name = eName.getText().toString().trim();
-                    n.host = eHost.getText().toString().trim();
-                    try { n.port = Integer.parseInt(ePort.getText().toString().trim()); }
-                    catch (Throwable t) { n.port = 22; }
-                    n.user = eUser.getText().toString().trim();
-                    n.startup = eCmd.getText().toString().trim();
-                    n.authType = currentAuth[0];
-                    n.keyId = selectedKeyId[0];
-                    n.password = ePwd.getText().toString();
-                    if (n.host.isEmpty()) {
-                        Toast.makeText(this, "主机名不能为空", Toast.LENGTH_SHORT).show();
-                        return;
-                    }
-                    if (pos >= 0) hosts.set(pos, n); else hosts.add(n);
-                    HostStore.save(this, hosts);
-                    adapter.notifyDataSetChanged();
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        root.findViewById(R.id.btn_cancel_host).setOnClickListener(v -> dialog.dismiss());
+        root.findViewById(R.id.btn_save_host).setOnClickListener(v -> {
+            String host = etIp.getText() != null ? etIp.getText().toString().trim() : "";
+            if (host.isEmpty()) {
+                Toast.makeText(this, "主机名或 IP 地址不能为空", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Host n = new Host();
+            n.name = etName.getText() != null ? etName.getText().toString().trim() : "";
+            n.host = host;
+            try {
+                n.port = Integer.parseInt(etPort.getText() != null ? etPort.getText().toString().trim() : "22");
+            } catch (Throwable t) {
+                n.port = 22;
+            }
+            n.user = etUser.getText() != null ? etUser.getText().toString().trim() : "";
+            n.startup = etStartup.getText() != null ? etStartup.getText().toString().trim() : "";
+            n.authType = currentAuth[0];
+            n.keyId = selectedKeyId[0];
+            n.password = etPassword.getText() != null ? etPassword.getText().toString() : "";
+
+            if (pos >= 0) {
+                hosts.set(pos, n);
+            } else {
+                hosts.add(n);
+            }
+
+            HostStore.save(this, hosts);
+            adapter.notifyDataSetChanged();
+            updateListState();
+            dialog.dismiss();
+            Toast.makeText(this, "已保存主机配置", Toast.LENGTH_SHORT).show();
+        });
+
+        dialog.show();
     }
 
     /** 密钥管理：展示所有密钥、生成新密钥、导入私钥、查看公钥与设置默认 */
     private void manageKeysDialog() {
-        List<KeyItem> keyList = new ArrayList<>(KeyManager.getKeys(this));
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(16), dp(8), dp(16), dp(8));
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_key_manager, null);
+        dialog.setContentView(root);
 
-        ListView lv = new ListView(this);
-        lv.setDividerHeight(1);
+        ListView lv = root.findViewById(R.id.list_keys);
+        List<KeyItem> keyList = new ArrayList<>(KeyManager.getKeys(this));
 
         BaseAdapter keyAdapter = new BaseAdapter() {
             @Override public int getCount() { return keyList.size(); }
             @Override public Object getItem(int i) { return keyList.get(i); }
             @Override public long getItemId(int i) { return i; }
-            @Override public View getView(int i, View convert, ViewGroup parent) {
-                LinearLayout row = new LinearLayout(HostListActivity.this);
-                row.setOrientation(LinearLayout.VERTICAL);
-                row.setPadding(dp(12), dp(8), dp(12), dp(8));
+            @Override
+            public View getView(int i, View convertView, ViewGroup parent) {
+                View row = convertView;
+                if (row == null) {
+                    row = LayoutInflater.from(HostListActivity.this)
+                            .inflate(R.layout.item_key_card, parent, false);
+                }
                 KeyItem k = keyList.get(i);
-                TextView t1 = new TextView(HostListActivity.this);
-                t1.setText(k.title());
-                t1.setTextColor(0xFFE8E8EC);
-                t1.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-                TextView t2 = new TextView(HostListActivity.this);
-                t2.setText(k.subtitle());
-                t2.setTextColor(0xFF8A8A94);
-                t2.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-                row.addView(t1);
-                row.addView(t2);
+                TextView tvName = row.findViewById(R.id.tv_key_name);
+                TextView tvSubtitle = row.findViewById(R.id.tv_key_subtitle);
+                TextView tvBadge = row.findViewById(R.id.tv_key_default_badge);
+                ImageButton btnMore = row.findViewById(R.id.btn_key_more);
+
+                tvName.setText(k.name);
+                tvSubtitle.setText(k.type + " · " + (k.fingerprint.length() > 22 ? k.fingerprint.substring(0, 22) + "..." : k.fingerprint));
+                tvBadge.setVisibility(k.isDefault ? View.VISIBLE : View.GONE);
+
+                Runnable showActions = () -> keyActionMenu(k, () -> {
+                    keyList.clear();
+                    keyList.addAll(KeyManager.getKeys(HostListActivity.this));
+                    notifyDataSetChanged();
+                    adapter.notifyDataSetChanged();
+                });
+
+                row.setOnClickListener(v -> showActions.run());
+                btnMore.setOnClickListener(v -> showActions.run());
+
                 return row;
             }
         };
-        lv.setAdapter(keyAdapter);
 
-        box.addView(lv, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, dp(260), 0));
+        lv.setAdapter(keyAdapter);
 
         Runnable refreshList = () -> {
             keyList.clear();
@@ -335,24 +363,17 @@ public class HostListActivity extends AppCompatActivity {
             adapter.notifyDataSetChanged();
         };
 
-        lv.setOnItemClickListener((p, v, pos, id) -> {
-            KeyItem selected = keyList.get(pos);
-            keyActionMenu(selected, refreshList);
-        });
+        root.findViewById(R.id.btn_generate_key).setOnClickListener(v -> generateKeyDialog(refreshList));
+        root.findViewById(R.id.btn_import_key).setOnClickListener(v -> importKeyDialog(refreshList));
+        root.findViewById(R.id.btn_close_key_mgr).setOnClickListener(v -> dialog.dismiss());
 
-        new AlertDialog.Builder(this)
-                .setTitle("密钥管理（点击管理单个密钥）")
-                .setView(box)
-                .setPositiveButton("＋ 生成密钥", (d, w) -> generateKeyDialog(refreshList))
-                .setNeutralButton("导入私钥", (d, w) -> importKeyDialog(refreshList))
-                .setNegativeButton("关闭", null)
-                .show();
+        dialog.show();
     }
 
     private void keyActionMenu(KeyItem k, Runnable onRefresh) {
         String[] actions = new String[]{"查看 / 复制公钥", "设为默认密钥", "重命名", "删除密钥"};
-        new AlertDialog.Builder(this)
-                .setTitle(k.name + (k.isDefault ? " 【默认】" : ""))
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(k.name + (k.isDefault ? " 【默认密钥】" : ""))
                 .setItems(actions, (d, which) -> {
                     switch (which) {
                         case 0:
@@ -375,159 +396,142 @@ public class HostListActivity extends AppCompatActivity {
     }
 
     private void showKeyDetailDialog(KeyItem k) {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(10), dp(20), dp(10));
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_key_detail, null);
+        dialog.setContentView(root);
 
-        TextView info = new TextView(this);
-        info.setText("类型: " + k.type + "\n指纹: " + k.fingerprint);
-        info.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        info.setTextColor(0xFF8A8A94);
-        box.addView(info);
+        TextView tvName = root.findViewById(R.id.tv_detail_key_name);
+        TextView tvInfo = root.findViewById(R.id.tv_detail_key_info);
+        TextView tvPub = root.findViewById(R.id.tv_detail_pubkey);
 
-        TextView pubText = new TextView(this);
-        pubText.setText(k.publicKey);
-        pubText.setTextIsSelectable(true);
-        pubText.setTextSize(TypedValue.COMPLEX_UNIT_SP, 11);
-        pubText.setTextColor(0xFFE6E6EA);
-        pubText.setPadding(0, dp(10), 0, dp(10));
-        box.addView(pubText);
+        tvName.setText(k.name + " 公钥");
+        tvInfo.setText("算法: " + k.type + "\n指纹: " + k.fingerprint);
+        tvPub.setText(k.publicKey);
 
-        new AlertDialog.Builder(this)
-                .setTitle(k.name + " 公钥")
-                .setView(box)
-                .setPositiveButton("复制公钥", (d, w) -> {
-                    ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                    if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("SSH 公钥", k.publicKey));
-                    Toast.makeText(this, "已复制公钥到剪贴板", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("关闭", null)
-                .show();
+        root.findViewById(R.id.btn_copy_pubkey).setOnClickListener(v -> {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm != null) {
+                cm.setPrimaryClip(ClipData.newPlainText("SSH 公钥", k.publicKey));
+            }
+            Toast.makeText(this, "已复制公钥到剪贴板", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        });
+
+        root.findViewById(R.id.btn_close_detail).setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
     }
 
     private void generateKeyDialog(Runnable onRefresh) {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(8), dp(20), dp(8));
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_generate_key, null);
+        dialog.setContentView(root);
 
-        EditText eName = field("新建密钥", "密钥名称（例如：个人服务器）", InputType.TYPE_CLASS_TEXT, box);
+        TextInputEditText etName = root.findViewById(R.id.et_gen_key_name);
+        TextInputEditText etPass = root.findViewById(R.id.et_gen_key_pass);
+        TextInputEditText etComment = root.findViewById(R.id.et_gen_key_comment);
+        TextView tvType = root.findViewById(R.id.tv_gen_key_type);
 
         final String[] types = new String[]{"RSA-3072（推荐）", "RSA-2048", "RSA-4096", "ECDSA-256", "ECDSA-384"};
         final String[] typeVals = new String[]{"RSA-3072", "RSA-2048", "RSA-4096", "ECDSA-256", "ECDSA-384"};
         final int[] selectedTypeIdx = new int[]{0};
 
-        Button bType = button("密钥类型：" + types[0], null);
-        bType.setTextAlignment(View.TEXT_ALIGNMENT_VIEW_START);
-        box.addView(bType, lp(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT, 0));
-
-        bType.setOnClickListener(v -> {
-            new AlertDialog.Builder(this)
-                    .setTitle("选择密钥类型")
+        root.findViewById(R.id.layout_select_gen_type).setOnClickListener(v -> {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("选择算法与位长")
                     .setSingleChoiceItems(types, selectedTypeIdx[0], (d, which) -> {
                         selectedTypeIdx[0] = which;
-                        bType.setText("密钥类型：" + types[which]);
+                        tvType.setText("算法类型：" + types[which]);
                         d.dismiss();
                     })
                     .show();
         });
 
-        EditText ePass = field("", "私钥保护口令（可选，留空则免密码）",
-                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD, box);
-        EditText eComment = field("", "公钥注释（可选，留空则自动生成）", InputType.TYPE_CLASS_TEXT, box);
+        root.findViewById(R.id.btn_cancel_gen).setOnClickListener(v -> dialog.dismiss());
+        root.findViewById(R.id.btn_confirm_gen).setOnClickListener(v -> {
+            String name = etName.getText() != null ? etName.getText().toString().trim() : "";
+            if (name.isEmpty()) name = "新建密钥";
+            String finalName = name;
+            String type = typeVals[selectedTypeIdx[0]];
+            String pass = etPass.getText() != null ? etPass.getText().toString() : "";
+            String comment = etComment.getText() != null ? etComment.getText().toString() : "";
 
-        new AlertDialog.Builder(this)
-                .setTitle("生成新 SSH 密钥")
-                .setView(box)
-                .setPositiveButton("生成", (d, w) -> {
-                    String name = eName.getText().toString().trim();
-                    if (name.isEmpty()) name = "新建密钥";
-                    String finalName = name;
-                    String type = typeVals[selectedTypeIdx[0]];
-                    String pass = ePass.getText().toString();
-                    String comment = eComment.getText().toString();
+            Toast.makeText(this, "正在生成密钥对，请稍候...", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
 
-                    Toast.makeText(this, "正在生成密钥对，请稍候...", Toast.LENGTH_SHORT).show();
-                    new Thread(() -> {
-                        try {
-                            KeyItem item = KeyManager.generateKey(HostListActivity.this, finalName, type, pass, comment);
-                            runOnUiThread(() -> {
-                                Toast.makeText(HostListActivity.this, "已生成密钥：" + item.name, Toast.LENGTH_SHORT).show();
-                                onRefresh.run();
-                                showKeyDetailDialog(item);
-                            });
-                        } catch (Throwable t) {
-                            runOnUiThread(() -> {
-                                new AlertDialog.Builder(HostListActivity.this)
-                                        .setTitle("生成失败")
-                                        .setMessage(t.getMessage())
-                                        .setPositiveButton("确定", null)
-                                        .show();
-                            });
-                        }
-                    }).start();
-                })
-                .setNegativeButton("取消", null)
-                .show();
+            new Thread(() -> {
+                try {
+                    KeyItem item = KeyManager.generateKey(HostListActivity.this, finalName, type, pass, comment);
+                    runOnUiThread(() -> {
+                        Toast.makeText(HostListActivity.this, "已生成密钥: " + item.name, Toast.LENGTH_SHORT).show();
+                        onRefresh.run();
+                        showKeyDetailDialog(item);
+                    });
+                } catch (Throwable t) {
+                    runOnUiThread(() -> new MaterialAlertDialogBuilder(HostListActivity.this)
+                            .setTitle("生成失败")
+                            .setMessage(t.getMessage())
+                            .setPositiveButton("确定", null)
+                            .show());
+                }
+            }).start();
+        });
+
+        dialog.show();
     }
 
     private void importKeyDialog(Runnable onRefresh) {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(8), dp(20), dp(8));
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_import_key, null);
+        dialog.setContentView(root);
 
-        EditText eName = field("", "密钥名称（例如：导入的 GitHub 密钥）", InputType.TYPE_CLASS_TEXT, box);
+        TextInputEditText etName = root.findViewById(R.id.et_import_key_name);
+        TextInputEditText etContent = root.findViewById(R.id.et_import_key_content);
+        TextInputEditText etPass = root.findViewById(R.id.et_import_key_pass);
 
-        EditText eKey = new EditText(this);
-        eKey.setHint("粘贴 OpenSSH / PEM 格式私钥内容\n-----BEGIN ... PRIVATE KEY-----");
-        eKey.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
-        eKey.setMinLines(5);
-        eKey.setMaxLines(10);
-        eKey.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        box.addView(eKey, lp(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT, 0));
+        root.findViewById(R.id.btn_cancel_import).setOnClickListener(v -> dialog.dismiss());
+        root.findViewById(R.id.btn_confirm_import).setOnClickListener(v -> {
+            String name = etName.getText() != null ? etName.getText().toString().trim() : "";
+            if (name.isEmpty()) name = "导入密钥";
+            String keyText = etContent.getText() != null ? etContent.getText().toString().trim() : "";
+            String pass = etPass.getText() != null ? etPass.getText().toString() : "";
 
-        EditText ePass = field("", "私钥加密口令（若未加密可留空）",
-                InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD, box);
+            if (keyText.isEmpty()) {
+                Toast.makeText(this, "请粘贴私钥内容", Toast.LENGTH_SHORT).show();
+                return;
+            }
 
-        new AlertDialog.Builder(this)
-                .setTitle("导入已有私钥")
-                .setView(box)
-                .setPositiveButton("导入", (d, w) -> {
-                    String name = eName.getText().toString().trim();
-                    if (name.isEmpty()) name = "导入密钥";
-                    String keyText = eKey.getText().toString().trim();
-                    String pass = ePass.getText().toString();
+            try {
+                KeyItem item = KeyManager.importKey(this, name, keyText, pass);
+                dialog.dismiss();
+                Toast.makeText(this, "已成功导入密钥: " + item.name, Toast.LENGTH_SHORT).show();
+                onRefresh.run();
+                showKeyDetailDialog(item);
+            } catch (Throwable t) {
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle("导入失败")
+                        .setMessage(t.getMessage())
+                        .setPositiveButton("确定", null)
+                        .show();
+            }
+        });
 
-                    try {
-                        KeyItem item = KeyManager.importKey(this, name, keyText, pass);
-                        Toast.makeText(this, "已成功导入密钥：" + item.name, Toast.LENGTH_SHORT).show();
-                        onRefresh.run();
-                        showKeyDetailDialog(item);
-                    } catch (Throwable t) {
-                        new AlertDialog.Builder(this)
-                                .setTitle("导入失败")
-                                .setMessage(t.getMessage())
-                                .setPositiveButton("确定", null)
-                                .show();
-                    }
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        dialog.show();
     }
 
     private void renameKeyDialog(KeyItem k, Runnable onRefresh) {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(8), dp(20), dp(8));
-        EditText e = field(k.name, "新名称", InputType.TYPE_CLASS_TEXT, box);
+        TextInputEditText et = new TextInputEditText(this);
+        et.setText(k.name);
+        et.setHint("新密钥名称");
 
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("重命名密钥")
-                .setView(box)
+                .setView(et)
                 .setPositiveButton("保存", (d, w) -> {
-                    String newName = e.getText().toString().trim();
+                    String newName = et.getText() != null ? et.getText().toString().trim() : "";
                     if (!newName.isEmpty()) {
                         KeyManager.renameKey(this, k.id, newName);
                         onRefresh.run();
+                        Toast.makeText(this, "已重命名", Toast.LENGTH_SHORT).show();
                     }
                 })
                 .setNegativeButton("取消", null)
@@ -544,16 +548,15 @@ public class HostListActivity extends AppCompatActivity {
         List<Host> inUse = HostStore.getHostsUsingKey(this, k.id);
         String msg = "确认删除密钥 \"" + k.name + "\"？";
         if (!inUse.isEmpty()) {
-            msg += "\n\n注意：有 " + inUse.size() + " 台主机当前绑定了此密钥，删除后这些主机将自动改用默认密钥。";
+            msg += "\n\n注意：有 " + inUse.size() + " 台主机当前绑定了此密钥，删除后将自动改用默认密钥。";
         }
 
-        new AlertDialog.Builder(this)
+        new MaterialAlertDialogBuilder(this)
                 .setTitle("删除密钥")
                 .setMessage(msg)
                 .setPositiveButton("删除", (d, w) -> {
                     boolean ok = KeyManager.deleteKey(this, k.id);
                     if (ok) {
-                        // 重置受影响的主机绑定的密钥为默认
                         boolean hostChanged = false;
                         for (Host h : hosts) {
                             if (k.id.equals(h.keyId)) {
@@ -572,58 +575,59 @@ public class HostListActivity extends AppCompatActivity {
                 .show();
     }
 
-    /** 设置：终端边距、目标列数（都可自己调）。 */
+    /** 终端设置：Pixel 风格 BottomSheet 抽屉 */
     private void settingsDialog() {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(8), dp(20), dp(8));
-        final EditText eInset = field(String.valueOf(HostStore.getEdgeInset(this, 3)),
-                "终端四周留边（dp，0=贴边；曲面屏建议 3~8）", InputType.TYPE_CLASS_NUMBER, box);
-        final EditText eCols = field(String.valueOf(HostStore.getTargetCols(this, 150)),
-                "目标列数（越小字越大；进终端后也能捏合缩放）", InputType.TYPE_CLASS_NUMBER, box);
-        new AlertDialog.Builder(this)
-                .setTitle("设置（保存后下次进终端生效）")
-                .setView(box)
-                .setPositiveButton("保存", (d, w) -> {
-                    try {
-                        HostStore.setEdgeInset(this,
-                                Integer.parseInt(eInset.getText().toString().trim()));
-                    } catch (Throwable ignored) {
-                    }
-                    try {
-                        HostStore.setTargetCols(this,
-                                Integer.parseInt(eCols.getText().toString().trim()));
-                    } catch (Throwable ignored) {
-                    }
-                    Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
-                })
-                .setNegativeButton("取消", null)
-                .show();
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_settings, null);
+        dialog.setContentView(root);
+
+        TextInputEditText etInset = root.findViewById(R.id.et_settings_inset);
+        TextInputEditText etCols = root.findViewById(R.id.et_settings_cols);
+
+        etInset.setText(String.valueOf(HostStore.getEdgeInset(this, 3)));
+        etCols.setText(String.valueOf(HostStore.getTargetCols(this, 150)));
+
+        root.findViewById(R.id.btn_cancel_settings).setOnClickListener(v -> dialog.dismiss());
+        root.findViewById(R.id.btn_save_settings).setOnClickListener(v -> {
+            try {
+                if (etInset.getText() != null) {
+                    HostStore.setEdgeInset(this, Integer.parseInt(etInset.getText().toString().trim()));
+                }
+            } catch (Throwable ignored) {}
+            try {
+                if (etCols.getText() != null) {
+                    HostStore.setTargetCols(this, Integer.parseInt(etCols.getText().toString().trim()));
+                }
+            } catch (Throwable ignored) {}
+            dialog.dismiss();
+            Toast.makeText(this, "已保存终端设置", Toast.LENGTH_SHORT).show();
+        });
+
+        dialog.show();
     }
 
-    /** 扩展按键栏定制（学 Termux 的 extra-keys，但用一行文本配置）。 */
+    /** 扩展按键定制：Pixel 风格 BottomSheet 抽屉 */
     private void extraKeysDialog() {
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(20), dp(8), dp(20), dp(8));
-        TextView legend = new TextView(this);
-        legend.setText(ExtraKeys.legend());
-        legend.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12);
-        box.addView(legend);
-        final EditText e = new EditText(this);
-        e.setText(ExtraKeys.get(this));
-        e.setInputType(InputType.TYPE_CLASS_TEXT);
-        box.addView(e, lp(LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT, 0));
-        new AlertDialog.Builder(this)
-                .setTitle("扩展按键（下次进终端生效）")
-                .setView(box)
-                .setPositiveButton("保存", (d, w) -> {
-                    ExtraKeys.set(this, e.getText().toString());
-                    Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
-                })
-                .setNeutralButton("恢复默认", (d, w) -> ExtraKeys.set(this, ExtraKeys.DEFAULT))
-                .setNegativeButton("取消", null)
-                .show();
+        BottomSheetDialog dialog = new BottomSheetDialog(this);
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_extra_keys, null);
+        dialog.setContentView(root);
+
+        TextInputEditText et = root.findViewById(R.id.et_extra_keys_config);
+        et.setText(ExtraKeys.get(this));
+
+        root.findViewById(R.id.btn_reset_extra_keys).setOnClickListener(v -> {
+            et.setText(ExtraKeys.DEFAULT);
+            ExtraKeys.set(this, ExtraKeys.DEFAULT);
+            Toast.makeText(this, "已恢复默认扩展按键", Toast.LENGTH_SHORT).show();
+        });
+
+        root.findViewById(R.id.btn_save_extra_keys).setOnClickListener(v -> {
+            String val = et.getText() != null ? et.getText().toString().trim() : "";
+            ExtraKeys.set(this, val.isEmpty() ? ExtraKeys.DEFAULT : val);
+            dialog.dismiss();
+            Toast.makeText(this, "已保存扩展按键", Toast.LENGTH_SHORT).show();
+        });
+
+        dialog.show();
     }
 }

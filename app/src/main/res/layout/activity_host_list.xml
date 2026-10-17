@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/md_theme_background"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+
+        <!-- Pixel 风格大标题顶栏 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingTop="20dp"
+            android:paddingEnd="20dp"
+            android:paddingBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tv_app_title"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="bakaSSH"
+                    android:textColor="@color/md_theme_onSurface"
+                    android:textSize="30sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-medium" />
+
+                <!-- 状态呼吸指示器 -->
+                <View
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_avatar_host"
+                    android:backgroundTint="@color/status_connected_dot" />
+
+                <TextView
+                    android:id="@+id/tv_status_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="就绪"
+                    android:textColor="@color/status_connected_dot"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/tv_host_subtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="点按卡片立即连接 · 长按管理配置"
+                android:textColor="@color/md_theme_onSurfaceVariant"
+                android:textSize="13sp" />
+
+            <!-- Pixel 风格快捷 Action Chips 栏 -->
+            <HorizontalScrollView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:scrollbars="none"
+                android:overScrollMode="never">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <!-- 密钥管理 Chip -->
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_manage_keys"
+                        style="@style/Widget.Material3.Chip.Assist"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="密钥管理"
+                        android:textColor="@color/md_theme_onSurface"
+                        app:chipIcon="@drawable/ic_key"
+                        app:chipIconTint="@color/md_theme_primary"
+                        app:chipCornerRadius="16dp"
+                        app:chipBackgroundColor="@color/md_theme_surfaceContainerHigh"
+                        app:chipStrokeWidth="0dp" />
+
+                    <!-- 扩展按键 Chip -->
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_extra_keys"
+                        style="@style/Widget.Material3.Chip.Assist"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="扩展按键"
+                        android:textColor="@color/md_theme_onSurface"
+                        app:chipIcon="@drawable/ic_keyboard"
+                        app:chipIconTint="@color/md_theme_primary"
+                        app:chipCornerRadius="16dp"
+                        app:chipBackgroundColor="@color/md_theme_surfaceContainerHigh"
+                        app:chipStrokeWidth="0dp" />
+
+                    <!-- 终端设置 Chip -->
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chip_settings"
+                        style="@style/Widget.Material3.Chip.Assist"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="设置"
+                        android:textColor="@color/md_theme_onSurface"
+                        app:chipIcon="@drawable/ic_settings"
+                        app:chipIconTint="@color/md_theme_primary"
+                        app:chipCornerRadius="16dp"
+                        app:chipBackgroundColor="@color/md_theme_surfaceContainerHigh"
+                        app:chipStrokeWidth="0dp" />
+                </LinearLayout>
+            </HorizontalScrollView>
+        </LinearLayout>
+
+        <!-- 主机卡片列表容器 -->
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1">
+
+            <ListView
+                android:id="@+id/list_hosts"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:divider="@null"
+                android:dividerHeight="0dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="88dp"
+                android:clipToPadding="false"
+                android:scrollbars="none"
+                android:overScrollMode="ifContentScrolls" />
+
+            <!-- 空状态布局 -->
+            <LinearLayout
+                android:id="@+id/layout_empty_state"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="32dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:background="@drawable/bg_avatar_host"
+                    android:backgroundTint="@color/md_theme_surfaceContainerHigh"
+                    android:padding="16dp"
+                    android:src="@drawable/ic_server"
+                    app:tint="@color/md_theme_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:text="暂无主机"
+                    android:textColor="@color/md_theme_onSurface"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:text="点击右下角的「新建主机」按钮，\n配置并连接到你的远程服务器。"
+                    android:textColor="@color/md_theme_onSurfaceVariant"
+                    android:textSize="14sp"
+                    android:lineSpacingExtra="4dp" />
+            </LinearLayout>
+        </FrameLayout>
+    </LinearLayout>
+
+    <!-- Pixel 风格 Extended FAB -->
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fab_add_host"
+        android:layout_width="wrap_content"
+        android:layout_height="56dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="24dp"
+        android:text="新建主机"
+        android:textColor="@color/md_theme_onPrimaryContainer"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        app:icon="@drawable/ic_add"
+        app:iconTint="@color/md_theme_onPrimaryContainer"
+        app:iconSize="22dp"
+        app:backgroundTint="@color/md_theme_primaryContainer"
+        app:cornerRadius="18dp"
+        app:elevation="4dp" />
+
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

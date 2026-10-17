@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0C0E12"
+    android:orientation="vertical"
+    android:fitsSystemWindows="false">
+
+    <!-- Pixel 风格顶部轻量药丸状态栏 -->
+    <LinearLayout
+        android:id="@+id/layout_terminal_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="44dp"
+        android:layout_marginStart="12dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="12dp"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/bg_chip_tag"
+        android:backgroundTint="@color/status_bar_bg"
+        android:gravity="center_vertical"
+        android:paddingStart="14dp"
+        android:paddingEnd="6dp">
+
+        <!-- 连通状态绿点 -->
+        <View
+            android:id="@+id/view_term_status_dot"
+            android:layout_width="8dp"
+            android:layout_height="8dp"
+            android:background="@drawable/bg_avatar_host"
+            android:backgroundTint="@color/status_connected_dot" />
+
+        <TextView
+            android:id="@+id/tv_term_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="10dp"
+            android:layout_weight="1"
+            android:singleLine="true"
+            android:ellipsize="middle"
+            android:text="SSH 终端"
+            android:textColor="@color/md_theme_onSurface"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium" />
+
+        <TextView
+            android:id="@+id/tv_term_cols"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:text="150列"
+            android:textColor="@color/md_theme_onSurfaceVariant"
+            android:textSize="11sp" />
+
+        <!-- 快捷操作按钮：粘贴 -->
+        <ImageButton
+            android:id="@+id/btn_term_paste"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="粘贴"
+            android:padding="7dp"
+            android:src="@drawable/ic_content_copy"
+            app:tint="@color/md_theme_onSurfaceVariant" />
+
+        <!-- 快捷操作按钮：唤出键盘 -->
+        <ImageButton
+            android:id="@+id/btn_term_keyboard"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="键盘"
+            android:padding="7dp"
+            android:src="@drawable/ic_keyboard"
+            app:tint="@color/md_theme_onSurfaceVariant" />
+
+        <!-- 快捷操作按钮：断开退出 -->
+        <ImageButton
+            android:id="@+id/btn_term_exit"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_marginStart="2dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="断开连接"
+            android:padding="7dp"
+            android:src="@drawable/ic_delete"
+            app:tint="@color/md_theme_error" />
+    </LinearLayout>
+
+    <!-- 终端视图容器 -->
+    <FrameLayout
+        android:id="@+id/layout_terminal_container"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <dev.northwind.bakassh.TerminalView
+            android:id="@+id/terminal_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </FrameLayout>
+
+    <!-- 底部扩展按键栏容器 -->
+    <LinearLayout
+        android:id="@+id/layout_extra_keys_box"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/md_theme_surfaceContainer"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:orientation="vertical" />
+
+</LinearLayout>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Pixel Material 3 (Monet-inspired) 色彩系统 -->
+
+    <!-- 主色与高亮 (Google Blue) -->
+    <color name="md_theme_primary">#A8C7FA</color>
+    <color name="md_theme_onPrimary">#00315B</color>
+    <color name="md_theme_primaryContainer">#004A77</color>
+    <color name="md_theme_onPrimaryContainer">#C2E7FF</color>
+
+    <!-- 次主色 -->
+    <color name="md_theme_secondary">#BCC7DB</color>
+    <color name="md_theme_onSecondary">#263141</color>
+    <color name="md_theme_secondaryContainer">#3D4758</color>
+    <color name="md_theme_onSecondaryContainer">#D8E3F8</color>
+
+    <!-- 三级/强调色 (Pixel 薄荷绿/绿松石) -->
+    <color name="md_theme_tertiary">#6DD58C</color>
+    <color name="md_theme_onTertiary">#0A3818</color>
+    <color name="md_theme_tertiaryContainer">#1E522D</color>
+    <color name="md_theme_onTertiaryContainer">#A8F2B5</color>
+
+    <!-- 错误色 -->
+    <color name="md_theme_error">#F2B8B5</color>
+    <color name="md_theme_onError">#601410</color>
+    <color name="md_theme_errorContainer">#8C1D18</color>
+    <color name="md_theme_onErrorContainer">#F9DEDC</color>
+
+    <!-- 表面与背景 (Pixel 深色模式多级色阶) -->
+    <color name="md_theme_background">#111318</color>
+    <color name="md_theme_onBackground">#E2E2E6</color>
+
+    <color name="md_theme_surface">#111318</color>
+    <color name="md_theme_onSurface">#E2E2E6</color>
+    <color name="md_theme_surfaceVariant">#44474E</color>
+    <color name="md_theme_onSurfaceVariant">#C4C6D0</color>
+
+    <color name="md_theme_surfaceContainerLowest">#0C0E13</color>
+    <color name="md_theme_surfaceContainerLow">#191C20</color>
+    <color name="md_theme_surfaceContainer">#1D2024</color>
+    <color name="md_theme_surfaceContainerHigh">#282A2F</color>
+    <color name="md_theme_surfaceContainerHighest">#33353A</color>
+
+    <color name="md_theme_outline">#8E9099</color>
+    <color name="md_theme_outlineVariant">#44474E</color>
+
+    <!-- 辅助/特殊状态色 -->
+    <color name="key_default_badge_bg">#3E381A</color>
+    <color name="key_default_badge_text">#FFDF70</color>
+    <color name="status_connected_dot">#6DD58C</color>
+    <color name="status_bar_bg">#1A1D22</color>
+    <color name="terminal_extra_key_bg">#252930</color>
+    <color name="terminal_extra_key_active_bg">#004A77</color>
+    <color name="terminal_extra_key_active_text">#C2E7FF</color>
+</resources>

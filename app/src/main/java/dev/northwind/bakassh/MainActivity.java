@@ -5,6 +5,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Editable;
@@ -14,41 +15,48 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.BaseInputConnection;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputConnectionWrapper;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 
 import java.io.File;
 import java.io.FileWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 /**
- * 终端界面：SSH + 位图字体渲染 + IME 输入 + 触摸滚动 + 长按选择复制 + 捏合缩放。
- *
- * 主机参数从 Intent 来（由 HostListActivity 传入）；startup 是连上后自动执行的命令。
+ * 终端界面：Pixel 现代风格顶栏 + Material 3 药丸扩展按键 + SSH + 位图字体渲染 + 触摸滚动与真实缩放。
  */
-public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
+public class MainActivity extends AppCompatActivity {
 
-    /**
-     * 终端四周留边（dp）。贴边对曲面屏/圆角屏不友好——内容会被边缘弯折或裁掉，
-     * 所以留一点安全边距。改这个数即可（3 就够细，想更宽可以调大）。
-     */
     private static final int EDGE_INSET_DP = 3;
-
     private static final String TAG = "sshterm";
 
     private TerminalView view;
     private EditText input;
-    private Button ctrlButton;
-    private Button altButton;
-    private Button shiftButton;
+    private MaterialButton ctrlButton;
+    private MaterialButton altButton;
+    private MaterialButton shiftButton;
+    private TextView tvTermTitle;
+    private TextView tvTermCols;
+    private LinearLayout layoutExtraKeysBox;
     private android.view.ActionMode selectionActionMode;
     private long handle;
     private Thread worker;
@@ -56,10 +64,11 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private volatile boolean sessionStarted;
     private volatile SshTransport transport;
     private final PendingResize pendingResize = new PendingResize();
+
     /** 粘滞修饰键：点一下点亮，作用于下一个输入的键。 */
     private boolean ctrlOn, altOn, shiftOn;
 
-    // 连接参数（来自 Intent，缺省用一份保守默认值）
+    // 连接参数
     private String hName = "";
     private String hHost = "";
     private int hPort = 22;
@@ -85,6 +94,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        setContentView(R.layout.activity_terminal);
 
         Intent it = getIntent();
         if (it != null) {
@@ -101,26 +111,32 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         try {
             File f = new File(getExternalFilesDir(null), "m1a.txt");
             if (f.exists() && !f.delete()) Log.i(TAG, "old m1a.txt delete failed");
-        } catch (Throwable ignored) {
-        }
+        } catch (Throwable ignored) {}
 
-        LinearLayout root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(0xFF101014);
-
-        view = new TerminalView(this);
+        view = findViewById(R.id.terminal_view);
         view.setPreferredColumns(HostStore.getZoomColumns(this, 150));
-        LinearLayout.LayoutParams vlp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f);
-        int inset = dp(HostStore.getEdgeInset(this, EDGE_INSET_DP));
-        vlp.setMargins(inset, inset, inset, inset);   // 四周留边，别贴屏幕边缘
-        root.addView(view, vlp);
 
-        root.addView(buildExtraKeys());
+        FrameLayout container = findViewById(R.id.layout_terminal_container);
+        int inset = dp(HostStore.getEdgeInset(this, EDGE_INSET_DP));
+        FrameLayout.LayoutParams vlp = (FrameLayout.LayoutParams) view.getLayoutParams();
+        vlp.setMargins(inset, inset, inset, inset);
+        view.setLayoutParams(vlp);
+
+        tvTermTitle = findViewById(R.id.tv_term_title);
+        tvTermCols = findViewById(R.id.tv_term_cols);
+        String displayTitle = (hName != null && !hName.trim().isEmpty()) ? hName : (hUser + "@" + hHost);
+        tvTermTitle.setText(displayTitle);
+        tvTermCols.setText(HostStore.getZoomColumns(this, 150) + "列");
+
+        findViewById(R.id.btn_term_paste).setOnClickListener(v -> pasteFromClipboard());
+        findViewById(R.id.btn_term_keyboard).setOnClickListener(v -> showIme());
+        findViewById(R.id.btn_term_exit).setOnClickListener(v -> finish());
+
+        layoutExtraKeysBox = findViewById(R.id.layout_extra_keys_box);
+        populateExtraKeys();
 
         /*
-         * 输入框保存输入法的组词内容，只在 commitText / finishComposingText 时发给远端。
-         * 空输入框里的退格和方向键另外转发为终端按键。
+         * 透明输入框用于接收输入法文本和组词，不干扰整体界面布局。
          */
         input = new androidx.appcompat.widget.AppCompatEditText(this) {
             @Override
@@ -131,7 +147,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     @Override
                     public boolean commitText(CharSequence text, int newCursorPosition) {
                         if (text != null && text.length() > 0) sendTyped(text.toString());
-                        // Keep composing text local; only committed text goes to SSH.
                         super.commitText("", 1);
                         input.getText().clear();
                         return true;
@@ -184,15 +199,13 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         input.setImeOptions(EditorInfo.IME_ACTION_NONE
                 | EditorInfo.IME_FLAG_NO_FULLSCREEN
                 | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
-        root.addView(input, new LinearLayout.LayoutParams(1, 1));
+        container.addView(input, new FrameLayout.LayoutParams(1, 1));
 
-        setContentView(root);
         out(this, "START device=" + android.os.Build.MODEL + " sdk=" + android.os.Build.VERSION.SDK_INT
                 + " target=" + hUser + "@" + hHost + ":" + hPort
                 + " startup=\"" + hStartup + "\" cols=" + view.getCols());
         running = true;
         startIoThread();
-
     }
 
     private void updateSelectionToolbar(boolean active) {
@@ -239,7 +252,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private void copySelection() {
         String t = view.getSelectionText();
         if (t.isEmpty()) {
-            toast("没选中文本");
+            toast("未选中文本");
             return;
         }
         ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
@@ -252,7 +265,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private void pasteFromClipboard() {
         ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (cm == null || !cm.hasPrimaryClip() || cm.getPrimaryClip() == null) {
-            toast("剪贴板是空的");
+            toast("剪贴板为空");
             return;
         }
         CharSequence cs = cm.getPrimaryClip().getItemAt(0).coerceToText(this);
@@ -267,14 +280,9 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private void toast(String s) {
         try {
             Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
-        } catch (Throwable ignored) {
-        }
+        } catch (Throwable ignored) {}
     }
 
-    /**
-     * 把「不产生文本的按键」翻译成终端字节；返回 true 表示已处理。
-     * 退格必须发 DEL(0x7f)，这是终端约定（发 0x08 在不少程序里是别的意思）。
-     */
     private boolean sendTerminalKey(int keyCode) {
         String seq = null;
         switch (keyCode) {
@@ -314,7 +322,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         }
     }
 
-    /** 硬键盘/系统按键：直接喂终端，别让输入框吃掉。 */
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
         if (handle != 0 && input != null && BaseInputConnection.getComposingSpanStart(input.getText()) < 0) {
@@ -322,7 +329,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 if (e.getAction() == KeyEvent.ACTION_DOWN) sendTerminalKey(e.getKeyCode());
                 return true;
             }
-            // Physical keyboards produce KeyEvents instead of commitText.
             int cp = e.getUnicodeChar(e.getMetaState() & ~KeyEvent.META_CTRL_MASK);
             if (cp > 0 && Character.isValidCodePoint(cp)) {
                 if (e.getAction() == KeyEvent.ACTION_DOWN) {
@@ -336,24 +342,18 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         return super.dispatchKeyEvent(e);
     }
 
-    /** 扩展按键栏：按配置渲染（默认两行，学 Termux 的 extra-keys）。 */
-    private View buildExtraKeys() {
-        java.util.List<String[]> rows = ExtraKeys.parse(ExtraKeys.get(this));
-        /*
-         * 关键：所有行都按「最大列数」切成等宽槽位，每键恰好 1 槽，不足的行用不可见占位补满。
-         * 之前每行各自按 weight 均分 → 8 键的行和 10 键的行键宽不同，方向键对不齐、上下不一样大。
-         */
+    /** 构造 Pixel Material 3 风格扩展按键栏 */
+    private void populateExtraKeys() {
+        layoutExtraKeysBox.removeAllViews();
+        List<String[]> rows = ExtraKeys.parse(ExtraKeys.get(this));
         int slots = 1;
         for (String[] r : rows) slots = Math.max(slots, r.length);
 
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setBackgroundColor(0xFF17171C);
         for (String[] rowKeys : rows) {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             for (String key : rowKeys) {
-                Button b = keyButton(labelFor(key));
+                MaterialButton b = keyButton(labelFor(key));
                 b.setTag(key);
                 b.setOnClickListener(v -> onExtraKey((String) v.getTag()));
                 String n = key.toUpperCase();
@@ -363,9 +363,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 row.addView(b, slotLp());
             }
             for (int i = rowKeys.length; i < slots; i++) row.addView(new View(this), slotLp());
-            box.addView(row);
+            layoutExtraKeysBox.addView(row);
         }
-        return box;
     }
 
     private int dp(int v) {
@@ -373,27 +372,21 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     }
 
     private LinearLayout.LayoutParams slotLp() {
-        /*
-         * 固定高度：MaterialButton 的默认最小高度很大，两行会把终端挤成 0 高度
-         * （实测：view=1256x0 → 终端塌成 1 行、远端 PTY 被设成 73x1）。
-         */
-        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(
-                0, dp(46), 1f);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(44), 1f);
         int m = dp(2);
         p.setMargins(m, m, m, m);
         return p;
     }
 
-    /** Material 3 圆角按键（Pixel 风格，带波纹）。 */
-    private Button keyButton(String text) {
-        com.google.android.material.button.MaterialButton b =
-                new com.google.android.material.button.MaterialButton(this);
+    /** Pixel Material 3 药丸圆角按键（高度与波纹适配） */
+    private MaterialButton keyButton(String text) {
+        MaterialButton b = new MaterialButton(this);
         b.setText(text);
         b.setAllCaps(false);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);   // 照 Termux：键大字也大
-        b.setSingleLine(true);          // 防止 HOME 之类被折成两行
-        b.setTextColor(0xFFE6E6EA);
-        b.setPadding(0, dp(6), 0, dp(6));
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        b.setSingleLine(true);
+        b.setTextColor(getResources().getColor(R.color.md_theme_onSurface));
+        b.setPadding(0, dp(4), 0, dp(4));
         b.setMinWidth(0);
         b.setMinimumWidth(0);
         b.setMinHeight(0);
@@ -401,8 +394,8 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         b.setGravity(Gravity.CENTER);
         b.setInsetTop(0);
         b.setInsetBottom(0);
-        b.setCornerRadius(dp(10));
-        b.setBackgroundTintList(android.content.res.ColorStateList.valueOf(0xFF2A2A31));
+        b.setCornerRadius(dp(12));
+        b.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.terminal_extra_key_bg)));
         return b;
     }
 
@@ -425,25 +418,52 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private void onExtraKey(String key) {
         String n = key.toUpperCase();
         if (ExtraKeys.isModifier(n)) {
-            if (n.equals("CTRL")) { ctrlOn = !ctrlOn; label(ctrlButton, "CTRL", ctrlOn); }
-            else if (n.equals("ALT")) { altOn = !altOn; label(altButton, "ALT", altOn); }
-            else { shiftOn = !shiftOn; label(shiftButton, "SHIFT", shiftOn); }
+            if (n.equals("CTRL")) {
+                ctrlOn = !ctrlOn;
+                updateModifierButtonState(ctrlButton, "CTRL", ctrlOn);
+            } else if (n.equals("ALT")) {
+                altOn = !altOn;
+                updateModifierButtonState(altButton, "ALT", altOn);
+            } else {
+                shiftOn = !shiftOn;
+                updateModifierButtonState(shiftButton, "SHIFT", shiftOn);
+            }
             return;
         }
-        if (n.equals("FONT-")) { view.scaleFontBy(1f / 1.1f); return; }
-        if (n.equals("FONT+")) { view.scaleFontBy(1.1f); return; }
-        if (n.equals("KEYBOARD")) { showIme(); return; }
-        if (n.equals("PASTE")) { pasteFromClipboard(); return; }
+        if (n.equals("FONT-")) {
+            view.scaleFontBy(1f / 1.1f);
+            return;
+        }
+        if (n.equals("FONT+")) {
+            view.scaleFontBy(1.1f);
+            return;
+        }
+        if (n.equals("KEYBOARD")) {
+            showIme();
+            return;
+        }
+        if (n.equals("PASTE")) {
+            pasteFromClipboard();
+            return;
+        }
         byte[] b = ExtraKeys.bytesFor(key);
         if (b != null) sendBytes(b);
         showIme();
     }
 
-    private void label(Button b, String name, boolean on) {
-        if (b != null) b.setText(on ? name + "*" : name);
+    /** 更新粘滞修饰键高亮状态（激活时点亮 Google Blue） */
+    private void updateModifierButtonState(MaterialButton b, String name, boolean on) {
+        if (b == null) return;
+        b.setText(on ? name + "★" : name);
+        if (on) {
+            b.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.terminal_extra_key_active_bg)));
+            b.setTextColor(getResources().getColor(R.color.terminal_extra_key_active_text));
+        } else {
+            b.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.terminal_extra_key_bg)));
+            b.setTextColor(getResources().getColor(R.color.md_theme_onSurface));
+        }
     }
 
-    /** 普通文本：直接按 UTF-8 发给远端；CTRL 生效时把字母转成控制字符。 */
     private void sendTyped(String s) {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < s.length(); ) {
@@ -460,18 +480,17 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                 else if (cp == '^') cp = 30;
                 else if (cp == '_') cp = 31;
                 ctrlOn = false;
-                label(ctrlButton, "CTRL", false);
+                updateModifierButtonState(ctrlButton, "CTRL", false);
             }
-            // ALT = ESC 前缀（终端里 meta 的通用约定）
             if (altOn) {
                 sb.append('\u001b');
                 altOn = false;
-                label(altButton, "ALT", false);
+                updateModifierButtonState(altButton, "ALT", false);
             }
             if (shiftOn) {
                 cp = Character.toUpperCase(cp);
                 shiftOn = false;
-                label(shiftButton, "SHIFT", false);
+                updateModifierButtonState(shiftButton, "SHIFT", false);
             }
             sb.appendCodePoint(cp);
         }
@@ -481,14 +500,11 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
     private void sendBytes(byte[] b) {
         final SshTransport t = transport;
         if (t == null || !running) return;
-        // Preserve protocol reply order before user input, including replies
-        // generated by mouse events.
         pumpOutput();
         queueBytes(t, b);
     }
 
     private void queueBytes(SshTransport t, byte[] b) {
-        // 关键：绝不能在这里直接写 socket —— UI 线程做网络 IO 会抛 NetworkOnMainThreadException。
         postIo(() -> {
             try {
                 t.write(b);
@@ -498,7 +514,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         });
     }
 
-    /** 把 libvterm 产生、需要回给宿主的数据（DSR 应答、鼠标序列等）投递给 IO 线程。 */
     private void pumpOutput() {
         synchronized (NativeTerm.class) {
             final SshTransport t = transport;
@@ -539,8 +554,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             input.requestFocus();
             InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
             if (imm != null) imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT);
-        } catch (Throwable ignored) {
-        }
+        } catch (Throwable ignored) {}
     }
 
     @Override
@@ -583,15 +597,16 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
             }
         });
 
-        // 选择状态 → 显示/隐藏操作条
         view.setSelectionListener((active, hasRange) -> {
             updateSelectionToolbar(active);
             out(this, "SELECTION active=" + active + " hasRange=" + hasRange);
         });
 
-        // 捏合缩放后持久化列数（下次进来还是这个字号）
         view.setZoomListener(cols -> {
             HostStore.setZoomColumns(this, cols);
+            if (tvTermCols != null) {
+                tvTermCols.setText(cols + "列");
+            }
             out(this, "ZOOM targetCols=" + cols);
         });
 
@@ -605,13 +620,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
         transport = new SshTransport();
         worker = new Thread(this::sessionRunner, "session");
         worker.start();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        // Pausing (Home, app switch, screen lock) keeps this session alive.
-        // Activity destruction is the boundary at which we release it.
     }
 
     @Override
@@ -648,15 +656,31 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     final String[] pwdResult = new String[]{""};
                     final boolean[] cancelled = new boolean[]{false};
                     runOnUiThread(() -> {
-                        android.widget.EditText input = new android.widget.EditText(this);
-                        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                        input.setHint("请输入密码");
-                        new androidx.appcompat.app.AlertDialog.Builder(this)
-                                .setTitle("SSH 密码认证 (" + hUser + "@" + hHost + ")")
-                                .setView(input)
+                        LinearLayout box = new LinearLayout(this);
+                        box.setOrientation(LinearLayout.VERTICAL);
+                        box.setPadding(dp(24), dp(8), dp(24), dp(4));
+
+                        TextInputLayout textInputLayout = new TextInputLayout(this);
+                        textInputLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_FILLED);
+                        textInputLayout.setBoxBackgroundColor(getResources().getColor(R.color.md_theme_surfaceContainerHighest));
+                        textInputLayout.setBoxCornerRadii(dp(14), dp(14), dp(14), dp(14));
+                        textInputLayout.setPasswordVisibilityToggleEnabled(true);
+                        textInputLayout.setPasswordVisibilityToggleTintList(ColorStateList.valueOf(getResources().getColor(R.color.md_theme_onSurfaceVariant)));
+                        textInputLayout.setHint("请输入主机登录密码");
+
+                        TextInputEditText et = new TextInputEditText(this);
+                        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                        et.setTextColor(getResources().getColor(R.color.md_theme_onSurface));
+                        textInputLayout.addView(et);
+                        box.addView(textInputLayout);
+
+                        new MaterialAlertDialogBuilder(this)
+                                .setTitle("SSH 密码认证")
+                                .setMessage(hUser + "@" + hHost + ":" + hPort)
+                                .setView(box)
                                 .setCancelable(false)
                                 .setPositiveButton("连接", (d, w) -> {
-                                    pwdResult[0] = input.getText().toString();
+                                    pwdResult[0] = et.getText() != null ? et.getText().toString() : "";
                                     latch.countDown();
                                 })
                                 .setNegativeButton("取消", (d, w) -> {
@@ -684,15 +708,31 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     final String[] passResult = new String[]{""};
                     final boolean[] cancelled = new boolean[]{false};
                     runOnUiThread(() -> {
-                        android.widget.EditText input = new android.widget.EditText(this);
-                        input.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                        input.setHint("私钥口令");
-                        new androidx.appcompat.app.AlertDialog.Builder(this)
-                                .setTitle("解锁密钥：" + key.name)
-                                .setView(input)
+                        LinearLayout box = new LinearLayout(this);
+                        box.setOrientation(LinearLayout.VERTICAL);
+                        box.setPadding(dp(24), dp(8), dp(24), dp(4));
+
+                        TextInputLayout textInputLayout = new TextInputLayout(this);
+                        textInputLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_FILLED);
+                        textInputLayout.setBoxBackgroundColor(getResources().getColor(R.color.md_theme_surfaceContainerHighest));
+                        textInputLayout.setBoxCornerRadii(dp(14), dp(14), dp(14), dp(14));
+                        textInputLayout.setPasswordVisibilityToggleEnabled(true);
+                        textInputLayout.setPasswordVisibilityToggleTintList(ColorStateList.valueOf(getResources().getColor(R.color.md_theme_onSurfaceVariant)));
+                        textInputLayout.setHint("私钥保护口令");
+
+                        TextInputEditText et = new TextInputEditText(this);
+                        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                        et.setTextColor(getResources().getColor(R.color.md_theme_onSurface));
+                        textInputLayout.addView(et);
+                        box.addView(textInputLayout);
+
+                        new MaterialAlertDialogBuilder(this)
+                                .setTitle("解锁密钥")
+                                .setMessage("正在连接使用密钥: " + key.name)
+                                .setView(box)
                                 .setCancelable(false)
                                 .setPositiveButton("确定", (d, w) -> {
-                                    passResult[0] = input.getText().toString();
+                                    passResult[0] = et.getText() != null ? et.getText().toString() : "";
                                     latch.countDown();
                                 })
                                 .setNegativeButton("取消", (d, w) -> {
@@ -727,12 +767,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                             @Override
                             public void onStatus(String msg) {
                                 out(MainActivity.this, "SSH status: " + msg);
-                                /*
-                                 * 会话结束就回主界面：
-                                 *  - "channel EOF"：远端 shell 退出（用户敲了 exit）
-                                 *  - "reader stopped"：连接断了
-                                 * 否则用户会停在一个再也不会更新的死终端页上。
-                                 */
                                 if (msg.startsWith("channel EOF") || msg.startsWith("reader stopped")) {
                                     runOnUiThread(() -> {
                                         if (running) { toast("会话结束"); finish(); }
@@ -742,7 +776,7 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                         });
                 out(this, "SSH " + status);
 
-                Thread.sleep(1500);   // 等提示符
+                Thread.sleep(1500);
                 if (hStartup != null && !hStartup.isEmpty() && running) {
                     String cmd = hStartup.endsWith("\n") ? hStartup : hStartup + "\n";
                     final byte[] bytes = cmd.getBytes(StandardCharsets.UTF_8);
@@ -767,7 +801,6 @@ public class MainActivity extends androidx.appcompat.app.AppCompatActivity {
                     transport.disconnect();
                     transport = null;
                 }
-                // 连不上也要能回主界面（先给 2.5 秒让 toast 看得见）
                 final String why = String.valueOf(t.getMessage());
                 runOnUiThread(() -> toast("连接失败：" + why));
                 new android.os.Handler(getMainLooper()).postDelayed(this::finish, 2500);
