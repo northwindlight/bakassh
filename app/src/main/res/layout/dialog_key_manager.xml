@@ -3,81 +3,84 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingStart="24dp"
-    android:paddingTop="12dp"
-    android:paddingEnd="24dp"
-    android:paddingBottom="24dp">
-
-    <!-- 顶部拖动手柄 -->
-    <View
-        android:layout_width="36dp"
-        android:layout_height="4dp"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/bg_drag_handle" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="密钥管理"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="22sp"
-        android:fontFamily="sans-serif-medium" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="14dp"
-        android:text="管理 SSH 身份凭据，支持独立绑定或设为全局默认"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="14sp" />
-
-    <!-- 快捷操作按钮行 -->
+    android:background="?attr/colorSurface"
+    android:fitsSystemWindows="true">
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
-        android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_generate_key"
-            style="@style/Widget.Material3.Button.TonalButton"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="生成密钥"
-            android:textSize="14sp" />
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_import_key"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginStart="10dp"
-            android:text="导入私钥"
-            android:textSize="14sp" />
+        android:minHeight="64dp"
+        android:gravity="center_vertical"
+        android:paddingEnd="12dp">
+        <ImageButton
+            android:id="@+id/btn_close_key_mgr"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="16dp"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="?attr/colorOnSurface"
+            android:contentDescription="@string/navigate_back" />
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="@string/keys_title"
+            android:textSize="22sp"
+            android:textColor="?attr/colorOnSurface"
+            android:id="@+id/tv_dialog_title"
+            android:layout_weight="1" />
     </LinearLayout>
-
-    <!-- 密钥列表 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="20dp"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/keys_heading"
+            android:textSize="32sp"
+            android:textColor="?attr/colorOnSurface" />
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/keys_description"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:layout_marginTop="8dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_generate_key"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/generate_title"
+                app:icon="@drawable/ic_add" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_import_key"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minHeight="48dp"
+                android:text="@string/import_action"
+                android:layout_marginStart="12dp"
+                app:icon="@drawable/ic_folder_open" />
+        </LinearLayout>
+    </LinearLayout>
     <ListView
         android:id="@+id/list_keys"
         android:layout_width="match_parent"
-        android:layout_height="280dp"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:divider="@null"
-        android:dividerHeight="0dp"
-        android:overScrollMode="ifContentScrolls"
-        android:scrollbars="none" />
-
-    <!-- 底部关闭按钮 -->
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_close_key_mgr"
-        style="@style/Widget.Material3.Button.TextButton"
-        android:layout_gravity="end"
-        android:layout_width="wrap_content"
-        android:layout_height="40dp"
-        android:layout_marginTop="12dp"
-        android:text="完成" />
-
+        android:clipToPadding="false"
+        android:paddingBottom="24dp" />
 </LinearLayout>

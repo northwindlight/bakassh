@@ -35,3 +35,14 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 adb install -r app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
 adb shell am instrument -w dev.northwind.bakassh.test/dev.northwind.bakassh.ZoomInstrumentation
 ```
+
+私钥导入回归（真实 ssh-keygen / OpenSSL 密钥和 JSch，强制使用 Android 所用的 BC 签名实现）：
+
+```bash
+JSCH_JAR=/path/to/jsch-0.2.26.jar BC_JAR=/path/to/bcprov-jdk18on-1.79.jar bash tests/host/keys.sh
+```
+
+覆盖 OpenSSH RSA / ECDSA / Ed25519、PEM、PKCS8，加密文件与首尾含空格的口令，
+公钥提取和签名验签、原始加密状态、BOM / CRLF、公钥误选及文件大小限制，共 46 项。
+Android instrumentation 中的密钥生成、导入、默认切换、删除与旧文件迁移使用独立缓存目录和首选项。
+编译测试 APK 不表示这些 Android 场景已在设备运行。

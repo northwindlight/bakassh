@@ -35,3 +35,9 @@ sshterm 中的第三方代码归属
 ## libvterm
 
 `app/src/main/cpp/libvterm/` —— MIT License，取自 neovim 的 libvterm 分支。
+
+## Bouncy Castle
+
+bcprov-jdk18on 1.79 用于 JSch 在 Android 上的 Ed25519 签名与密钥派生。
+采用 MIT 许可证；版权及许可全文随 APK / 源码一并保留在
+`app/src/main/assets/licenses/bouncycastle.txt`，内容来自依赖本身的 `org.bouncycastle.LICENSE`。

@@ -8,18 +8,15 @@
     android:background="@color/term_background"
     android:fitsSystemWindows="false"
     android:orientation="vertical">
-
-    <!-- 终端顶栏：平直、深色，和 Material 3 的 small top app bar 一致 -->
     <LinearLayout
         android:id="@+id/layout_terminal_toolbar"
         android:layout_width="match_parent"
         android:layout_height="48dp"
-        android:background="@color/status_bar_bg"
+        android:background="@color/term_background"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="16dp"
         android:paddingEnd="4dp">
-
         <TextView
             android:id="@+id/tv_term_title"
             android:layout_width="0dp"
@@ -28,64 +25,55 @@
             android:ellipsize="middle"
             android:fontFamily="sans-serif-medium"
             android:singleLine="true"
-            android:text="SSH 终端"
+            android:text="@string/terminal_title"
             android:textColor="?attr/colorOnSurface"
             android:textSize="15sp" />
-
         <TextView
             android:id="@+id/tv_term_cols"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginEnd="4dp"
-            android:text="150列"
+            android:text="@string/terminal_initial_columns"
             android:textColor="?attr/colorOnSurfaceVariant"
             android:textSize="12sp" />
-
         <ImageButton
             android:id="@+id/btn_term_paste"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="粘贴"
+            android:contentDescription="@string/paste"
             android:padding="8dp"
-            android:src="@drawable/ic_content_copy"
+            android:src="@drawable/ic_content_paste"
             app:tint="?attr/colorOnSurfaceVariant" />
-
         <ImageButton
             android:id="@+id/btn_term_keyboard"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="键盘"
+            android:contentDescription="@string/keyboard"
             android:padding="8dp"
             android:src="@drawable/ic_keyboard"
             app:tint="?attr/colorOnSurfaceVariant" />
-
         <ImageButton
             android:id="@+id/btn_term_exit"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:background="?attr/selectableItemBackgroundBorderless"
-            android:contentDescription="断开连接"
+            android:contentDescription="@string/more_actions"
             android:padding="8dp"
-            android:src="@drawable/ic_close"
+            android:src="@drawable/ic_more_vert"
             app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
-
-    <!-- 终端视图容器 -->
     <FrameLayout
         android:id="@+id/layout_terminal_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1">
-
         <dev.northwind.bakassh.TerminalView
             android:id="@+id/terminal_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
     </FrameLayout>
-
-    <!-- 底部扩展按键栏容器 -->
     <LinearLayout
         android:id="@+id/layout_extra_keys_box"
         android:layout_width="match_parent"
@@ -94,5 +82,4 @@
         android:orientation="vertical"
         android:paddingTop="3dp"
         android:paddingBottom="3dp" />
-
 </LinearLayout>

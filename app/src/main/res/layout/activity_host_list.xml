@@ -1,154 +1,50 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.coordinatorlayout.widget.CoordinatorLayout
+<FrameLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="?attr/colorSurface"
     android:fitsSystemWindows="true">
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical">
-
-        <!-- Pixel 风格大标题顶栏 -->
-        <LinearLayout
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/home_toolbar"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="24dp"
-            android:paddingTop="24dp"
-            android:paddingEnd="24dp"
-            android:paddingBottom="8dp">
-
-            <TextView
-                android:id="@+id/tv_app_title"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
-                android:text="bakaSSH"
-                android:textColor="?attr/colorOnSurface"
-                android:textSize="28sp" />
-
-            <TextView
-                android:id="@+id/tv_host_subtitle"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:text="点按卡片立即连接 · 长按管理配置"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:textSize="14sp" />
-
-            <!-- 快捷操作 Chip 栏 -->
-            <HorizontalScrollView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:overScrollMode="never"
-                android:scrollbars="none">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_manage_keys"
-                        style="@style/Widget.Material3.Chip.Assist"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="密钥管理"
-                        app:chipIcon="@drawable/ic_key" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_extra_keys"
-                        style="@style/Widget.Material3.Chip.Assist"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="扩展按键"
-                        app:chipIcon="@drawable/ic_keyboard" />
-
-                    <com.google.android.material.chip.Chip
-                        android:id="@+id/chip_settings"
-                        style="@style/Widget.Material3.Chip.Assist"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
-                        android:text="设置"
-                        app:chipIcon="@drawable/ic_settings" />
-                </LinearLayout>
-            </HorizontalScrollView>
-        </LinearLayout>
-
-        <!-- 主机卡片列表容器 -->
-        <FrameLayout
+            android:layout_height="64dp"
+            app:title="@string/app_name"
+            app:titleTextAppearance="@style/TextAppearance.Material3.TitleLarge"
+            app:contentInsetStart="24dp">
+            <ImageButton
+                android:id="@+id/chip_settings"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_gravity="end"
+                android:layout_marginEnd="12dp"
+                android:padding="12dp"
+                android:src="@drawable/ic_settings"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/settings_title"
+                app:tint="?attr/colorOnSurfaceVariant" />
+        </com.google.android.material.appbar.MaterialToolbar>
+        <ListView
+            android:id="@+id/list_hosts"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1">
-
-            <ListView
-                android:id="@+id/list_hosts"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:clipToPadding="false"
-                android:divider="@null"
-                android:dividerHeight="0dp"
-                android:overScrollMode="ifContentScrolls"
-                android:paddingTop="4dp"
-                android:paddingBottom="96dp"
-                android:scrollbars="none" />
-
-            <!-- 空状态 -->
-            <LinearLayout
-                android:id="@+id/layout_empty_state"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:gravity="center"
-                android:orientation="vertical"
-                android:padding="32dp"
-                android:visibility="gone">
-
-                <ImageView
-                    android:layout_width="72dp"
-                    android:layout_height="72dp"
-                    android:background="@drawable/bg_avatar_host"
-                    android:contentDescription="@null"
-                    android:padding="18dp"
-                    android:src="@drawable/ic_server"
-                    app:tint="?attr/colorOnSurfaceVariant" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="18dp"
-                    android:text="暂无主机"
-                    android:textColor="?attr/colorOnSurface"
-                    android:textSize="18sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:gravity="center"
-                    android:lineSpacingExtra="4dp"
-                    android:text="点击右下角的「新建主机」按钮，\n配置并连接到你的远程服务器。"
-                    android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="14sp" />
-            </LinearLayout>
-        </FrameLayout>
+            android:layout_weight="1"
+            android:divider="@null"
+            android:clipToPadding="false"
+            android:paddingBottom="104dp"
+            android:scrollbarStyle="outsideOverlay" />
     </LinearLayout>
-
-    <!-- Pixel 风格 Extended FAB（配色走 M3 默认） -->
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fab_add_host"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
-        android:layout_marginEnd="20dp"
-        android:layout_marginBottom="24dp"
-        android:text="新建主机"
+        android:layout_margin="24dp"
+        android:text="@string/host_add"
         app:icon="@drawable/ic_add" />
-
-</androidx.coordinatorlayout.widget.CoordinatorLayout>
+</FrameLayout>

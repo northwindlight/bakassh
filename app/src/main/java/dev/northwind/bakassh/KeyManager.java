@@ -67,7 +67,7 @@ public final class KeyManager {
         return new File(getKeysDir(c), id + ".pub");
     }
 
-    /** 确保存在默认密钥，并返回所有密钥列表 */
+    /** 返回密钥列表；允许空列表，只迁移已有的历史身份。 */
     public static synchronized List<KeyItem> getKeys(Context c) {
         List<KeyItem> list = new ArrayList<>();
         SharedPreferences sp = c.getSharedPreferences(PREF, Context.MODE_PRIVATE);
@@ -85,10 +85,12 @@ public final class KeyManager {
         }
 
         if (list.isEmpty()) {
-            // 初始化或迁移历史默认密钥
-            KeyItem def = ensureDefaultKey(c);
-            list.add(def);
-            saveKeys(c, list);
+            // 只迁移已有密钥；打开列表不应偷偷生成 RSA 并阻塞界面。
+            if (new File(c.getFilesDir(), LEGACY_PRIV).exists()) {
+                KeyItem def = ensureDefaultKey(c);
+                list.add(def);
+                saveKeys(c, list);
+            }
         } else {
             // 确保至少有一个默认密钥
             boolean hasDefault = false;
@@ -125,7 +127,7 @@ public final class KeyManager {
         for (KeyItem k : list) {
             if (id.equals(k.id)) return k;
         }
-        return getDefaultKey(c);
+        return null;
     }
 
     public static synchronized KeyItem getDefaultKey(Context c) {
@@ -133,7 +135,7 @@ public final class KeyManager {
         for (KeyItem k : list) {
             if (k.isDefault) return k;
         }
-        return list.get(0);
+        return list.isEmpty() ? null : list.get(0);
     }
 
     public static synchronized void setDefaultKey(Context c, String id) {
@@ -144,40 +146,35 @@ public final class KeyManager {
         saveKeys(c, list);
     }
 
-    /** 确保默认密钥生成或迁移 */
+    /** 迁移历史密钥；缺少 .pub 时派生公钥，绝不覆盖已有私钥。 */
     private static KeyItem ensureDefaultKey(Context c) {
         File priv = new File(c.getFilesDir(), LEGACY_PRIV);
         File pub = new File(c.getFilesDir(), LEGACY_PUB);
-        String pubStr = "";
-        String fingerprint = "";
+        KeyPair kp = null;
         try {
-            if (priv.exists() && pub.exists()) {
-                pubStr = readAll(pub);
-                try {
-                    JSch jsch = new JSch();
-                    KeyPair kp = KeyPair.load(jsch, priv.getAbsolutePath());
-                    fingerprint = kp.getFingerPrint();
-                } catch (Throwable ignored) {}
-            } else {
-                JSch jsch = new JSch();
-                KeyPair kp = KeyPair.genKeyPair(jsch, KeyPair.RSA, 3072);
-                kp.writePrivateKey(priv.getAbsolutePath());
-                ByteArrayOutputStream bos = new ByteArrayOutputStream();
-                kp.writePublicKey(bos, "bakassh-default");
-                pubStr = new String(bos.toByteArray(), StandardCharsets.UTF_8).trim();
+            kp = KeyPair.load(new JSch(), priv.getAbsolutePath());
+            String pubStr = pub.exists() ? readAll(pub) : "";
+            if (pubStr.isEmpty() && kp.getPublicKeyBlob() != null) {
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                kp.writePublicKey(out, "bakassh-default");
+                pubStr = new String(out.toByteArray(), StandardCharsets.UTF_8).trim();
                 writeFile(pub, pubStr + "\n");
-                fingerprint = kp.getFingerPrint();
-                Log.i(TAG, "generated new default RSA keypair");
             }
-        } catch (Throwable t) {
-            Log.e(TAG, "ensureDefaultKey error: " + t);
+            String fp = kp.getPublicKeyBlob() != null ? kp.getFingerPrint() : "";
+            return new KeyItem(KeyItem.DEFAULT_ID, "默认密钥", kp.getKeyTypeString(), fp,
+                    pubStr, kp.isEncrypted(), true, System.currentTimeMillis());
+        } catch (Exception e) {
+            throw new IllegalStateException("旧密钥无法读取，请检查原始私钥文件。", e);
+        } finally {
+            if (kp != null) kp.dispose();
         }
-        return new KeyItem(KeyItem.DEFAULT_ID, "默认密钥", "RSA-3072", fingerprint, pubStr, false, true, System.currentTimeMillis());
     }
 
-    /** 兼容历史接口：没有就生成默认密钥，返回公钥字符串 */
+    /** 兼容历史接口：返回当前默认身份的公钥。 */
     public static String ensureKey(Context c) throws Exception {
-        return getDefaultKey(c).publicKey;
+        KeyItem key = getDefaultKey(c);
+        if (key == null) throw new IllegalStateException("请先生成或导入密钥");
+        return key.publicKey;
     }
 
     /** 生成新密钥对 */
@@ -211,9 +208,9 @@ public final class KeyManager {
         }
 
         KeyPair kp = KeyPair.genKeyPair(jsch, typeCode, keySize);
-        boolean hasPass = passphrase != null && !passphrase.trim().isEmpty();
+        boolean hasPass = passphrase != null && !passphrase.isEmpty();
         if (hasPass) {
-            kp.setPassphrase(passphrase.trim());
+            kp.setPassphrase(passphrase);
         }
 
         String id = "k_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
@@ -222,7 +219,7 @@ public final class KeyManager {
 
         ByteArrayOutputStream privBos = new ByteArrayOutputStream();
         if (hasPass) {
-            kp.writePrivateKey(privBos, passphrase.trim().getBytes(StandardCharsets.UTF_8));
+            kp.writePrivateKey(privBos, passphrase.getBytes(StandardCharsets.UTF_8));
         } else {
             kp.writePrivateKey(privBos);
         }
@@ -238,8 +235,10 @@ public final class KeyManager {
         KeyItem item = new KeyItem(id, name.trim(), normalizedType, fp, pubStr, hasPass, false, System.currentTimeMillis());
 
         List<KeyItem> keys = getKeys(c);
+        item.isDefault = keys.isEmpty();
         keys.add(item);
         saveKeys(c, keys);
+        kp.dispose();
         return item;
     }
 
@@ -249,54 +248,44 @@ public final class KeyManager {
         if (privateKeyContent == null || privateKeyContent.trim().isEmpty()) {
             throw new IllegalArgumentException("私钥内容不能为空");
         }
-        byte[] privBytes = privateKeyContent.trim().getBytes(StandardCharsets.UTF_8);
-        JSch jsch = new JSch();
-        KeyPair kp;
-        try {
-            kp = KeyPair.load(jsch, privBytes, null);
-        } catch (Throwable t) {
-            throw new IllegalArgumentException("无法解析私钥，请确认格式为 OpenSSH 或 PEM 文本：" + t.getMessage(), t);
+        byte[] privBytes = PrivateKeyImport.normalize(privateKeyContent);
+        PrivateKeyImport.Loaded loaded;
+        try { loaded = PrivateKeyImport.inspect(privBytes, passphrase); }
+        catch (Exception e) {
+            java.util.Arrays.fill(privBytes, (byte) 0);
+            throw e;
         }
-
-        boolean hasPass = passphrase != null && !passphrase.trim().isEmpty();
-        // 记住「落盘的原文件是否加密」：decrypt() 会把 KeyPair 的 encrypted 标志清掉，
-        // 但写进 files/keys 的仍是原始密文，连接时必须继续提示口令。
-        boolean storedEncrypted = kp.isEncrypted();
-        if (kp.isEncrypted()) {
-            if (!hasPass) {
-                throw new IllegalArgumentException("该私钥已被口令加密，请输入密码口令");
-            }
-            boolean ok = kp.decrypt(passphrase.trim());
-            if (!ok) {
-                throw new IllegalArgumentException("私钥口令错误，无法解密");
-            }
-        }
-
-        String id = "k_" + UUID.randomUUID().toString().replace("-", "").substring(0, 10);
+        KeyPair kp = loaded.pair;
+        String id = "k_" + UUID.randomUUID().toString().replace("-", "");
         File privFile = getPrivFile(c, id);
         File pubFile = getPubFile(c, id);
-
-        writeFile(privFile, privBytes);
-
-        String keyComment = "bakassh-" + name.trim();
-        ByteArrayOutputStream pubBos = new ByteArrayOutputStream();
-        kp.writePublicKey(pubBos, keyComment);
-        String pubStr = new String(pubBos.toByteArray(), StandardCharsets.UTF_8).trim();
-        writeFile(pubFile, (pubStr + "\n").getBytes(StandardCharsets.UTF_8));
-
-        String type = kp.getKeyTypeString();
-        String fp = kp.getFingerPrint();
-        KeyItem item = new KeyItem(id, name.trim(), type, fp, pubStr, storedEncrypted, false, System.currentTimeMillis());
-
-        List<KeyItem> keys = getKeys(c);
-        keys.add(item);
-        saveKeys(c, keys);
-        return item;
+        boolean stored = false;
+        try {
+            ByteArrayOutputStream pubBos = new ByteArrayOutputStream();
+            kp.writePublicKey(pubBos, "bakassh-" + name.trim());
+            String pubStr = new String(pubBos.toByteArray(), StandardCharsets.UTF_8).trim();
+            KeyItem item = new KeyItem(id, name.trim(), kp.getKeyTypeString(), kp.getFingerPrint(),
+                    pubStr, loaded.encrypted, false, System.currentTimeMillis());
+            List<KeyItem> keys = getKeys(c);
+            item.isDefault = keys.isEmpty();
+            writeFile(privFile, privBytes);
+            writeFile(pubFile, pubStr + "\n");
+            keys.add(item);
+            saveKeys(c, keys);
+            stored = true;
+            return item;
+        } finally {
+            kp.dispose();
+            java.util.Arrays.fill(privBytes, (byte) 0);
+            if (!stored) {
+                if (privFile.exists()) privFile.delete();
+                if (pubFile.exists()) pubFile.delete();
+            }
+        }
     }
 
     public static synchronized boolean deleteKey(Context c, String id) {
         List<KeyItem> keys = getKeys(c);
-        if (keys.size() <= 1) return false; // 至少保留一个密钥
 
         KeyItem target = null;
         for (KeyItem k : keys) {

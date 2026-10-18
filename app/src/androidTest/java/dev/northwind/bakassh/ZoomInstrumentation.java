@@ -137,32 +137,72 @@ public final class ZoomInstrumentation extends Instrumentation {
             check(commits == 1 && mouseEvents == 0 && taps == 0, "viewport change committed a stale pinch");
 
             // Key and Host authentication regressions
-            java.util.List<KeyItem> initialKeys = KeyManager.getKeys(getTargetContext());
-            check(!initialKeys.isEmpty(), "initial keys must not be empty");
-            KeyItem defKey = KeyManager.getDefaultKey(getTargetContext());
-            check(defKey != null && defKey.isDefault, "default key must exist");
-
-            KeyItem generated = KeyManager.generateKey(getTargetContext(), "test-rsa-reg", "RSA-2048", null, "test-reg");
-            check(generated != null && "test-rsa-reg".equals(generated.name), "generated key name mismatch");
-            check(KeyManager.getPrivFile(getTargetContext(), generated.id).exists(), "generated priv file missing");
-            check(KeyManager.getPubFile(getTargetContext(), generated.id).exists(), "generated pub file missing");
-
-            KeyManager.setDefaultKey(getTargetContext(), generated.id);
-            check(generated.id.equals(KeyManager.getDefaultKey(getTargetContext()).id), "setDefaultKey failed");
-
-            Host host = new Host("test", "127.0.0.1", 22, "root", "", "publickey", generated.id, "");
-            org.json.JSONObject json = host.toJson();
-            Host restored = Host.fromJson(json);
-            check("publickey".equals(restored.authType) && generated.id.equals(restored.keyId), "host key binding failed");
-
-            Host pwdHost = new Host("test2", "127.0.0.1", 22, "root", "", "password", "default", "secretPass");
-            Host restoredPwd = Host.fromJson(pwdHost.toJson());
-            check("password".equals(restoredPwd.authType) && "secretPass".equals(restoredPwd.password), "host pwd auth failed");
-
-            boolean deleted = KeyManager.deleteKey(getTargetContext(), generated.id);
-            check(deleted, "deleteKey failed");
-            check(!KeyManager.getPrivFile(getTargetContext(), generated.id).exists(), "deleted priv file still exists");
-            KeyManager.setDefaultKey(getTargetContext(), defKey.id);
+            verifyKeys();
         } finally { view.destroy(); bitmap.recycle(); }
     }
+    /** 私有测试目录和首选项；不能让缩放验收修改手机里的真实密钥。 */
+    private void verifyKeys() throws Exception {
+        String suffix = "key-regression-" + System.nanoTime();
+        java.io.File directory = new java.io.File(getTargetContext().getCacheDir(), suffix);
+        check(directory.mkdirs(), "create isolated key directory");
+        android.content.Context context = new android.content.ContextWrapper(getTargetContext()) {
+            @Override public java.io.File getFilesDir() { return directory; }
+            @Override public android.content.SharedPreferences getSharedPreferences(String name, int mode) {
+                return super.getSharedPreferences(suffix + name, mode);
+            }
+        };
+        try {
+            check(KeyManager.getKeys(context).isEmpty(), "opening key list must not generate keys");
+            check(KeyManager.getDefaultKey(context) == null, "fresh install has no identity");
+            KeyItem generated = KeyManager.generateKey(context, "test-rsa", "RSA-2048", " pass phrase ", "test");
+            check(generated.isDefault, "first explicit identity becomes default");
+            check(KeyManager.getPrivFile(context, generated.id).exists(), "generated key exists");
+            String pem;
+            try (java.io.FileInputStream in = new java.io.FileInputStream(KeyManager.getPrivFile(context, generated.id))) {
+                pem = new String(PrivateKeyImport.read(in), StandardCharsets.UTF_8);
+            }
+            int initialCount = KeyManager.getKeys(context).size();
+            try {
+                KeyManager.importKey(context, "bad", pem, "pass phrase");
+                throw new AssertionError("trimmed password accepted");
+            } catch (IllegalArgumentException expected) {
+                check(KeyManager.getKeys(context).size() == initialCount, "failed import changes no metadata");
+            }
+            KeyItem imported = KeyManager.importKey(context, "imported", pem, " pass phrase ");
+            check(imported.encrypted, "stored private key must remain marked encrypted");
+            check(generated.publicKey.split(" ")[1].equals(imported.publicKey.split(" ")[1]), "public key matches");
+            check(KeyManager.getKey(context, "missing-id") == null, "missing explicit key must not fall back silently");
+            KeyManager.setDefaultKey(context, imported.id);
+            check(imported.id.equals(KeyManager.getKey(context, "default").id), "follow default identity");
+            Host host = new Host("test", "127.0.0.1", 22, "root", "", "publickey", imported.id, "");
+            check(imported.id.equals(Host.fromJson(host.toJson()).keyId), "host key binding roundtrip");
+            Host passwordHost = new Host("test", "127.0.0.1", 22, "root", "", "password", "default", " password ");
+            check(" password ".equals(Host.fromJson(passwordHost.toJson()).password), "host password roundtrip");
+            check(KeyManager.deleteKey(context, generated.id), "delete generated key");
+            check(KeyManager.deleteKey(context, imported.id), "allow deleting last identity");
+            check(KeyManager.getDefaultKey(context) == null, "empty list has no default");
+            java.io.File legacy = new java.io.File(directory, "sshterm_id_rsa");
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(legacy)) {
+                out.write(pem.getBytes(StandardCharsets.UTF_8));
+            }
+            KeyItem migrated = KeyManager.getDefaultKey(context);
+            check(migrated != null && migrated.encrypted, "migrate encrypted legacy key without public file");
+            try (java.io.FileInputStream in = new java.io.FileInputStream(legacy)) {
+                check(pem.equals(new String(PrivateKeyImport.read(in), StandardCharsets.UTF_8)), "migration must preserve existing private key");
+            }
+        } finally {
+            getTargetContext().deleteSharedPreferences(suffix + "sshterm");
+            deleteTestDirectory(directory);
+        }
+    }
+
+    private static void deleteTestDirectory(java.io.File directory) {
+        java.io.File[] files = directory.listFiles();
+        if (files != null) for (java.io.File file : files) {
+            if (file.isDirectory()) deleteTestDirectory(file);
+            else file.delete();
+        }
+        directory.delete();
+    }
+
 }

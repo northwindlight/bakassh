@@ -44,7 +44,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
- * 终端界面：Pixel 现代风格顶栏 + Material 3 药丸扩展按键 + SSH + 位图字体渲染 + 触摸滚动与真实缩放。
+ * 终端界面：紧凑工具栏、扩展按键、SSH、位图字体渲染、触摸滚动与真实缩放。
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -142,8 +142,24 @@ public class MainActivity extends AppCompatActivity {
         tvTermCols.setText(HostStore.getZoomColumns(this, 150) + "列");
 
         findViewById(R.id.btn_term_paste).setOnClickListener(v -> pasteFromClipboard());
-        findViewById(R.id.btn_term_keyboard).setOnClickListener(v -> showIme());
-        findViewById(R.id.btn_term_exit).setOnClickListener(v -> finish());
+        findViewById(R.id.btn_term_keyboard).setOnClickListener(v -> toggleIme());
+        findViewById(R.id.btn_term_exit).setOnClickListener(v -> {
+            androidx.appcompat.widget.PopupMenu menu = new androidx.appcompat.widget.PopupMenu(this, v);
+            menu.getMenu().add(0, 1, 0, layoutExtraKeysBox.getVisibility() == View.VISIBLE ? "隐藏扩展按键" : "显示扩展按键");
+            menu.getMenu().add(0, 2, 1, "断开连接");
+            menu.setOnMenuItemClickListener(item -> {
+                if (item.getItemId() == 1) {
+                    layoutExtraKeysBox.setVisibility(layoutExtraKeysBox.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+                } else {
+                    new MaterialAlertDialogBuilder(this).setTitle("断开连接？")
+                            .setMessage("将关闭与 " + hHost + " 的 SSH 连接。")
+                            .setNegativeButton("取消", null)
+                            .setPositiveButton("断开", (d, w) -> finish()).show();
+                }
+                return true;
+            });
+            menu.show();
+        });
 
         layoutExtraKeysBox = findViewById(R.id.layout_extra_keys_box);
         populateExtraKeys();
@@ -195,7 +211,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public boolean sendKeyEvent(KeyEvent event) {
                         if (input.length() == 0 && isTerminalKey(event.getKeyCode())) {
-                            if (event.getAction() == KeyEvent.ACTION_DOWN) sendTerminalKey(event.getKeyCode());
+                            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                                sendTerminalKey(event.getKeyCode());
+                            }
                             return true;
                         }
                         return super.sendKeyEvent(event);
@@ -356,6 +374,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** 构造 Pixel Material 3 风格扩展按键栏 */
+    private void toggleIme() {
+        WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(findViewById(R.id.root_terminal));
+        if (insets != null && insets.isVisible(WindowInsetsCompat.Type.ime())) {
+            InputMethodManager manager = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+            if (manager != null) manager.hideSoftInputFromWindow(input.getWindowToken(), 0);
+        } else {
+            showIme();
+        }
+    }
+
     private void populateExtraKeys() {
         layoutExtraKeysBox.removeAllViews();
         List<String[]> rows = ExtraKeys.parse(ExtraKeys.get(this));
@@ -452,7 +480,7 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         if (n.equals("KEYBOARD")) {
-            showIme();
+            toggleIme();
             return;
         }
         if (n.equals("PASTE")) {
@@ -712,6 +740,14 @@ public class MainActivity extends AppCompatActivity {
                     key = KeyManager.getKey(this, hKeyId);
                 } catch (Throwable t) {
                     out(this, "getKey FAILED: " + t);
+                    return;
+                }
+                if (key == null) {
+                    runOnUiThread(() -> new MaterialAlertDialogBuilder(this)
+                            .setTitle("没有可用的密钥")
+                            .setMessage("请返回主机列表，生成或导入私钥，并在主机配置中选择它。")
+                            .setPositiveButton("返回", (d, w) -> finish())
+                            .setOnCancelListener(d -> finish()).show());
                     return;
                 }
                 keyPath = KeyManager.getPrivFile(this, key.id).getAbsolutePath();

@@ -1,5 +1,7 @@
 # UI：Material 3 / Pixel 风格
 
+> 本文记录 2026-10-17 的历史实现。当前页面结构与导入流程见 [2026-10-18 改动](Pixel界面与密钥导入-20261018.md)。
+
 ## 设计原则
 
 - **跟随系统深浅色**：主界面用 `Theme.Material3.DayNight`，浅色调色板在 `values/colors.xml`，

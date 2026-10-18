@@ -3,144 +3,148 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingStart="24dp"
-    android:paddingTop="12dp"
-    android:paddingEnd="24dp"
-    android:paddingBottom="24dp">
-
-    <!-- 顶部拖动手柄 -->
-    <View
-        android:layout_width="36dp"
-        android:layout_height="4dp"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="16dp"
-        android:background="@drawable/bg_drag_handle" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="生成新 SSH 密钥"
-        android:textColor="?attr/colorOnSurface"
-        android:textSize="22sp"
-        android:fontFamily="sans-serif-medium" />
-
-    <TextView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
-        android:layout_marginBottom="16dp"
-        android:text="本地生成现代高强度非对称密钥对"
-        android:textColor="?attr/colorOnSurfaceVariant"
-        android:textSize="14sp" />
-
-    <!-- 密钥名称 -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:hint="密钥名称（例如：工作服务器 / 阿里云）"
-        app:boxBackgroundMode="filled">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_gen_key_name"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text"
-            android:text="新建密钥"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="14sp" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- 密钥类型选择条 -->
+    android:background="?attr/colorSurface"
+    android:fitsSystemWindows="true">
     <LinearLayout
-        android:id="@+id/layout_select_gen_type"
         android:layout_width="match_parent"
-        android:layout_height="52dp"
-        android:layout_marginBottom="10dp"
-        android:background="@drawable/bg_chip_tag"
-        android:backgroundTint="?attr/colorSurfaceContainerHighest"
+        android:layout_height="wrap_content"
+        android:minHeight="64dp"
         android:gravity="center_vertical"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp"
-        android:clickable="true"
-        android:focusable="true"
-        android:foreground="?attr/selectableItemBackground">
-
+        android:paddingEnd="12dp">
+        <ImageButton
+            android:id="@+id/btn_cancel_gen"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="16dp"
+            android:src="@drawable/ic_arrow_back"
+            app:tint="?attr/colorOnSurface"
+            android:contentDescription="@string/navigate_back" />
         <TextView
-            android:id="@+id/tv_gen_key_type"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="算法类型：RSA-3072（推荐）"
+            android:text="@string/generate_title"
+            android:textSize="22sp"
             android:textColor="?attr/colorOnSurface"
-            android:textSize="14sp" />
-
-        <ImageView
-            android:layout_width="18dp"
-            android:layout_height="18dp"
-            android:src="@drawable/ic_arrow_forward"
-            app:tint="?attr/colorOnSurfaceVariant" />
-    </LinearLayout>
-
-    <!-- 私钥保护口令 -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:hint="私钥保护口令（可选，留空则免密）"
-        app:boxBackgroundMode="filled"
-        app:endIconMode="password_toggle"
-        app:endIconTint="?attr/colorOnSurfaceVariant">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_gen_key_pass"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="textPassword"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="14sp" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- 公钥注释 -->
-    <com.google.android.material.textfield.TextInputLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:hint="公钥注释（可选，留空则自动生成）"
-        app:boxBackgroundMode="filled">
-
-        <com.google.android.material.textfield.TextInputEditText
-            android:id="@+id/et_gen_key_comment"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:inputType="text"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="14sp" />
-    </com.google.android.material.textfield.TextInputLayout>
-
-    <!-- 底部按钮 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
-        android:gravity="end"
-        android:orientation="horizontal">
-
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btn_cancel_gen"
-            style="@style/Widget.Material3.Button.TextButton"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="取消" />
-
+            android:id="@+id/tv_dialog_title"
+            android:layout_weight="1" />
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_confirm_gen"
-            style="@style/Widget.Material3.Button"
+            style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginStart="12dp"
-            android:text="生成密钥" />
+            android:layout_height="wrap_content"
+            android:minHeight="48dp"
+            android:text="@string/generate_action" />
     </LinearLayout>
-
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:clipToPadding="false">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingBottom="32dp">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/key_info"
+                android:textSize="14sp"
+                android:textColor="?attr/colorPrimary"
+                android:paddingTop="28dp"
+                android:paddingBottom="16dp"
+                android:fontFamily="sans-serif-medium" />
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Baka.TextField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:hint="@string/name">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_gen_key_name"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <LinearLayout
+                android:id="@+id/layout_select_gen_type"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="64dp"
+                android:layout_marginBottom="16dp"
+                android:background="@drawable/bg_setting_row"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_key"
+                    app:tint="?attr/colorPrimary"
+                    android:contentDescription="@null" />
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/default_key_algorithm"
+                    android:textSize="16sp"
+                    android:textColor="?attr/colorOnSurface"
+                    android:id="@+id/tv_gen_key_type"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp" />
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                    android:contentDescription="@null" />
+            </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/key_protection"
+                android:textSize="14sp"
+                android:textColor="?attr/colorPrimary"
+                android:paddingTop="28dp"
+                android:paddingBottom="16dp"
+                android:fontFamily="sans-serif-medium" />
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Baka.TextField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:hint="@string/passphrase"
+                app:helperText="@string/generate_passphrase_help"
+                app:endIconMode="password_toggle">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_gen_key_pass"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textPassword"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+            <com.google.android.material.textfield.TextInputLayout
+                style="@style/Widget.Baka.TextField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:hint="@string/key_comment"
+                app:helperText="@string/optional">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/et_gen_key_comment"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="text"
+                    android:textSize="16sp" />
+            </com.google.android.material.textfield.TextInputLayout>
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
 </LinearLayout>

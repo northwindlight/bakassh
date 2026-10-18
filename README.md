@@ -62,7 +62,9 @@ ConnectBot 1.11.0 因本次 tmux 场景无法正常滚动，未形成有效帧�
 - 捏合时逐帧调整实际字号和行列数，松手后恢复行缓存
 - 长按选择连续文本，浮动菜单复制 / 全选 / 粘贴；选择期间保留画面快照，不向 tmux 发送鼠标事件
 - 扩展按键两行，可自定义，键名与 Termux 的 `extra-keys` 相同
-- Material 3 / Pixel 风格：跟随系统深浅色，Android 12+ 主机列表继承壁纸取色（Monet），标准 M3 卡片、40dp 按钮、分段认证切换与底部抽屉；终端固定深色、平直顶栏
+- Pixel 风格界面：跟随系统深浅色与 Android 12+ 壁纸取色；大标题、圆角分组、独立密钥管理与全屏编辑页，支持未保存更改保护
+- 系统文件选择器导入私钥，也可粘贴；自动识别加密状态，后台校验并保留原有加密保护
+- 终端固定深色；工具栏支持显示 / 隐藏扩展按键，键盘按钮支持切换输入法
 - `exit`、断线退回主界面；切到后台后返回保留原会话
 
 ## 快速开始
@@ -79,13 +81,16 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 [修复记录](docs/修复记录-20261016.md)。
 逐帧文字缩放见 [0.1.2 修复记录](docs/缩放修复-0.1.2.md)。
 密钥与账户管理见 [密钥与账户管理说明](docs/密钥与账户管理.md)。
+当前界面与导入流程改动见 [Pixel 界面与密钥导入](docs/Pixel界面与密钥导入-20261018.md)。
 下一阶段需求见 [后续计划](docs/后续计划.md)。
 
 ## 项目结构
 
 ```
 app/src/main/java/dev/northwind/bakassh/
-├── HostListActivity.java   主机列表、设置、扩展按键定制
+├── HostListActivity.java   主机列表、密钥、设置与编辑流程
+├── EditorDialog.java       全屏编辑页与未保存更改保护
+├── PrivateKeyImport.java   私钥文件读取与解析校验
 ├── MainActivity.java       终端界面：SSH、输入、滚动、缩放、选择复制
 ├── TerminalView.java       渲染器（位图字体 + 行缓存 + 脏行）
 ├── TerminalSelection.java  连续文本选择与复制快照
@@ -107,7 +112,8 @@ app/src/main/assets/fonts/          渲染用字体
 | [libvterm](https://github.com/neovim/libvterm)（neovim 分支） | 终端仿真 | MIT |
 | [ConnectBot](https://github.com/connectbot/connectbot) v1.9.13 | 主机/公钥/known_hosts 数据层 | Apache-2.0 |
 | [JSch](https://github.com/mwiede/jsch) | SSH 传输 | BSD 风格 |
-| [eddsa](https://github.com/str4d/ed25519-java) | ed25519 主机密钥校验 | MIT |
+| [eddsa](https://github.com/str4d/ed25519-java) | 原有 EdDSA 依赖 | MIT |
+| Bouncy Castle bcprov | JSch 在 Android 上的 Ed25519 签名与 PKCS8 密钥派生 | MIT |
 | Cascadia Mono（Windows Terminal 默认字体） | 拉丁字形 | SIL OFL 1.1 |
 | Noto Sans Mono CJK SC | 中文与等宽网格 | SIL OFL 1.1 |
 | AndroidX / Material Components | 界面 | Apache-2.0 |

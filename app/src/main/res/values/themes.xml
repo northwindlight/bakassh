@@ -1,11 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <style name="Widget.Baka.TextField" parent="Widget.Material3.TextInputLayout.OutlinedBox">
+        <item name="boxCornerRadiusTopStart">12dp</item>
+        <item name="boxCornerRadiusTopEnd">12dp</item>
+        <item name="boxCornerRadiusBottomStart">12dp</item>
+        <item name="boxCornerRadiusBottomEnd">12dp</item>
+    </style>
+    <style name="EditorOverlay" parent="BaseEditorOverlay" />
+    <style name="AppTheme" parent="BaseAppTheme" />
+    <style name="BaseEditorOverlay" parent="ThemeOverlay.Material3">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+        <item name="android:statusBarColor">?attr/colorSurface</item>
+        <item name="android:navigationBarColor">@color/term_surface</item>
+        <item name="android:windowLightStatusBar">@bool/light_system_bars</item>
+    </style>
     <!--
       主界面主题：Material 3 DayNight。
       颜色全部走主题属性（?attr/），深色值自动来自 values-night，
       Android 12+ 上 DynamicColors 还能把整页替换成壁纸色调。
     -->
-    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+    <style name="BaseAppTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="colorPrimary">@color/md_theme_primary</item>
         <item name="colorOnPrimary">@color/md_theme_onPrimary</item>
         <item name="colorPrimaryContainer">@color/md_theme_primaryContainer</item>
@@ -39,9 +56,10 @@
         <item name="colorOutline">@color/md_theme_outline</item>
         <item name="colorOutlineVariant">@color/md_theme_outlineVariant</item>
 
-        <item name="android:windowBackground">@color/md_theme_surface</item>
+        <item name="android:windowLightStatusBar">@bool/light_system_bars</item>
+        <item name="android:windowBackground">?attr/colorSurface</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@color/term_surface</item>
 
         <item name="bottomSheetDialogTheme">@style/PixelBottomSheetDialogTheme</item>
         <item name="materialAlertDialogTheme">@style/PixelAlertDialogTheme</item>
