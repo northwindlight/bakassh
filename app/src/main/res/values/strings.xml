@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="sessions">会话</string>
+    <string name="background_settings">后台保活</string>
     <string name="key_type_rsa_bits">RSA (%1$d 位)</string>
     <string name="key_type_dsa_bits">DSA (%1$d 位)</string>
     <string name="key_type_ec_bits">EC (%1$d 位)</string>

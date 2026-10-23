@@ -75,6 +75,8 @@ public class SshTransport {
         }
         try {
             connectedSession.setConfig("StrictHostKeyChecking", "no");
+            connectedSession.setServerAliveInterval(30000);
+            connectedSession.setServerAliveCountMax(3);
             if (isPubkey) {
                 connectedSession.setConfig("PreferredAuthentications", "publickey");
             } else {

@@ -14,13 +14,13 @@ android {
         /*
          * targetSdk 28 → 34：28（Android 9）会被系统和 Play Protect 判定为
          * "专为旧版 Android 打造"并弹拦截提示。
-         * 34 需要满足的行为变更我们均已具备：activity 显式 android:exported、
-         * 无危险权限、无前台服务、无 PendingIntent、不碰非 SDK 接口。
+         * 34：activity/service 显式 exported；SSH 使用 specialUse 前台服务，
+         * 通知权限按需询问，PendingIntent 使用 immutable。
          * 停在 34（不上 35）：rpi5 上可用的 aapt2（AOSP 14）只支持到 34，且 35 会强制 edge-to-edge。
          */
         targetSdk 34
-        versionCode 8
-        versionName "0.2.0"
+        versionCode 9
+        versionName "0.3.0"
         ndk {
             abiFilters 'arm64-v8a'
         }

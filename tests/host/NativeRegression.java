@@ -146,6 +146,40 @@ public final class NativeRegression {
         } finally { NativeTerm.destroy(h); }
     }
 
+    private static void overwriteWideLeft() {
+        long h = NativeTerm.create(20, 8);
+        try {
+            feed(h, "中\033[1;1Hi");
+            int[] cells = row(h, 0, 20);
+            if (cells[0] != 'i' || cells[4] != 1 || cells[5] == -1)
+                throw new AssertionError("ASCII inherited a CJK continuation: cp=" + cells[0] + " width=" + cells[4]);
+        } finally { NativeTerm.destroy(h); }
+    }
+
+    private static void overwriteWideRight() {
+        long h = NativeTerm.create(20, 8);
+        try {
+            feed(h, "中\033[1;2Hi");
+            int[] cells = row(h, 0, 20);
+            if ((cells[0] != 0 && cells[0] != ' ') || cells[5] != 'i' || cells[9] != 1)
+                throw new AssertionError("overwritten CJK left a half glyph");
+        } finally { NativeTerm.destroy(h); }
+    }
+
+    private static void overwriteWideOverlapDuringScroll() {
+        long h = NativeTerm.create(20, 8);
+        try {
+            Cache cache = new Cache(h, 20, 8);
+            for (int frame = 0; frame < 200; frame++) {
+                feed(h, "\033[7;1H 中\033[7;1H文\033[8;1H\n");
+                cache.update(h, 128);
+                int[] cells = row(h, 5, 20);
+                if (cells[0] != '文' || cells[4] != 2 || cells[5] != -1 || cells[10] == -1)
+                    throw new AssertionError("overlap left a second trailing cell after scroll");
+            }
+        } finally { NativeTerm.destroy(h); }
+    }
+
     private static void run(String name, Runnable test) {
         try { test.run(); System.out.println("PASS " + name); }
         catch (Throwable t) { System.out.println("FAIL " + name + ": " + t); failures++; }
@@ -160,6 +194,9 @@ public final class NativeRegression {
         run("TUI fixed header/footer and scroll margins", NativeRegression::fixedTuiRegions);
         run("1000 mixed TUI display frames", NativeRegression::mixedTuiFrames);
         run("query response burst over 4 KiB", NativeRegression::outputBurst);
+        run("ASCII overwrite of CJK lead keeps single-cell width", NativeRegression::overwriteWideLeft);
+        run("ASCII overwrite of CJK tail clears the other half", NativeRegression::overwriteWideRight);
+        run("CJK overlap stays coherent across 200 scroll frames", NativeRegression::overwriteWideOverlapDuringScroll);
         if (failures != 0) throw new AssertionError(failures + " regression(s)");
     }
 }

@@ -35,6 +35,7 @@ public class TerminalView extends View {
     private static final float ROW_BITMAP_SLACK = 1.15f;
 
     private long handle;
+    private boolean ownsNative = true;
     private int cols, rows;
 
     private float cellW, cellH, baseline, textSize;
@@ -151,6 +152,17 @@ public class TerminalView extends View {
 
     public void attachNative(long handle) {
         this.handle = handle;
+        ownsNative = true;
+        invalidateAllRows();
+        postInvalidateOnAnimation();
+    }
+
+    /** Borrowed service handle: releasing this View must not close the session. */
+    public void attachSession(long handle) {
+        cancelZoom();
+        clearSelection();
+        this.handle = handle;
+        ownsNative = false;
         invalidateAllRows();
         postInvalidateOnAnimation();
     }
@@ -247,8 +259,8 @@ public class TerminalView extends View {
     /*
      * 思路取自 fbcon / WT 的 AtlasEngine：字形预渲染成位图块，绘制时只做 blit，
      * 位置只由列号算出（col*cellW），**永不累加字体步进**。
-     * 这样"字宽度会变"在结构上不可能发生 —— 每格宽度就是指定的 width*cellW。
-     * 拉丁用 WT 的 Cascadia Mono，CJK 用 Noto Sans Mono CJK（自带宽高关系，缩放接近 1）。
+     * 单元格决定位置和裁剪范围；字形保持自然宽度，过宽时才缩小。
+     * 拉丁用 Cascadia Mono，CJK 用 Noto Sans Mono CJK。
      */
     private Typeface latinTf, latinTfBold, cjkTf, cjkTfBold;
     private final java.util.HashMap<Long, Bitmap> glyphCache = new java.util.HashMap<>();
@@ -308,14 +320,16 @@ public class TerminalView extends View {
         Canvas gc = new Canvas(b);
         boolean bold = (style & 1) != 0;
         textPaint.setTypeface(width >= 2 ? (bold ? cjkTfBold : cjkTf) : (bold ? latinTfBold : latinTf));
-        textPaint.setFakeBoldText(false);          // 用真粗体字形，不靠 fake
+        textPaint.setTextSize(fontPx);
+        textPaint.setFakeBoldText(false);
         textPaint.setTextSkewX((style & 2) != 0 ? -0.25f : 0f);
         textPaint.setTextScaleX(1f);
         textPaint.setColor(fg | 0xFF000000);
         int nch = Character.toChars(cp, cpBuf, 0);
         float adv = textPaint.measureText(cpBuf, 0, nch);
         float target = width * cellW;
-        if (adv > 0.05f) textPaint.setTextScaleX(target / adv);   // 每格宽度严格一致
+        // Grid positions are fixed; a narrow glyph must never be stretched to fill its cell.
+        if (adv > 0.05f) textPaint.setTextScaleX(Math.min(1f, target / adv));
         gc.drawText(cpBuf, 0, nch, 0f, baseline, textPaint);
         glyphCache.put(key, b);
         return b;
@@ -749,6 +763,8 @@ public class TerminalView extends View {
                     int fg = rowBuf[base + 1], style = rowBuf[base + 3] & 5;
                     int variant = (width >= 2 ? 2 : 0) | (style & 1);
                     float advance = naturalAdvance(cp, variant);
+                    float scale = Math.min(1f, width * cellW * 100f / (advance * fontPx));
+                    boolean fillsCell = Math.abs(advance * fontPx * scale / 100f - width * cellW) < 0.01f;
                     int end = col, chars = 0;
                     while (end < n) {
                         int p = end * 5;
@@ -758,10 +774,12 @@ public class TerminalView extends View {
                         if (Math.abs(naturalAdvance(next, variant) - advance) > 0.001f) break;
                         chars += Character.toChars(next, liveRun, chars);
                         end += width;
+                        if (!fillsCell) break;
                     }
                     textPaint.setTypeface(liveTypeface(variant));
                     textPaint.setTextSize(fontPx);
-                    textPaint.setTextScaleX(width * cellW * 100f / (advance * fontPx));
+                    textPaint.setTextScaleX(scale);
+                    textPaint.setFakeBoldText(false);
                     textPaint.setTextSkewX((style & 4) != 0 ? -0.25f : 0f);
                     textPaint.setColor(fg | 0xff000000);
                     canvas.drawText(liveRun, 0, chars, col * cellW, y + baseline, textPaint);
@@ -1032,13 +1050,35 @@ public class TerminalView extends View {
         NativeTerm.getCursor(handle, cursorOut);
         if (cursorOut[2] == 0) return;
         int r = cursorOut[0], ccol = cursorOut[1];
-        if (r < 0 || r >= rows) return;
+        if (r < 0 || r >= rows || ccol < 0 || ccol >= cols) return;
+        NativeTerm.getCell(handle, r, ccol, cellOne);
+        // A cursor may point at the trailing cell of a double-width glyph.
+        if ((cellOne[0] == -1 || cellOne[4] == 0) && ccol > 0) {
+            ccol--;
+            NativeTerm.getCell(handle, r, ccol, cellOne);
+        }
+        int width = Math.max(1, Math.min(2, cellOne[4]));
         float x = ccol * cellW;
         float y = r * cellH;
-        cursorPaint.setStyle(Paint.Style.STROKE);
-        cursorPaint.setStrokeWidth(Math.max(1f, cellW * 0.15f));
-        canvas.drawRect(x, y, x + cellW, y + cellH, cursorPaint);
-        // 光标所在行也要重画（否则残影），交给下一帧；libvterm 的 movecursor 回调已把旧行标脏
+        cursorPaint.setStyle(Paint.Style.FILL);
+        canvas.drawRect(x, y, x + width * cellW, y + cellH, cursorPaint);
+        int cp = sanitizeCp(cellOne[0]);
+        if (cp != ' ') {
+            boolean bold = (cellOne[3] & 1) != 0;
+            textPaint.setTypeface(width >= 2 ? (bold ? cjkTfBold : cjkTf) : (bold ? latinTfBold : latinTf));
+            textPaint.setTextSize(fontPx);
+            textPaint.setFakeBoldText(false);
+            textPaint.setTextSkewX((cellOne[3] & 4) != 0 ? -0.25f : 0f);
+            textPaint.setTextScaleX(1f);
+            textPaint.setColor(0xFF101014);
+            int chars = Character.toChars(cp, cpBuf, 0);
+            float advance = textPaint.measureText(cpBuf, 0, chars);
+            if (advance > .05f) textPaint.setTextScaleX(Math.min(1f, width * cellW / advance));
+            int save = canvas.save();
+            canvas.clipRect(x, y, x + width * cellW, y + cellH);
+            canvas.drawText(cpBuf, 0, chars, x, y + baseline, textPaint);
+            canvas.restoreToCount(save);
+        }
     }
 
     public void destroy() {
@@ -1048,7 +1088,7 @@ public class TerminalView extends View {
         clearSelection();
         synchronized (NativeTerm.class) {
             if (handle != 0) {
-                NativeTerm.destroy(handle);
+                if (ownsNative) NativeTerm.destroy(handle);
                 handle = 0;
             }
         }

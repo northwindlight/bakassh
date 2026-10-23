@@ -17,6 +17,15 @@
         android:orientation="horizontal"
         android:paddingStart="16dp"
         android:paddingEnd="4dp">
+        <ImageButton
+            android:id="@+id/btn_term_sessions"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="@string/sessions"
+            android:padding="12dp"
+            android:src="@drawable/ic_sessions"
+            app:tint="?attr/colorOnSurfaceVariant" />
         <TextView
             android:id="@+id/tv_term_title"
             android:layout_width="0dp"

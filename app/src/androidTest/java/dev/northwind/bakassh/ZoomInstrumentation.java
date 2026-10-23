@@ -34,7 +34,7 @@ public final class ZoomInstrumentation extends Instrumentation {
             result.putString("stream", android.util.Log.getStackTraceString(failure.get()));
             finish(Activity.RESULT_CANCELED, result);
         } else {
-            result.putString("stream", "PASS live font rendering, per-frame native grids, pointer transitions, cancellation\n");
+            result.putString("stream", "PASS live font rendering, per-frame native grids, pointer transitions, cancellation, glyph state isolation, solid CJK cursor, borrowed session handles\n");
             finish(Activity.RESULT_OK, result);
         }
     }
@@ -138,6 +138,7 @@ public final class ZoomInstrumentation extends Instrumentation {
 
             // Key and Host authentication regressions
             verifyKeys();
+            RenderingRegression.verify(getTargetContext());
         } finally { view.destroy(); bitmap.recycle(); }
     }
     /** 私有测试目录和首选项；不能让缩放验收修改手机里的真实密钥。 */

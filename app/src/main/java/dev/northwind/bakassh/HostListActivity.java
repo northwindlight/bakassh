@@ -44,6 +44,12 @@ public class HostListActivity extends AppCompatActivity {
     private ListView list;
     private View emptyStateView;
     private TextView subtitleView;
+    private MaterialButton activeSessions;
+    private final SessionService.Listener sessionListener = new SessionService.Listener() {
+        @Override public void onSessionsChanged() { updateActiveSessions(); }
+        @Override public void onSessionData(TerminalSession session) { }
+    };
+    private SessionService observedService;
 
     private View importRoot;
     private byte[] importBytes;
@@ -64,6 +70,8 @@ public class HostListActivity extends AppCompatActivity {
         list.addHeaderView(header, null, false);
         emptyStateView = header.findViewById(R.id.layout_empty_state);
         subtitleView = header.findViewById(R.id.tv_host_subtitle);
+        activeSessions = header.findViewById(R.id.btn_active_sessions);
+        activeSessions.setOnClickListener(v -> showActiveSessions());
 
         ExtendedFloatingActionButton fabAdd = findViewById(R.id.fab_add_host);
         fabAdd.setOnClickListener(v -> editDialog(-1));
@@ -125,6 +133,7 @@ public class HostListActivity extends AppCompatActivity {
 
     private void connect(Host h) {
         Intent it = new Intent(this, MainActivity.class);
+        it.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         it.putExtra("name", h.name);
         it.putExtra("host", h.host);
         it.putExtra("port", h.port);
@@ -135,6 +144,39 @@ public class HostListActivity extends AppCompatActivity {
         it.putExtra("password", h.password);
         MainActivity.out(this, "CONNECT " + h.user + "@" + h.host + ":" + h.port + " [" + h.authType + "]");
         startActivity(it);
+    }
+
+    @Override protected void onResume() {
+        super.onResume();
+        observedService = SessionService.current();
+        if (observedService != null) observedService.addListener(sessionListener);
+        updateActiveSessions();
+    }
+
+    @Override protected void onStop() {
+        if (observedService != null) observedService.removeListener(sessionListener);
+        observedService = null;
+        super.onStop();
+    }
+
+    private void updateActiveSessions() {
+        SessionService service = SessionService.current();
+        int count = service == null ? 0 : service.sessions().size();
+        activeSessions.setVisibility(count == 0 ? View.GONE : View.VISIBLE);
+        activeSessions.setText("返回会话 · " + count);
+    }
+
+    private void showActiveSessions() {
+        SessionService service = SessionService.current();
+        if (service == null) return;
+        List<TerminalSession> sessions = service.sessions();
+        String[] labels = new String[sessions.size()];
+        for (int i = 0; i < labels.length; i++) labels[i] = (i + 1) + "  " + sessions.get(i).title + " · " + sessions.get(i).detail();
+        new MaterialAlertDialogBuilder(this).setTitle("会话")
+                .setItems(labels, (dialog, index) -> startActivity(new Intent(this, MainActivity.class)
+                        .putExtra(SessionService.SESSION_ID, sessions.get(index).id)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)))
+                .setNegativeButton("关闭", null).show();
     }
 
     /** 编辑页独占窗口；表单可滚动，键盘弹出时保留顶栏操作。 */
@@ -715,6 +757,7 @@ public class HostListActivity extends AppCompatActivity {
 
         root.findViewById(R.id.btn_cancel_settings).setOnClickListener(v -> dialog.cancel());
         root.findViewById(R.id.settings_extra_keys).setOnClickListener(v -> extraKeysDialog());
+        root.findViewById(R.id.settings_background).setOnClickListener(v -> BackgroundSettings.show(this));
         root.findViewById(R.id.btn_save_settings).setOnClickListener(v -> {
             int inset, cols;
             try { inset = Integer.parseInt(etInset.getText().toString().trim()); }

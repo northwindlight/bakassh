@@ -2,11 +2,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <application
         android:label="bakaSSH"
         android:hardwareAccelerated="true"
         android:theme="@style/AppTheme">
+        <service android:name=".SessionService" android:exported="false"
+            android:stopWithTask="false" android:foregroundServiceType="specialUse">
+            <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User initiated persistent interactive SSH terminal sessions" />
+        </service>
         <!-- 主界面：主机列表（照着 ConnectBot 的样子） -->
         <activity
             android:name=".HostListActivity"
@@ -20,6 +31,7 @@
         <!-- 终端界面：全屏无标题（主题单独指定，别继承主机列表的） -->
         <activity
             android:name=".MainActivity"
+            android:launchMode="singleTop"
             android:exported="false"
             android:theme="@style/TermTheme"
             android:configChanges="orientation|screenSize|keyboardHidden|screenLayout"

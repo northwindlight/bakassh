@@ -19,7 +19,10 @@ gcc -std=c11 -shared -fPIC -O2 -Wall -Wno-maybe-uninitialized \
     "$root_dir/tests/host/android/util/Log.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/NativeTerm.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/SshTransport.java" \
-    "$root_dir/tests/host/TransportRegression.java"
+    "$root_dir/app/src/main/java/dev/northwind/bakassh/PendingResize.java" \
+    "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalSession.java" \
+    "$root_dir/tests/host/TransportRegression.java" \
+    "$root_dir/tests/host/SessionRegression.java"
 ssh-keygen -q -t rsa -b 2048 -m PEM -N '' -f "$test_dir/hostkey"
 ssh-keygen -q -t rsa -b 2048 -m PEM -N '' -f "$test_dir/clientkey"
 python3 "$root_dir/tests/host/server.py" "$test_dir/hostkey" "$test_dir/clientkey.pub" "$test_dir/port" > "$test_dir/server.log" 2>&1 &
@@ -38,6 +41,11 @@ PORT
 )
 if ! "$jdk_dir/bin/java" -Djava.library.path="$test_dir" -cp "$test_dir:$JSCH_JAR" \
     dev.northwind.bakassh.TransportRegression "$test_port" test-user "$test_dir/clientkey"; then
+    cat "$test_dir/server.log"
+    exit 1
+fi
+if ! "$jdk_dir/bin/java" -Djava.library.path="$test_dir" -cp "$test_dir:$JSCH_JAR" \
+    dev.northwind.bakassh.SessionRegression "$test_port" test-user "$test_dir/clientkey"; then
     cat "$test_dir/server.log"
     exit 1
 fi

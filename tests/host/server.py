@@ -38,11 +38,7 @@ class TerminalServer(paramiko.ServerInterface):
         return True
 
 
-with socket.socket() as listener:
-    listener.bind(("127.0.0.1", 0))
-    listener.listen(1)
-    pathlib.Path(port_file).write_text(str(listener.getsockname()[1]))
-    connection, _ = listener.accept()
+def serve(connection):
     with paramiko.Transport(connection) as transport:
         transport.add_server_key(paramiko.RSAKey.from_private_key_file(host_key))
         server = TerminalServer()
@@ -72,7 +68,18 @@ with socket.socket() as listener:
                     channel.sendall(b"PONG\r\n")
                 elif line == b"size":
                     channel.sendall(f"SIZE {server.size[0]} {server.size[1]}\r\n".encode())
+                elif line.startswith(b"tag "):
+                    channel.sendall(line[4:] + b"\r\n")
                 elif line == b"exit":
                     channel.send_exit_status(0)
                     break
                 line.clear()
+
+
+with socket.socket() as listener:
+    listener.bind(("127.0.0.1", 0))
+    listener.listen(8)
+    pathlib.Path(port_file).write_text(str(listener.getsockname()[1]))
+    while True:
+        connection, _ = listener.accept()
+        threading.Thread(target=serve, args=(connection,), daemon=True).start()

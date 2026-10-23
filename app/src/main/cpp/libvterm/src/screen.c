@@ -179,6 +179,27 @@ static int putglyph(VTermGlyphInfo *info, VTermPos pos, void *user)
   if(!cell)
     return 0;
 
+  VTermRect rect = {
+    .start_row = pos.row,
+    .end_row   = pos.row+1,
+    .start_col = pos.col,
+    .end_col   = pos.col+info->width,
+  };
+
+  /* Repainting only half of a wide glyph must remove its other half.
+   * Otherwise a narrow replacement inherits the old trailing sentinel and
+   * vterm_screen_get_cell() incorrectly reports it as width 2. This occurs
+   * during ordinary incremental TUI redraws, including between SSH packets. */
+  if(cell->chars[0] == (uint32_t)-1 && pos.col > 0) {
+    clearcell(screen, getcell(screen, pos.row, pos.col - 1));
+    rect.start_col--;
+  }
+  ScreenCell *after = getcell(screen, pos.row, pos.col + info->width);
+  if(after && after->chars[0] == (uint32_t)-1) {
+    clearcell(screen, after);
+    rect.end_col++;
+  }
+
   int i;
   for(i = 0; i < VTERM_MAX_CHARS_PER_CELL && info->chars[i]; i++) {
     cell->chars[i] = info->chars[i];
@@ -187,15 +208,11 @@ static int putglyph(VTermGlyphInfo *info, VTermPos pos, void *user)
   if(i < VTERM_MAX_CHARS_PER_CELL)
     cell->chars[i] = 0;
 
-  for(int col = 1; col < info->width; col++)
-    getcell(screen, pos.row, pos.col + col)->chars[0] = (uint32_t)-1;
-
-  VTermRect rect = {
-    .start_row = pos.row,
-    .end_row   = pos.row+1,
-    .start_col = pos.col,
-    .end_col   = pos.col+info->width,
-  };
+  for(int col = 1; col < info->width; col++) {
+    ScreenCell *tail = getcell(screen, pos.row, pos.col + col);
+    tail->chars[0] = (uint32_t)-1;
+    tail->pen = screen->pen;
+  }
 
   cell->pen.protected_cell = info->protected_cell;
   cell->pen.dwl            = info->dwl;

@@ -61,11 +61,38 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout layoutExtraKeysBox;
     private android.view.ActionMode selectionActionMode;
     private long handle;
-    private Thread worker;
-    private volatile boolean running;
-    private volatile boolean sessionStarted;
-    private volatile SshTransport transport;
-    private final PendingResize pendingResize = new PendingResize();
+    private SessionService service;
+    private TerminalSession session;
+    private String requestedSessionId;
+    private boolean bound, resumed, preparingConnection, attachingSession;
+    private android.app.Dialog credentialDialog;
+    private final android.content.ServiceConnection connection = new android.content.ServiceConnection() {
+        @Override public void onServiceConnected(android.content.ComponentName name, android.os.IBinder binder) {
+            service = ((SessionService.LocalBinder) binder).service();
+            if (resumed) service.addListener(sessionListener);
+            openRequestedSession();
+        }
+        @Override public void onServiceDisconnected(android.content.ComponentName name) {
+            service = null;
+            detachSession();
+            toast("会话服务已停止，请重新连接");
+            finish();
+        }
+    };
+    private final SessionService.Listener sessionListener = new SessionService.Listener() {
+        @Override public void onSessionsChanged() {
+            if (session != null && service.get(session.id) == null) {
+                detachSession();
+                List<TerminalSession> remaining = service.sessions();
+                if (remaining.isEmpty()) { finish(); return; }
+                attachSession(remaining.get(remaining.size() - 1));
+            }
+            updateSessionTitle();
+        }
+        @Override public void onSessionData(TerminalSession changed) {
+            if (session == changed) view.notifyNewData();
+        }
+    };
 
     /** 粘滞修饰键：点一下点亮，作用于下一个输入的键。 */
     private boolean ctrlOn, altOn, shiftOn;
@@ -110,21 +137,9 @@ public class MainActivity extends AppCompatActivity {
         });
 
         Intent it = getIntent();
-        if (it != null) {
-            hName = it.getStringExtra("name") != null ? it.getStringExtra("name") : hName;
-            hHost = it.getStringExtra("host") != null ? it.getStringExtra("host") : hHost;
-            hPort = it.getIntExtra("port", hPort);
-            hUser = it.getStringExtra("user") != null ? it.getStringExtra("user") : hUser;
-            hStartup = it.getStringExtra("startup") != null ? it.getStringExtra("startup") : hStartup;
-            hAuthType = it.getStringExtra("auth_type") != null ? it.getStringExtra("auth_type") : hAuthType;
-            hKeyId = it.getStringExtra("key_id") != null ? it.getStringExtra("key_id") : hKeyId;
-            hPassword = it.getStringExtra("password") != null ? it.getStringExtra("password") : hPassword;
-        }
-
-        try {
-            File f = new File(getExternalFilesDir(null), "m1a.txt");
-            if (f.exists() && !f.delete()) Log.i(TAG, "old m1a.txt delete failed");
-        } catch (Throwable ignored) {}
+        requestedSessionId = savedInstanceState == null ? null : savedInstanceState.getString(SessionService.SESSION_ID);
+        if (requestedSessionId == null && it != null) requestedSessionId = it.getStringExtra(SessionService.SESSION_ID);
+        if (it != null) readHost(it);
 
         view = findViewById(R.id.terminal_view);
         view.setPreferredColumns(HostStore.getZoomColumns(this, 150));
@@ -143,18 +158,28 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.btn_term_paste).setOnClickListener(v -> pasteFromClipboard());
         findViewById(R.id.btn_term_keyboard).setOnClickListener(v -> toggleIme());
+        findViewById(R.id.btn_term_sessions).setOnClickListener(v -> showSessions());
+        tvTermTitle.setOnClickListener(v -> showSessions());
         findViewById(R.id.btn_term_exit).setOnClickListener(v -> {
             androidx.appcompat.widget.PopupMenu menu = new androidx.appcompat.widget.PopupMenu(this, v);
             menu.getMenu().add(0, 1, 0, layoutExtraKeysBox.getVisibility() == View.VISIBLE ? "隐藏扩展按键" : "显示扩展按键");
-            menu.getMenu().add(0, 2, 1, "断开连接");
+            menu.getMenu().add(0, 3, 1, "新建会话");
+            menu.getMenu().add(0, 4, 2, "后台保活");
+            menu.getMenu().add(0, 2, 3, "关闭当前会话");
             menu.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == 1) {
                     layoutExtraKeysBox.setVisibility(layoutExtraKeysBox.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
-                } else {
-                    new MaterialAlertDialogBuilder(this).setTitle("断开连接？")
-                            .setMessage("将关闭与 " + hHost + " 的 SSH 连接。")
+                } else if (item.getItemId() == 3) {
+                    newSession();
+                } else if (item.getItemId() == 4) {
+                    BackgroundSettings.show(this);
+                } else if (session != null) {
+                    new MaterialAlertDialogBuilder(this).setTitle("关闭当前会话？")
+                            .setMessage("将关闭 " + session.title + " 的 SSH 连接。")
                             .setNegativeButton("取消", null)
-                            .setPositiveButton("断开", (d, w) -> finish()).show();
+                            .setPositiveButton("关闭", (d, w) -> {
+                                if (service != null && session != null) service.close(session.id);
+                            }).show();
                 }
                 return true;
             });
@@ -235,8 +260,8 @@ public class MainActivity extends AppCompatActivity {
         out(this, "START device=" + android.os.Build.MODEL + " sdk=" + android.os.Build.VERSION.SDK_INT
                 + " target=" + hUser + "@" + hHost + ":" + hPort
                 + " startup=\"" + hStartup + "\" cols=" + view.getCols());
-        running = true;
-        startIoThread();
+        bound = bindService(new Intent(this, SessionService.class), connection, Context.BIND_AUTO_CREATE);
+        if (!bound) { toast("无法启动会话服务"); finish(); }
     }
 
     private void updateSelectionToolbar(boolean active) {
@@ -538,56 +563,8 @@ public class MainActivity extends AppCompatActivity {
         if (sb.length() > 0) sendBytes(sb.toString().getBytes(StandardCharsets.UTF_8));
     }
 
-    private void sendBytes(byte[] b) {
-        final SshTransport t = transport;
-        if (t == null || !running) return;
-        pumpOutput();
-        queueBytes(t, b);
-    }
-
-    private void queueBytes(SshTransport t, byte[] b) {
-        postIo(() -> {
-            try {
-                t.write(b);
-            } catch (Throwable ex) {
-                out(this, "io write failed: " + ex);
-            }
-        });
-    }
-
-    private void pumpOutput() {
-        synchronized (NativeTerm.class) {
-            final SshTransport t = transport;
-            if (handle == 0 || t == null || !running) return;
-            NativeTerm.drainOutput(handle, bytes -> queueBytes(t, bytes));
-        }
-    }
-
-    // ---------------- 专用 IO 线程 ----------------
-
-    private final java.util.concurrent.LinkedBlockingQueue<Runnable> ioQueue =
-            new java.util.concurrent.LinkedBlockingQueue<>();
-    private Thread ioThread;
-
-    private void startIoThread() {
-        if (ioThread != null) return;
-        ioThread = new Thread(() -> {
-            while (running) {
-                try {
-                    Runnable r = ioQueue.poll(200, java.util.concurrent.TimeUnit.MILLISECONDS);
-                    if (r != null) r.run();
-                } catch (InterruptedException ie) {
-                    break;
-                } catch (Throwable t) {
-                    out(this, "io thread: " + t);
-                }
-            }
-        }, "ssh-io");
-        ioThread.start();
-    }
-
-    private void postIo(Runnable r) {
-        if (running) ioQueue.offer(r);
+    private void sendBytes(byte[] bytes) {
+        if (session != null) session.send(bytes);
     }
 
     private void showIme() {
@@ -601,261 +578,216 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        running = true;
-
-        view.setGridListener((c, r) -> {
-            if (handle == 0) {
-                handle = NativeTerm.create(c, r);
-                out(this, "NativeTerm.create -> handle=" + handle + " grid=" + c + "x" + r);
-                if (handle == 0) {
-                    out(this, "FATAL: libvterm create failed");
-                    return;
-                }
-                view.attachNative(handle);
-                startSessionOnce();
-            } else {
-                NativeTerm.resize(handle, c, r);
-                final SshTransport t = transport;
-                if (t != null && pendingResize.offer(c, r)) postIo(() -> {
-                    int[] size;
-                    while ((size = pendingResize.poll()) != null) t.resize(size[0], size[1]);
-                });
-            }
+        resumed = true;
+        if (service != null) service.addListener(sessionListener);
+        view.setGridListener((cols, rows) -> {
+            if (session != null) session.resize(cols, rows);
+            else if (!attachingSession) openRequestedSession();
         });
-
         view.setInputSink(new TerminalView.InputSink() {
-            @Override
-            public void mouse(int row, int col, int button, boolean pressed) {
-                if (handle == 0) return;
-                NativeTerm.mouseMove(handle, row, col, 0);
-                NativeTerm.mouseButton(handle, button, pressed, 0);
-                pumpOutput();
+            @Override public void mouse(int row, int col, int button, boolean pressed) {
+                if (session != null) session.mouse(row, col, button, pressed);
             }
-
-            @Override
-            public void tap() {
-                showIme();
-            }
+            @Override public void tap() { showIme(); }
         });
-
-        view.setSelectionListener((active, hasRange) -> {
-            updateSelectionToolbar(active);
-            out(this, "SELECTION active=" + active + " hasRange=" + hasRange);
+        view.setSelectionListener((active, hasRange) -> updateSelectionToolbar(active));
+        view.setZoomListener(columns -> {
+            HostStore.setZoomColumns(this, columns);
+            if (session != null) session.zoomColumns = columns;
+            tvTermCols.setText(view.getCols() + "列");
         });
-
-        view.setZoomListener(cols -> {
-            HostStore.setZoomColumns(this, cols);
-            if (tvTermCols != null) {
-                tvTermCols.setText(cols + "列");
-            }
-            out(this, "ZOOM targetCols=" + cols);
-        });
-
-        if (handle != 0) startSessionOnce();
-        input.postDelayed(this::showIme, 400);
+        if (service != null) {
+            sessionListener.onSessionsChanged();
+            openRequestedSession();
+        }
+        view.notifyNewData();
+        input.postDelayed(showKeyboard, 400);
     }
 
-    private void startSessionOnce() {
-        if (sessionStarted || handle == 0) return;
-        sessionStarted = true;
-        transport = new SshTransport();
-        worker = new Thread(this::sessionRunner, "session");
-        worker.start();
+    private final Runnable showKeyboard = this::showIme;
+
+    @Override protected void onStop() {
+        resumed = false;
+        if (service != null) service.removeListener(sessionListener);
+        input.removeCallbacks(showKeyboard);
+        super.onStop();
     }
 
-    @Override
-    protected void onDestroy() {
-        running = false;
-        if (view != null) view.clearSelection();
-        if (transport != null) {
-            transport.disconnect();
-        }
-        if (worker != null) {
-            worker.interrupt();
-            worker = null;
-        }
-        if (ioThread != null) ioThread.interrupt();
-        ioQueue.clear();
-        synchronized (NativeTerm.class) {
-            handle = 0;
-            if (view != null) view.destroy();
-        }
-        super.onDestroy();
+    @Override protected void onSaveInstanceState(Bundle state) {
+        super.onSaveInstanceState(state);
+        if (session != null) state.putString(SessionService.SESSION_ID, session.id);
     }
 
-    private void sessionRunner() {
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        requestedSessionId = intent.getStringExtra(SessionService.SESSION_ID);
+        if (requestedSessionId != null) {
+            if (credentialDialog != null) credentialDialog.dismiss();
+            preparingConnection = false;
+        }
+        if (requestedSessionId == null && intent.hasExtra("host")) {
+            if (credentialDialog != null) credentialDialog.dismiss();
+            preparingConnection = false;
+            detachSession();
+            readHost(intent);
+        }
+        openRequestedSession();
+    }
+
+    private void readHost(Intent intent) {
+        hName = intent.getStringExtra("name") == null ? "" : intent.getStringExtra("name");
+        hHost = intent.getStringExtra("host") == null ? "" : intent.getStringExtra("host");
+        hPort = intent.getIntExtra("port", 22);
+        hUser = intent.getStringExtra("user") == null ? "" : intent.getStringExtra("user");
+        hStartup = intent.getStringExtra("startup") == null ? "" : intent.getStringExtra("startup");
+        hAuthType = intent.getStringExtra("auth_type") == null ? "publickey" : intent.getStringExtra("auth_type");
+        hKeyId = intent.getStringExtra("key_id") == null ? "default" : intent.getStringExtra("key_id");
+        hPassword = intent.getStringExtra("password") == null ? "" : intent.getStringExtra("password");
+    }
+
+    private void openRequestedSession() {
+        if (service == null || !resumed || preparingConnection || isFinishing()) return;
+        if (requestedSessionId != null) {
+            TerminalSession requested = service.get(requestedSessionId);
+            requestedSessionId = null;
+            if (requested != null) { attachSession(requested); return; }
+            toast("原会话已结束，请重新连接");
+            finish();
+            return;
+        }
+        if (session != null) return;
+        if (hHost.isEmpty()) {
+            List<TerminalSession> existing = service.sessions();
+            if (existing.isEmpty()) { finish(); return; }
+            attachSession(existing.get(existing.size() - 1));
+        } else if (view.getWidth() > 0 && view.getHeight() > 0) {
+            preparingConnection = true;
+            prepareConnection();
+        }
+    }
+
+    private void prepareConnection() {
+        if ("password".equalsIgnoreCase(hAuthType)) {
+            if (hPassword.isEmpty()) promptSecret("SSH 密码认证", "主机登录密码", password -> createSession(null, null, password));
+            else createSession(null, null, hPassword);
+            return;
+        }
+        KeyItem key;
+        try { key = KeyManager.getKey(this, hKeyId); }
+        catch (Exception e) { toast("读取密钥失败：" + e.getMessage()); finish(); return; }
+        if (key == null) {
+            credentialDialog = new MaterialAlertDialogBuilder(this).setTitle("没有可用的密钥")
+                    .setMessage("请返回主机列表，生成或导入私钥，并在主机配置中选择它。")
+                    .setPositiveButton("返回", (d, w) -> finish()).setOnCancelListener(d -> finish()).show();
+            return;
+        }
+        String keyPath = KeyManager.getPrivFile(this, key.id).getAbsolutePath();
+        if (key.encrypted) promptSecret("解锁密钥 · " + key.name, "私钥保护口令", passphrase -> createSession(keyPath, passphrase, null));
+        else createSession(keyPath, null, null);
+    }
+
+    private void promptSecret(String title, String hint, java.util.function.Consumer<String> callback) {
+        TextInputLayout field = new TextInputLayout(this);
+        field.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_FILLED);
+        field.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
+        field.setHint(hint);
+        TextInputEditText editor = new TextInputEditText(this);
+        editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        field.addView(editor);
+        LinearLayout box = new LinearLayout(this);
+        box.setPadding(dp(24), dp(8), dp(24), dp(4));
+        box.addView(field, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        credentialDialog = new MaterialAlertDialogBuilder(this).setTitle(title)
+                .setMessage(hUser + "@" + hHost + ":" + hPort).setView(box)
+                .setPositiveButton("连接", (d, w) -> {
+                    String secret = editor.getText() == null ? "" : editor.getText().toString();
+                    editor.setText("");
+                    callback.accept(secret);
+                }).setNegativeButton("取消", (d, w) -> finish()).setOnCancelListener(d -> finish()).show();
+    }
+
+    private void createSession(String keyPath, String passphrase, String password) {
+        if (isFinishing() || isDestroyed() || service == null) return;
+        Host host = new Host(hName, hHost, hPort, hUser, hStartup, hAuthType, hKeyId, "");
         try {
-            Thread.sleep(800);
-            if (!running) return;
-
-            String keyPath = null;
-            String keyPassphrase = null;
-
-            if ("password".equalsIgnoreCase(hAuthType)) {
-                if (hPassword == null || hPassword.isEmpty()) {
-                    final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
-                    final String[] pwdResult = new String[]{""};
-                    final boolean[] cancelled = new boolean[]{false};
-                    runOnUiThread(() -> {
-                        LinearLayout box = new LinearLayout(this);
-                        box.setOrientation(LinearLayout.VERTICAL);
-                        box.setPadding(dp(24), dp(8), dp(24), dp(4));
-
-                        TextInputLayout textInputLayout = new TextInputLayout(this);
-                        textInputLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_FILLED);
-                        textInputLayout.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
-                        textInputLayout.setEndIconTintList(ColorStateList.valueOf(getResources().getColor(R.color.term_on_surface_variant)));
-                        textInputLayout.setHint("请输入主机登录密码");
-
-                        TextInputEditText et = new TextInputEditText(this);
-                        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                        et.setTextColor(getResources().getColor(R.color.term_on_surface));
-                        textInputLayout.addView(et, new LinearLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                        box.addView(textInputLayout);
-
-                        new MaterialAlertDialogBuilder(this)
-                                .setTitle("SSH 密码认证")
-                                .setMessage(hUser + "@" + hHost + ":" + hPort)
-                                .setView(box)
-                                .setCancelable(false)
-                                .setPositiveButton("连接", (d, w) -> {
-                                    pwdResult[0] = et.getText() != null ? et.getText().toString() : "";
-                                    latch.countDown();
-                                })
-                                .setNegativeButton("取消", (d, w) -> {
-                                    cancelled[0] = true;
-                                    latch.countDown();
-                                    finish();
-                                })
-                                .show();
-                    });
-                    latch.await();
-                    if (cancelled[0] || !running) return;
-                    hPassword = pwdResult[0];
-                }
-            } else {
-                KeyItem key;
-                try {
-                    key = KeyManager.getKey(this, hKeyId);
-                } catch (Throwable t) {
-                    out(this, "getKey FAILED: " + t);
-                    return;
-                }
-                if (key == null) {
-                    runOnUiThread(() -> new MaterialAlertDialogBuilder(this)
-                            .setTitle("没有可用的密钥")
-                            .setMessage("请返回主机列表，生成或导入私钥，并在主机配置中选择它。")
-                            .setPositiveButton("返回", (d, w) -> finish())
-                            .setOnCancelListener(d -> finish()).show());
-                    return;
-                }
-                keyPath = KeyManager.getPrivFile(this, key.id).getAbsolutePath();
-                if (key.encrypted) {
-                    final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
-                    final String[] passResult = new String[]{""};
-                    final boolean[] cancelled = new boolean[]{false};
-                    runOnUiThread(() -> {
-                        LinearLayout box = new LinearLayout(this);
-                        box.setOrientation(LinearLayout.VERTICAL);
-                        box.setPadding(dp(24), dp(8), dp(24), dp(4));
-
-                        TextInputLayout textInputLayout = new TextInputLayout(this);
-                        textInputLayout.setBoxBackgroundMode(TextInputLayout.BOX_BACKGROUND_FILLED);
-                        textInputLayout.setEndIconMode(TextInputLayout.END_ICON_PASSWORD_TOGGLE);
-                        textInputLayout.setEndIconTintList(ColorStateList.valueOf(getResources().getColor(R.color.term_on_surface_variant)));
-                        textInputLayout.setHint("私钥保护口令");
-
-                        TextInputEditText et = new TextInputEditText(this);
-                        et.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-                        et.setTextColor(getResources().getColor(R.color.term_on_surface));
-                        textInputLayout.addView(et, new LinearLayout.LayoutParams(
-                                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-                        box.addView(textInputLayout);
-
-                        new MaterialAlertDialogBuilder(this)
-                                .setTitle("解锁密钥")
-                                .setMessage("正在连接使用密钥: " + key.name)
-                                .setView(box)
-                                .setCancelable(false)
-                                .setPositiveButton("确定", (d, w) -> {
-                                    passResult[0] = et.getText() != null ? et.getText().toString() : "";
-                                    latch.countDown();
-                                })
-                                .setNegativeButton("取消", (d, w) -> {
-                                    cancelled[0] = true;
-                                    latch.countDown();
-                                    finish();
-                                })
-                                .show();
-                    });
-                    latch.await();
-                    if (cancelled[0] || !running) return;
-                    keyPassphrase = passResult[0];
-                }
+            androidx.core.content.ContextCompat.startForegroundService(this, new Intent(this, SessionService.class));
+            TerminalSession created = service.create(host, keyPath, passphrase, password,
+                    view.getCols(), view.getRows(), HostStore.getZoomColumns(this, 150));
+            attachSession(created);
+            if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                    checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED &&
+                    !getPreferences(MODE_PRIVATE).getBoolean("notification_asked", false)) {
+                getPreferences(MODE_PRIVATE).edit().putBoolean("notification_asked", true).apply();
+                requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 51);
             }
+        } catch (Exception e) { toast("创建会话失败：" + e.getMessage()); finish(); }
+        hPassword = "";
+        getIntent().removeExtra("password");
+        preparingConnection = false;
+    }
 
-            try {
-                final SshTransport t = transport;
-                if (!running) return;
-                String status = t.connect(hHost, hPort, hUser, hAuthType,
-                        keyPath, keyPassphrase, hPassword,
-                        view.getCols(), view.getRows(),
-                        new SshTransport.Listener() {
-                            @Override
-                            public void onBytes(byte[] buf, int len) {
-                                synchronized (NativeTerm.class) {
-                                    if (!running || handle == 0) return;
-                                    NativeTerm.receive(handle, buf, len, bytes -> queueBytes(t, bytes));
-                                }
-                                view.notifyNewData();
-                            }
+    private void attachSession(TerminalSession next) {
+        if (next == session) { updateSessionTitle(); return; }
+        attachingSession = true;
+        detachSession();
+        // Set zoom before publishing the new session so geometry callbacks cannot overwrite its grid.
+        view.setPreferredColumns(next.zoomColumns);
+        session = next;
+        attachingSession = false;
+        handle = next.handle();
+        view.attachSession(handle);
+        next.resize(view.getCols(), view.getRows());
+        ctrlOn = altOn = shiftOn = false;
+        updateModifierButtonState(ctrlButton, "CTRL", false);
+        updateModifierButtonState(altButton, "ALT", false);
+        updateModifierButtonState(shiftButton, "SHIFT", false);
+        input.getText().clear();
+        InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+        if (imm != null) imm.restartInput(input);
+        updateSessionTitle();
+    }
 
-                            @Override
-                            public void onStatus(String msg) {
-                                out(MainActivity.this, "SSH status: " + msg);
-                                if (msg.startsWith("channel EOF") || msg.startsWith("reader stopped")) {
-                                    runOnUiThread(() -> {
-                                        if (running) { toast("会话结束"); finish(); }
-                                    });
-                                }
-                            }
-                        });
-                out(this, "SSH " + status);
+    private void detachSession() {
+        view.clearSelection();
+        view.attachSession(0);
+        session = null;
+        handle = 0;
+    }
 
-                Thread.sleep(1500);
-                if (hStartup != null && !hStartup.isEmpty() && running) {
-                    String cmd = hStartup.endsWith("\n") ? hStartup : hStartup + "\n";
-                    final byte[] bytes = cmd.getBytes(StandardCharsets.UTF_8);
-                    postIo(() -> {
-                        try {
-                            t.write(bytes);
-                        } catch (Throwable ex) {
-                            out(this, "startup cmd failed: " + ex);
-                        }
-                    });
-                    out(this, "STARTUP queued: " + hStartup.trim() + " rx_before=" + transport.getRxBytes());
-                }
-                for (int i = 0; i < 60 && running; i++) {
-                    Thread.sleep(500);
-                }
-                out(this, "SESSION rx_bytes=" + transport.getRxBytes());
-                out(this, "DONE");
-            } catch (Throwable t) {
-                if (!running) return;
-                out(this, "SSH FAILED: " + t);
-                if (transport != null) {
-                    transport.disconnect();
-                    transport = null;
-                }
-                final String why = String.valueOf(t.getMessage());
-                runOnUiThread(() -> toast("连接失败：" + why));
-                new android.os.Handler(getMainLooper()).postDelayed(this::finish, 2500);
-            }
-        } catch (InterruptedException ie) {
-            out(this, "worker interrupted");
-        } catch (Throwable t) {
-            out(this, "worker ERROR " + t);
+    private void updateSessionTitle() {
+        if (session == null) return;
+        tvTermTitle.setText(session.title + " · " + session.detail());
+        tvTermCols.setText(view.getCols() + "列");
+        findViewById(R.id.btn_term_sessions).setContentDescription("会话 · " + service.sessions().size());
+    }
+
+    private void showSessions() {
+        if (service == null) return;
+        List<TerminalSession> all = service.sessions();
+        String[] labels = new String[all.size()];
+        for (int i = 0; i < labels.length; i++) {
+            TerminalSession item = all.get(i);
+            labels[i] = (item == session ? "● " : "○ ") + (i + 1) + "  " + item.title + " · " + item.detail();
         }
+        new MaterialAlertDialogBuilder(this).setTitle("会话（" + all.size() + "）")
+                .setItems(labels, (dialog, index) -> {
+                    TerminalSession selected = service.get(all.get(index).id);
+                    if (selected != null) attachSession(selected);
+                }).setPositiveButton("新建会话", (d, w) -> newSession()).setNegativeButton("关闭", null).show();
+    }
+
+    private void newSession() {
+        startActivity(new Intent(this, HostListActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+        finish();
+    }
+
+    @Override protected void onDestroy() {
+        if (credentialDialog != null) credentialDialog.dismiss();
+        if (service != null) service.removeListener(sessionListener);
+        if (bound) unbindService(connection);
+        detachSession();
+        view.destroy();
+        super.onDestroy();
     }
 }

@@ -137,6 +137,14 @@
                 android:text="@string/settings_apply_help"
                 android:textSize="14sp"
                 android:textColor="?attr/colorOnSurfaceVariant" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/settings_background"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="56dp"
+                android:layout_marginTop="16dp"
+                android:text="@string/background_settings" />
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </LinearLayout>
