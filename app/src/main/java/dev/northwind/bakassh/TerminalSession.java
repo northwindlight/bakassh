@@ -132,6 +132,15 @@ final class TerminalSession implements AutoCloseable {
         }
     }
 
+    void key(int key, int modifiers) {
+        synchronized (NativeTerm.class) {
+            if (handle == 0 || state != State.CONNECTED) return;
+            NativeTerm.followOutput(handle);
+            NativeTerm.keyboardKey(handle, key, modifiers);
+            NativeTerm.drainOutput(handle, this::queueBytes);
+        }
+    }
+
     void paste(String text) {
         synchronized (NativeTerm.class) {
             if (handle == 0 || state != State.CONNECTED) return;

@@ -80,12 +80,16 @@ def serve(connection):
                             received.extend(chunk)
                         assert received == expected, received
 
-                    channel.sendall(b"\x1b[?1000h\x1b[?1006hPOINTER_READY\r\n")
+                    channel.sendall(b"\x1b[?1000h\x1b[?1002h\x1b[?1003h\x1b[?1006hPOINTER_READY\r\n")
                     expect_bytes(b"\x1b[<0;7;3M\x1b[<0;7;3m"
                                  b"\x1b[<64;5;2M\x1b[<64;5;2M\x1b[<65;5;2M")
+                    channel.sendall(b"\x1b[?1003l\x1b[?1002lFALLBACK_READY\r\n")
+                    expect_bytes(b"\x1b[<0;2;2M\x1b[<0;2;2m")
                     channel.sendall(b"\x1b[?1000l\x1b[?2004hPASTE_READY\r\n")
                     expect_bytes(b"\x1b[200~hello\r[201~world\x1b[201~")
-                    channel.sendall(b"\x1b[?2004lINTERACTION_OK\r\n")
+                    channel.sendall(b"\x1b[?2004l\x1b[?1hKEY_READY\r\n")
+                    expect_bytes(b"\t\x1b[Z\x1bOA\x1b[1;5D")
+                    channel.sendall(b"\x1b[?1lINTERACTION_OK\r\n")
                 elif line == b"history":
                     channel.sendall(b"".join(f"history-{i}\r\n".encode() for i in range(100)) + b"HISTORY_OK\r\n")
                 elif line == b"exit":

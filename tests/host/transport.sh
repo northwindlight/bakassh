@@ -18,6 +18,7 @@ gcc -std=c11 -shared -fPIC -O2 -Wall -Wno-maybe-uninitialized \
 "$jdk_dir/bin/javac" -cp "$JSCH_JAR" -d "$test_dir" \
     "$root_dir/tests/host/android/util/Log.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/NativeTerm.java" \
+    "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalKeys.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/SshTransport.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/PendingResize.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalSession.java" \

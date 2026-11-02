@@ -74,6 +74,8 @@ public final class NativeTerm {
     public static synchronized native void scroll(long h, int row, int col, int lines);
     /** Returns true only when the application accepts remote mouse clicks. */
     public static synchronized native boolean click(long h, int row, int col);
+    public static synchronized native boolean hasMouseTracking(long h);
+    public static synchronized native void keyboardKey(long h, int key, int modifiers);
     public static synchronized native int getScrollOffset(long h);
     public static synchronized native int getHistorySize(long h);
     public static synchronized native boolean isLocalScroll(long h);

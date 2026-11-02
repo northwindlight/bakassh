@@ -202,17 +202,65 @@ public final class InteractionRegression {
             check(row(second, 0, 20).equals("line-0"), "closing another session lost history");
         } finally { if (first != 0) NativeTerm.destroy(first); NativeTerm.destroy(second); }
     }
+    private static void claudeMouseBundle() {
+        long h = NativeTerm.create(154, 134);
+        try {
+            // Same full-mode bundle emitted by the locally installed Claude Code.
+            feed(h, "\033[?1000h\033[?1002h\033[?1003h\033[?1006h");
+            check(NativeTerm.click(h, 90, 120), "full mouse mode rejected click");
+            check(output(h).equals("\033[<0;121;91M\033[<0;121;91m"),
+                    "finger tap injected a hover/motion event before the click");
+            NativeTerm.scroll(h, 90, 120, 1);
+            check(output(h).equals("\033[<64;121;91M"), "finger wheel injected hover");
+        } finally { NativeTerm.destroy(h); }
+    }
+    private static void independentMouseModes() {
+        long h = NativeTerm.create(40, 10);
+        try {
+            feed(h, "\033[?1000;1002;1003;1006h\033[?1003l\033[?1002l");
+            feed(h, "\033[?1000$p\033[?1002$p\033[?1003$p");
+            check(output(h).equals("\033[?1000;1$y\033[?1002;2$y\033[?1003;2$y"), "mode query lost independent states");
+            check(NativeTerm.click(h, 2, 6), "resetting motion modes cleared active click mode");
+            check(output(h).equals("\033[<0;7;3M\033[<0;7;3m"), "fallback click mode bytes");
+            feed(h, "\033[?1000l");
+            check(!NativeTerm.click(h, 0, 0), "mouse mode stayed enabled");
+            feed(h, "\033[?1000;1006h\033c");
+            check(!NativeTerm.click(h, 0, 0) && output(h).isEmpty(), "hard reset retained stale mouse mode");
+        } finally { NativeTerm.destroy(h); }
+    }
+    private static void terminalKeys() {
+        check(TerminalKeys.text("SPACE").equals(" ") && TerminalKeys.text(",|").equals(",|"),
+                "space or custom symbols became key names");
+        long h = NativeTerm.create(40, 10);
+        try {
+            NativeTerm.keyboardKey(h, TerminalKeys.code("TAB"), 0);
+            check(output(h).equals("\t"), "Tab key did not send tab");
+            NativeTerm.keyboardKey(h, TerminalKeys.code("TAB"), 1);
+            check(output(h).equals("\033[Z"), "Shift+Tab lost modifier");
+            feed(h, "\033[?1h");
+            NativeTerm.keyboardKey(h, TerminalKeys.code("up"), 0);
+            check(output(h).equals("\033OA"), "shortcut ignored application cursor mode");
+            NativeTerm.keyboardKey(h, TerminalKeys.code("LEFT"), 4);
+            check(output(h).equals("\033[1;5D"), "Ctrl+arrow lost modifier");
+            NativeTerm.keyboardKey(h, TerminalKeys.code("literal"), 0);
+            check(output(h).isEmpty(), "unrecognized key emitted terminal input");
+        } finally { NativeTerm.destroy(h); }
+    }
     public static void main(String[] args) {
         Runnable[] tests = {InteractionRegression::history, InteractionRegression::boundedHistory,
                 InteractionRegression::modes, InteractionRegression::legacyMouse,
                 InteractionRegression::alternateHistory, InteractionRegression::resizeHistory,
                 InteractionRegression::styledHistory, InteractionRegression::damage,
-                InteractionRegression::paste, InteractionRegression::independentHistory};
+                InteractionRegression::paste, InteractionRegression::independentHistory,
+                InteractionRegression::claudeMouseBundle, InteractionRegression::independentMouseModes,
+                InteractionRegression::terminalKeys};
         String[] names = {"shell scrollback and anchored output", "bounded history and eviction/clear",
                 "mouse click/wheel and alternate-screen routing", "legacy mouse press/release",
                 "alternate screen isolation and history click suppression", "resize restores history and anchor",
                 "styled CJK history and immutable selection", "viewport/cache invalidation",
-                "negotiated bracketed paste", "independent session history"};
+                "negotiated bracketed paste", "independent session history",
+                "Claude Code full mouse bundle without touch hover", "independent mouse mode reset and hard reset",
+                "Tab, Shift+Tab and application/modified cursor keys"};
         for (int i = 0; i < tests.length; i++) { tests[i].run(); System.out.println("PASS " + names[i]); }
     }
 }

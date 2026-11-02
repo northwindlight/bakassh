@@ -34,7 +34,6 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
-import com.google.android.material.chip.Chip;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -60,9 +59,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView tvTermTitle;
     private TextView tvTermCols;
     private TextView tvTermStatus;
-    private LinearLayout sessionTabs;
+    private androidx.drawerlayout.widget.DrawerLayout drawer;
+    private SessionDrawer sessionDrawer;
     private MaterialButton followOutputButton;
-    private final java.util.Map<String, Chip> tabViews = new java.util.LinkedHashMap<>();
     private LinearLayout layoutExtraKeysBox;
     private android.view.ActionMode selectionActionMode;
     private long handle;
@@ -87,30 +86,24 @@ public class MainActivity extends AppCompatActivity {
     private final SessionService.Listener sessionListener = new SessionService.Listener() {
         @Override public void onSessionsChanged() {
             if (session != null && service.get(session.id) == null) {
-                int closedIndex = new java.util.ArrayList<>(tabViews.keySet()).indexOf(session.id);
+                int closedIndex = sessionDrawer.indexOf(session.id);
                 detachSession();
                 List<TerminalSession> remaining = service.sessions();
                 if (remaining.isEmpty()) { finish(); return; }
                 attachSession(remaining.get(Math.max(0, Math.min(closedIndex, remaining.size() - 1))));
             }
             updateSessionTitle();
-            updateSessionTabs();
+            updateSessionDrawer();
         }
         @Override public void onSessionData(TerminalSession changed) {
             if (session == changed) { changed.unread = false; view.notifyNewData(); }
-            else {
-                Chip chip = tabViews.get(changed.id);
-                if (chip != null && !chip.isActivated()) {
-                    chip.setActivated(true);
-                    chip.setText("• " + chip.getText());
-                    chip.setContentDescription(changed.title + "，有新输出");
-                }
-            }
+            else sessionDrawer.data(changed);
         }
     };
 
     /** 粘滞修饰键：点一下点亮，作用于下一个输入的键。 */
     private boolean ctrlOn, altOn, shiftOn;
+    private String renderedKeyLayout;
 
     // 连接参数
     private String hName = "";
@@ -141,7 +134,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_terminal);
 
         // 全屏终端：把内容让开刘海/挖孔和底部手势条，否则顶栏会被摄像头挖孔盖住。
-        final View terminalRoot = findViewById(R.id.root_terminal);
+        drawer = findViewById(R.id.terminal_drawer);
+        sessionDrawer = new SessionDrawer(findViewById(R.id.session_drawer));
+        final View terminalRoot = drawer;
         ViewCompat.setOnApplyWindowInsetsListener(terminalRoot, (v, insets) -> {
             androidx.core.graphics.Insets cutout =
                     insets.getInsets(WindowInsetsCompat.Type.displayCutout());
@@ -169,11 +164,15 @@ public class MainActivity extends AppCompatActivity {
         tvTermTitle = findViewById(R.id.tv_term_title);
         tvTermCols = findViewById(R.id.tv_term_cols);
         tvTermStatus = findViewById(R.id.tv_term_status);
-        sessionTabs = findViewById(R.id.session_tabs);
         followOutputButton = findViewById(R.id.btn_follow_output);
         followOutputButton.setOnClickListener(v -> view.followOutput());
         view.setScrollListener(this::updateScrollStatus);
         findViewById(R.id.btn_session_add).setOnClickListener(v -> newSession());
+        findViewById(R.id.btn_close_session_drawer).setOnClickListener(v -> drawer.closeDrawers());
+        findViewById(R.id.btn_edit_extra_keys).setOnClickListener(v -> {
+            drawer.closeDrawers();
+            ExtraKeysEditor.show(this, this::populateExtraKeys);
+        });
         String displayTitle = (hName != null && !hName.trim().isEmpty()) ? hName : (hUser + "@" + hHost);
         tvTermTitle.setText(displayTitle);
         tvTermCols.setText(HostStore.getZoomColumns(this, 150) + "列");
@@ -188,6 +187,7 @@ public class MainActivity extends AppCompatActivity {
             menu.getMenu().add(0, 3, 1, "新建会话");
             menu.getMenu().add(0, 4, 2, "后台保活");
             menu.getMenu().add(0, 5, 3, "重命名 / 管理当前会话");
+            menu.getMenu().add(0, 6, 4, "编辑快捷键");
             menu.getMenu().add(0, 2, 3, "关闭当前会话");
             menu.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == 1) {
@@ -198,6 +198,8 @@ public class MainActivity extends AppCompatActivity {
                     newSession();
                 } else if (item.getItemId() == 4) {
                     BackgroundSettings.show(this);
+                } else if (item.getItemId() == 6) {
+                    ExtraKeysEditor.show(this, this::populateExtraKeys);
                 } else if (item.getItemId() == 5 && session != null) {
                     SessionSwitcher.showActions(this, service, session);
                 } else if (session != null) {
@@ -362,29 +364,46 @@ public class MainActivity extends AppCompatActivity {
         } catch (Throwable ignored) {}
     }
 
-    private boolean sendTerminalKey(int keyCode) {
-        String seq = null;
+    private boolean sendTerminalKey(int keyCode) { return sendTerminalKey(keyCode, 0); }
+
+    private boolean sendTerminalKey(int keyCode, int modifiers) {
+        String name;
         switch (keyCode) {
-            case KeyEvent.KEYCODE_DEL:           seq = "\u007f";     break;
-            case KeyEvent.KEYCODE_FORWARD_DEL:   seq = "\u001b[3~";  break;
+            case KeyEvent.KEYCODE_DEL: name = "BKSP"; break;
+            case KeyEvent.KEYCODE_FORWARD_DEL: name = "DEL"; break;
             case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_NUMPAD_ENTER:  seq = "\r";         break;
-            case KeyEvent.KEYCODE_TAB:           seq = "\t";         break;
-            case KeyEvent.KEYCODE_ESCAPE:        seq = "\u001b";     break;
-            case KeyEvent.KEYCODE_DPAD_UP:       seq = "\u001b[A";   break;
-            case KeyEvent.KEYCODE_DPAD_DOWN:     seq = "\u001b[B";   break;
-            case KeyEvent.KEYCODE_DPAD_RIGHT:    seq = "\u001b[C";   break;
-            case KeyEvent.KEYCODE_DPAD_LEFT:     seq = "\u001b[D";   break;
-            case KeyEvent.KEYCODE_MOVE_HOME:     seq = "\u001b[H";   break;
-            case KeyEvent.KEYCODE_MOVE_END:      seq = "\u001b[F";   break;
-            case KeyEvent.KEYCODE_PAGE_UP:       seq = "\u001b[5~";  break;
-            case KeyEvent.KEYCODE_PAGE_DOWN:     seq = "\u001b[6~";  break;
-            default: break;
+            case KeyEvent.KEYCODE_NUMPAD_ENTER: name = "ENTER"; break;
+            case KeyEvent.KEYCODE_TAB: name = "TAB"; break;
+            case KeyEvent.KEYCODE_ESCAPE: name = "ESC"; break;
+            case KeyEvent.KEYCODE_DPAD_UP: name = "UP"; break;
+            case KeyEvent.KEYCODE_DPAD_DOWN: name = "DOWN"; break;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: name = "RIGHT"; break;
+            case KeyEvent.KEYCODE_DPAD_LEFT: name = "LEFT"; break;
+            case KeyEvent.KEYCODE_MOVE_HOME: name = "HOME"; break;
+            case KeyEvent.KEYCODE_MOVE_END: name = "END"; break;
+            case KeyEvent.KEYCODE_PAGE_UP: name = "PGUP"; break;
+            case KeyEvent.KEYCODE_PAGE_DOWN: name = "PGDN"; break;
+            default: return false;
         }
-        if (seq == null) return false;
-        sendBytes(seq.getBytes(StandardCharsets.UTF_8));
-        out(this, "KEY " + keyCode);
+        return sendNamedKey(name, modifiers);
+    }
+
+    private boolean sendNamedKey(String name, int modifiers) {
+        int code = TerminalKeys.code(name);
+        if (code == 0) return false;
+        if (session != null) {
+            view.followOutput();
+            session.key(code, modifiers | (shiftOn ? 1 : 0) | (altOn ? 2 : 0) | (ctrlOn ? 4 : 0));
+        }
+        clearModifiers();
         return true;
+    }
+
+    private void clearModifiers() {
+        ctrlOn = altOn = shiftOn = false;
+        updateModifierButtonState(ctrlButton, "CTRL", false);
+        updateModifierButtonState(altButton, "ALT", false);
+        updateModifierButtonState(shiftButton, "SHIFT", false);
     }
 
     private boolean isTerminalKey(int keyCode) {
@@ -403,9 +422,12 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent e) {
-        if (handle != 0 && input != null && BaseInputConnection.getComposingSpanStart(input.getText()) < 0) {
+        if (handle != 0 && input != null && !drawer.isDrawerOpen(androidx.core.view.GravityCompat.START) &&
+                BaseInputConnection.getComposingSpanStart(input.getText()) < 0) {
             if (isTerminalKey(e.getKeyCode())) {
-                if (e.getAction() == KeyEvent.ACTION_DOWN) sendTerminalKey(e.getKeyCode());
+                if (e.getAction() == KeyEvent.ACTION_DOWN)
+                    sendTerminalKey(e.getKeyCode(), (e.isShiftPressed() ? 1 : 0) |
+                            (e.isAltPressed() ? 2 : 0) | (e.isCtrlPressed() ? 4 : 0));
                 return true;
             }
             int cp = e.getUnicodeChar(e.getMetaState() & ~KeyEvent.META_CTRL_MASK);
@@ -433,8 +455,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void populateExtraKeys() {
+        KeyLayout layout = ExtraKeys.getLayout(this);
+        String encoded = ExtraKeys.encode(layout);
+        if (encoded.equals(renderedKeyLayout)) return;
+        renderedKeyLayout = encoded;
+        clearModifiers();
+        ctrlButton = altButton = shiftButton = null;
         layoutExtraKeysBox.removeAllViews();
-        List<String[]> rows = ExtraKeys.parse(ExtraKeys.get(this));
+        List<String[]> rows = layout.snapshot();
         int slots = 1;
         for (String[] r : rows) slots = Math.max(slots, r.length);
 
@@ -442,10 +470,10 @@ public class MainActivity extends AppCompatActivity {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             for (String key : rowKeys) {
-                MaterialButton b = keyButton(labelFor(key));
+                MaterialButton b = keyButton(ExtraKeys.label(key));
                 b.setTag(key);
                 b.setOnClickListener(v -> onExtraKey((String) v.getTag()));
-                String n = key.toUpperCase();
+                String n = key.toUpperCase(java.util.Locale.ROOT);
                 if (n.equals("CTRL")) ctrlButton = b;
                 else if (n.equals("ALT")) altButton = b;
                 else if (n.equals("SHIFT")) shiftButton = b;
@@ -488,24 +516,8 @@ public class MainActivity extends AppCompatActivity {
         return b;
     }
 
-    private String labelFor(String key) {
-        switch (key.toUpperCase()) {
-            case "UP":       return "↑";
-            case "DOWN":     return "↓";
-            case "LEFT":     return "←";
-            case "RIGHT":    return "→";
-            case "ENTER":    return "⏎";
-            case "PGUP":     return "⇞";
-            case "PGDN":     return "⇟";
-            case "BKSP":     return "⌫";
-            case "KEYBOARD": return "⌨";
-            case "PASTE":    return "粘贴";
-            default:         return key;
-        }
-    }
-
     private void onExtraKey(String key) {
-        String n = key.toUpperCase();
+        String n = key.toUpperCase(java.util.Locale.ROOT);
         if (ExtraKeys.isModifier(n)) {
             if (n.equals("CTRL")) {
                 ctrlOn = !ctrlOn;
@@ -535,9 +547,7 @@ public class MainActivity extends AppCompatActivity {
             pasteFromClipboard();
             return;
         }
-        byte[] b = ExtraKeys.bytesFor(key);
-        if (b != null) sendBytes(b);
-        showIme();
+        if (!sendNamedKey(key, 0)) sendTyped(TerminalKeys.text(key));
     }
 
     /** 更新粘滞修饰键高亮状态（激活时点亮 Google Blue） */
@@ -602,6 +612,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         resumed = true;
+        populateExtraKeys();
         if (service != null) service.addListener(sessionListener);
         view.setGridListener((cols, rows) -> {
             if (session != null) session.resize(cols, rows);
@@ -771,7 +782,7 @@ public class MainActivity extends AppCompatActivity {
         if (next == session) {
             next.unread = false;
             updateSessionTitle();
-            updateSessionTabs();
+            updateSessionDrawer();
             updateScrollStatus();
             return;
         }
@@ -794,7 +805,7 @@ public class MainActivity extends AppCompatActivity {
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         if (imm != null) imm.restartInput(input);
         updateSessionTitle();
-        updateSessionTabs();
+        updateSessionDrawer();
         updateScrollStatus();
     }
 
@@ -815,10 +826,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void showSessions() {
         if (service == null) return;
-        SessionSwitcher.show(this, service, session == null ? null : session.id, this::attachSession, this::newSession);
+        updateSessionDrawer();
+        drawer.openDrawer(androidx.core.view.GravityCompat.START);
     }
 
     private void newSession() {
+        drawer.closeDrawers();
         if (preparingConnection || service == null) return;
         List<Host> hosts = HostStore.load(this);
         if (hosts.isEmpty()) {
@@ -846,38 +859,18 @@ public class MainActivity extends AppCompatActivity {
         if (offset > 0) followOutputButton.setText("↓ 回到底部 · " + offset + " 行");
     }
 
-    private void updateSessionTabs() {
+    private void updateSessionDrawer() {
         if (service == null) return;
-        sessionTabs.removeAllViews();
-        tabViews.clear();
-        List<TerminalSession> sessions = service.sessions();
-        for (int i = 0; i < sessions.size(); i++) {
-            TerminalSession item = sessions.get(i);
-            Chip chip = new Chip(this);
-            chip.setText(SessionSwitcher.label(item, i + 1, item == session));
-            chip.setTextSize(12);
-            chip.setMaxWidth(dp(240));
-            chip.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            chip.setCheckable(true);
-            chip.setChecked(item == session);
-            chip.setActivated(item.unread);
-            chip.setCheckedIconVisible(false);
-            chip.setCloseIconResource(R.drawable.ic_close);
-            chip.setCloseIconVisible(true);
-            chip.setCloseIconContentDescription("关闭 " + item.title);
-            chip.setContentDescription(item.title + "，" + item.detail() + (item.unread ? "，有新输出" : ""));
-            chip.setOnClickListener(v -> { if (service.get(item.id) != null) attachSession(item); });
-            chip.setOnCloseIconClickListener(v -> SessionSwitcher.confirmClose(this, service, item));
-            chip.setOnLongClickListener(v -> { SessionSwitcher.showActions(this, service, item); return true; });
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(48));
-            lp.setMarginEnd(dp(4));
-            sessionTabs.addView(chip, lp);
-            tabViews.put(item.id, chip);
-            if (item == session) chip.post(() -> {
-                android.widget.HorizontalScrollView scroll = findViewById(R.id.session_tab_scroll);
-                scroll.smoothScrollTo(Math.max(0, chip.getLeft() - dp(12)), 0);
-            });
-        }
+        sessionDrawer.refresh(service, session, selected -> {
+            attachSession(selected);
+            drawer.closeDrawers();
+        });
+    }
+
+    @Override public void onBackPressed() {
+        if (drawer.isDrawerOpen(androidx.core.view.GravityCompat.START)) drawer.closeDrawers();
+        else if (view.isSelecting()) view.clearSelection();
+        else super.onBackPressed();
     }
 
     @Override protected void onDestroy() {

@@ -17,7 +17,7 @@
     <string name="hosts_subtitle">随时连接你的设备</string>
     <string name="keys_title">密钥</string>
     <string name="home_keys_description">管理连接身份</string>
-    <string name="extra_keys_title">扩展按键</string>
+    <string name="extra_keys_title">快捷键布局</string>
     <string name="home_extra_keys_description">让终端更顺手</string>
     <string name="hosts_saved">已保存的主机</string>
     <string name="hosts_empty_title">从第一台主机开始</string>
@@ -44,11 +44,6 @@
     <string name="import_name_help">选择文件后自动填入文件名</string>
     <string name="key_passphrase">私钥口令</string>
     <string name="import_passphrase_help">仅加密私钥需要；保留原文件的加密保护</string>
-    <string name="extra_keys_section">按键布局</string>
-    <string name="extra_keys_layout">布局</string>
-    <string name="extra_keys_layout_help">用 | 分行，用 , 分隔按键</string>
-    <string name="extra_keys_available">可用按键</string>
-    <string name="extra_keys_legend">ESC  TAB  ENTER  BKSP  SPACE  DEL  INS\nUP  DOWN  LEFT  RIGHT  HOME  END  PGUP  PGDN\nCTRL  ALT  SHIFT  KEYBOARD  PASTE  FONT-  FONT+</string>
     <string name="restore_default">恢复默认</string>
     <string name="key_details">密钥详情</string>
     <string name="key_copy_public">复制公钥</string>

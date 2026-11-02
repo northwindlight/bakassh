@@ -62,11 +62,18 @@ public final class SessionRegression {
             if (!b.click(2, 6)) throw new AssertionError("session click ignored mouse mode");
             b.scroll(1, 4, 2);
             b.scroll(1, 4, -1);
+            await(() -> screen(b).contains("FALLBACK_READY"), "full mouse bundle bytes did not reach SSH peer");
+            if (!b.click(1, 1)) throw new AssertionError("motion mode reset disabled SSH clicks");
             await(() -> screen(b).contains("PASTE_READY"), "click/wheel bytes did not reach SSH peer");
             b.paste("hello\r\n\u001b[201~world");
+            await(() -> screen(b).contains("KEY_READY"), "paste payload/markers reordered");
+            b.key(TerminalKeys.code("TAB"), 0);
+            b.key(TerminalKeys.code("TAB"), 1);
+            b.key(TerminalKeys.code("UP"), 0);
+            b.key(TerminalKeys.code("LEFT"), 4);
             await(() -> screen(b).contains("INTERACTION_OK"), "paste payload/markers reordered");
             if (b.click(0, 0)) throw new AssertionError("mouse disable ignored");
-            System.out.println("PASS actual SSH click/wheel coordinates and bracketed paste stay ordered");
+            System.out.println("PASS Claude-style mouse modes, paste and modified/application keys over SSH");
 
             a.close();
             a.close();

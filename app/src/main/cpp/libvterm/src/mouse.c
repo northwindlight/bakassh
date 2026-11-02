@@ -51,6 +51,13 @@ static void output_mouse(VTermState *state, int code, int pressed, int modifiers
   }
 }
 
+void vterm_mouse_position(VTerm *vt, int row, int col)
+{
+  VTermState *state = vt->state;
+  state->mouse_row = row < 0 ? 0 : row >= state->rows ? state->rows - 1 : row;
+  state->mouse_col = col < 0 ? 0 : col >= state->cols ? state->cols - 1 : col;
+}
+
 void vterm_mouse_move(VTerm *vt, int row, int col, VTermModifier mod)
 {
   VTermState *state = vt->state;

@@ -772,27 +772,8 @@ public class HostListActivity extends AppCompatActivity {
         showPage(dialog);
     }
 
-    /** 扩展按键布局编辑。 */
+    /** Shared graphical shortcut editor. */
     private void extraKeysDialog() {
-        View root = LayoutInflater.from(this).inflate(R.layout.dialog_extra_keys, null);
-        Dialog dialog = newPage(root);
-
-        TextInputEditText et = root.findViewById(R.id.et_extra_keys_config);
-        et.setText(ExtraKeys.get(this));
-
-        root.findViewById(R.id.btn_cancel_extra_keys).setOnClickListener(v -> dialog.cancel());
-        root.findViewById(R.id.btn_reset_extra_keys).setOnClickListener(v -> {
-            et.setText(ExtraKeys.DEFAULT);
-            Toast.makeText(this, "已恢复默认扩展按键", Toast.LENGTH_SHORT).show();
-        });
-
-        root.findViewById(R.id.btn_save_extra_keys).setOnClickListener(v -> {
-            String val = et.getText() != null ? et.getText().toString().trim() : "";
-            ExtraKeys.set(this, val.isEmpty() ? ExtraKeys.DEFAULT : val);
-            dialog.dismiss();
-            Toast.makeText(this, "已保存扩展按键", Toast.LENGTH_SHORT).show();
-        });
-
-        showPage(dialog);
+        ExtraKeysEditor.show(this, null);
     }
 }

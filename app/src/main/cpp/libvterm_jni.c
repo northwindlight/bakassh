@@ -560,7 +560,7 @@ Java_dev_northwind_bakassh_NativeTerm_scroll(JNIEnv *env, jclass clazz, jlong h,
     if (lines > MAX_ROWS) lines = MAX_ROWS;
     if (lines < -MAX_ROWS) lines = -MAX_ROWS;
     if (t->mouse_mode && !t->view_offset) {
-        vterm_mouse_move(t->vt, row, col, VTERM_MOD_NONE);
+        vterm_mouse_position(t->vt, row, col);
         for (int i = 0; i < abs(lines); i++)
             vterm_mouse_button(t->vt, lines > 0 ? 4 : 5, true, VTERM_MOD_NONE);
     } else if (t->alt_screen) {
@@ -579,10 +579,25 @@ Java_dev_northwind_bakassh_NativeTerm_click(JNIEnv *env, jclass clazz, jlong h, 
     (void) env; (void) clazz;
     TermCtx *t = (TermCtx *) (intptr_t) h;
     if (!t || !t->mouse_mode || t->view_offset) return JNI_FALSE;
-    vterm_mouse_move(t->vt, row, col, VTERM_MOD_NONE);
+    vterm_mouse_position(t->vt, row, col);
     vterm_mouse_button(t->vt, 1, true, VTERM_MOD_NONE);
     vterm_mouse_button(t->vt, 1, false, VTERM_MOD_NONE);
     return JNI_TRUE;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_northwind_bakassh_NativeTerm_hasMouseTracking(JNIEnv *env, jclass clazz, jlong h) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    return t && t->mouse_mode && !t->view_offset;
+}
+
+JNIEXPORT void JNICALL
+Java_dev_northwind_bakassh_NativeTerm_keyboardKey(JNIEnv *env, jclass clazz, jlong h, jint key, jint modifiers) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    if (t && key >= VTERM_KEY_ENTER && key <= VTERM_KEY_PAGEDOWN)
+        vterm_keyboard_key(t->vt, (VTermKey) key, (VTermModifier) (modifiers & VTERM_ALL_MODS_MASK));
 }
 
 JNIEXPORT jint JNICALL

@@ -15,9 +15,13 @@ gcc -std=c11 -shared -fPIC -O2 -Wall -Wno-maybe-uninitialized \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalZoom.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalGeometry.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/PendingResize.java" \
+    "$root_dir/app/src/main/java/dev/northwind/bakassh/KeyLayout.java" \
+    "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalKeys.java" \
     "$root_dir/tests/host/NativeRegression.java" "$root_dir/tests/host/SelectionRegression.java" \
-    "$root_dir/tests/host/ZoomRegression.java" "$root_dir/tests/host/InteractionRegression.java"
+    "$root_dir/tests/host/ZoomRegression.java" "$root_dir/tests/host/InteractionRegression.java" \
+    "$root_dir/tests/host/KeyLayoutRegression.java"
 "$jdk_dir/bin/java" -Djava.library.path="$test_dir" -cp "$test_dir" dev.northwind.bakassh.NativeRegression
 "$jdk_dir/bin/java" -Djava.library.path="$test_dir" -cp "$test_dir" dev.northwind.bakassh.SelectionRegression
 "$jdk_dir/bin/java" -Djava.library.path="$test_dir" -cp "$test_dir" dev.northwind.bakassh.ZoomRegression
 "$jdk_dir/bin/java" -Djava.library.path="$test_dir" -cp "$test_dir" dev.northwind.bakassh.InteractionRegression
+"$jdk_dir/bin/java" -cp "$test_dir" dev.northwind.bakassh.KeyLayoutRegression

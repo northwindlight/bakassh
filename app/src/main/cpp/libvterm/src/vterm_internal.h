@@ -94,6 +94,7 @@ struct VTermState
   int mouse_col, mouse_row;
   int mouse_buttons;
   int mouse_flags;
+  unsigned int mouse_modes; /* Independent DECSET 1000 / 1002 / 1003 flags. */
 #define MOUSE_WANT_CLICK 0x01
 #define MOUSE_WANT_DRAG  0x02
 #define MOUSE_WANT_MOVE  0x04

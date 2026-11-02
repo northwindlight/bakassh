@@ -159,6 +159,7 @@ public class TerminalView extends View {
 
     /** Borrowed service handle: releasing this View must not close the session. */
     public void attachSession(long handle) {
+        releaseMouse();
         stopFling();
         removeCallbacks(longPress);
         touchPressed = false;
@@ -256,6 +257,7 @@ public class TerminalView extends View {
     public void onWindowFocusChanged(boolean hasWindowFocus) {
         super.onWindowFocusChanged(hasWindowFocus);
         if (!hasWindowFocus) {
+            releaseMouse();
             stopFling();
             removeCallbacks(longPress);
             touchPressed = false;
@@ -266,6 +268,7 @@ public class TerminalView extends View {
 
     @Override
     protected void onDetachedFromWindow() {
+        releaseMouse();
         stopFling();
         removeCallbacks(longPress);
         touchPressed = false;
@@ -471,7 +474,15 @@ public class TerminalView extends View {
     }
 
     @Override public boolean onGenericMotionEvent(android.view.MotionEvent event) {
+        if (event.getActionMasked() == android.view.MotionEvent.ACTION_HOVER_MOVE && handle != 0 &&
+                inputSink != null && event.isFromSource(android.view.InputDevice.SOURCE_MOUSE) &&
+                NativeTerm.hasMouseTracking(handle) && !selActive) {
+            inputSink.mouse(Math.max(0, Math.min(rows - 1, (int) (event.getY() / cellH))),
+                    Math.max(0, Math.min(cols - 1, (int) (event.getX() / cellW))), 0, false);
+            return true;
+        }
         if (event.getActionMasked() == android.view.MotionEvent.ACTION_SCROLL && handle != 0 && inputSink != null) {
+            if (selActive) return true;
             int lines = Math.round(event.getAxisValue(android.view.MotionEvent.AXIS_VSCROLL) * 3f);
             scrollLines(Math.max(0, Math.min(rows - 1, (int) (event.getY() / cellH))),
                     Math.max(0, Math.min(cols - 1, (int) (event.getX() / cellW))), lines);
@@ -483,12 +494,21 @@ public class TerminalView extends View {
     @Override public boolean performClick() {
         super.performClick();
         if (inputSink != null && handle != 0)
-            inputSink.tap(Math.max(0, Math.min(rows - 1, (int) (touchDownY / cellH))),
-                    Math.max(0, Math.min(cols - 1, (int) (touchDownX / cellW))));
+            inputSink.tap(Math.max(0, Math.min(rows - 1, (int) (tapY / cellH))),
+                    Math.max(0, Math.min(cols - 1, (int) (tapX / cellW))));
         return true;
     }
     private boolean touchPressed, touchMoved, touchSuppressed, touchSelecting;
     private float touchDownX, touchDownY;
+    private float tapX, tapY;
+    private boolean physicalMousePressed;
+    private int physicalMouseButton = 1;
+    private int physicalMouseRow, physicalMouseCol;
+    private void releaseMouse() {
+        if (physicalMousePressed && inputSink != null)
+            inputSink.mouse(physicalMouseRow, physicalMouseCol, physicalMouseButton, false);
+        physicalMousePressed = false;
+    }
     private final Runnable longPress = () -> {
         if (touchPressed && !touchMoved && !touchSuppressed && !selActive) {
             int row = Math.max(0, Math.min(rows - 1, (int) (touchDownY / cellH)));
@@ -505,6 +525,7 @@ public class TerminalView extends View {
         if (inputSink == null || handle == 0) return super.onTouchEvent(e);
         int action = e.getActionMasked();
         if (action == android.view.MotionEvent.ACTION_CANCEL) {
+            releaseMouse();
             stopFling();
             removeCallbacks(longPress);
             touchPressed = false;
@@ -536,6 +557,20 @@ public class TerminalView extends View {
         }
         final int row = Math.max(0, Math.min(rows - 1, (int) (e.getY() / cellH)));
         final int col = Math.max(0, Math.min(cols - 1, (int) (e.getX() / cellW)));
+        if (e.isFromSource(android.view.InputDevice.SOURCE_MOUSE) && !selActive &&
+                (physicalMousePressed || NativeTerm.hasMouseTracking(handle))) {
+            stopFling();
+            removeCallbacks(longPress);
+            physicalMouseRow = row; physicalMouseCol = col;
+            if (action == android.view.MotionEvent.ACTION_DOWN) {
+                physicalMouseButton = e.isButtonPressed(android.view.MotionEvent.BUTTON_SECONDARY) ? 3 :
+                        e.isButtonPressed(android.view.MotionEvent.BUTTON_TERTIARY) ? 2 : 1;
+                physicalMousePressed = true;
+                inputSink.mouse(row, col, physicalMouseButton, true);
+            } else if (action == android.view.MotionEvent.ACTION_MOVE) inputSink.mouse(row, col, 0, false);
+            else if (action == android.view.MotionEvent.ACTION_UP) releaseMouse();
+            return true;
+        }
         final float slop = android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop();
         switch (action) {
             case android.view.MotionEvent.ACTION_DOWN:
@@ -547,6 +582,7 @@ public class TerminalView extends View {
                 touchSelecting = selActive;
                 lastTouchY = touchDownY = e.getY();
                 touchDownX = e.getX();
+                tapX = e.getX(); tapY = e.getY();
                 scrollAcc = 0;
                 gestureStartedSelection = false;
                 handleDrag = 0;
@@ -585,6 +621,7 @@ public class TerminalView extends View {
                 return true;
             }
             case android.view.MotionEvent.ACTION_UP:
+                tapX = e.getX(); tapY = e.getY();
                 removeCallbacks(longPress);
                 touchPressed = false;
                 if (!touchSuppressed && !touchMoved && !gestureStartedSelection) {
@@ -1180,6 +1217,7 @@ public class TerminalView extends View {
     }
 
     public void destroy() {
+        releaseMouse();
         stopFling();
         cancelZoom();
         removeCallbacks(longPress);

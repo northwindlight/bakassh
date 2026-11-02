@@ -140,6 +140,7 @@ public final class ZoomInstrumentation extends Instrumentation {
             verifyKeys();
             RenderingRegression.verify(getTargetContext());
             InteractionViewRegression.verify(getTargetContext());
+            ShortcutUiRegression.verify(getTargetContext());
         } finally { view.destroy(); bitmap.recycle(); }
     }
     /** 私有测试目录和首选项；不能让缩放验收修改手机里的真实密钥。 */

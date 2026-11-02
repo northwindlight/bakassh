@@ -15,7 +15,10 @@ XTVERSION 即时回包，以及连续文本选择、反向拖选、中文双宽�
 
 新增 `InteractionRegression`：普通 shell 本地历史、输出锚定、4096 行 / 16 MiB 上限、
 清空 / 淘汰、中文宽格和样式、resize 回填、会话隔离、视口缓存失效、SGR / 旧式鼠标点击、
-鼠标滚轮、备用屏幕方向键回退和 bracketed paste，共 10 项。主机回归合计 32 项。
+鼠标滚轮、备用屏幕方向键回退和 bracketed paste。0.4.1 补充完整 1000/1002/1003/1006 模式、
+无手指悬停事件、独立模式复位 / 查询、硬复位和 Tab / Shift+Tab / 修饰方向键，共 13 项。
+`KeyLayoutRegression` 另有 5 项，检查默认 Tab 迁移、保留旧自定义、草稿隔离、字面符号、
+跨行排序及无损失败边界。主机回归合计 40 项。
 
 SSH 回归需要 Python 3 + Paramiko、ssh-keygen 和项目使用的 JSch JAR：
 
@@ -29,7 +32,8 @@ PTY 请求、版本查询应答、键入、窗口大小变更与 EOF；不登录
 
 还会实际并发打开两条 SSH 连接，核对独立的 JNI 画面和 PTY 尺寸、无 View 时的终端应答、
 关闭一条后另一条继续收发、EOF 保留最后画面，以及连接期间反复取消的生命周期。
-另核对真实 SSH 点击 / 滚轮与粘贴的字节顺序，以及 EOF 后仍可本地回滚，共 11 项。
+另核对真实 SSH 完整鼠标模式及部分关闭、点击 / 滚轮、粘贴和修饰快捷键的字节顺序，
+以及 EOF 后仍可本地回滚，共 11 项。
 
 这些回归不运行 Android View、输入法或触摸系统。APK 构建和 lint 另外运行：
 
@@ -49,7 +53,8 @@ adb shell am instrument -w dev.northwind.bakassh.test/dev.northwind.bakassh.Zoom
 该 instrumentation 还包含真实字体 / Canvas 像素回归：字形不依赖之前的 Paint 状态、
 白色实心光标与 CJK 尾随格、会话切换时清理行缓存、View 销毁不释放服务借出的终端。
 新增 `InteractionViewRegression`，使用真实 MotionEvent 验证轻点远端 / shell、取消、
-滚轮起点及本地历史前后画面，不连接真实主机。
+抬起坐标、完整鼠标模式、滚轮起点及本地历史前后画面，不连接真实主机。
+`ShortcutUiRegression` 使用隔离偏好检查结构化布局保存 / 旧配置回退，并检查开关侧栏不改变终端高度。
 **本轮无 ADB 设备，只编译了这些测试，未执行。** 前台服务、系统通知、锁屏和厂商后台限制仍须真机验收。
 
 私钥导入回归（真实 ssh-keygen / OpenSSL 密钥和 JSch，强制使用 Android 所用的 BC 签名实现）：

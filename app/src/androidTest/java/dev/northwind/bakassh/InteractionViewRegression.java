@@ -61,11 +61,15 @@ final class InteractionViewRegression {
             touch(view, down, MotionEvent.ACTION_DOWN, 0, 6.5f * cw, 2.5f * ch);
             touch(view, down, MotionEvent.ACTION_UP, 40, 6.5f * cw, 2.5f * ch);
             check(taps[0] == 1 && output(view.getHandle()).isEmpty(), "shell tap behavior");
-            feed(view.getHandle(), "\033[?1000h\033[?1006h");
+            feed(view.getHandle(), "\033[?1000h\033[?1002h\033[?1003h\033[?1006h");
             touch(view, down + 100, MotionEvent.ACTION_DOWN, 0, 6.5f * cw, 2.5f * ch);
             touch(view, down + 100, MotionEvent.ACTION_UP, 40, 6.5f * cw, 2.5f * ch);
             check(output(view.getHandle()).equals("\033[<0;7;3M\033[<0;7;3m") && taps[0] == 1,
                     "TUI tap must click without opening keyboard");
+            touch(view, down + 150, MotionEvent.ACTION_DOWN, 0, 6.98f * cw, 2.5f * ch);
+            touch(view, down + 150, MotionEvent.ACTION_UP, 40, 7.02f * cw, 2.5f * ch);
+            check(output(view.getHandle()).equals("\033[<0;8;3M\033[<0;8;3m"),
+                    "tap jitter used down cell instead of release cell, or injected hover");
             touch(view, down + 200, MotionEvent.ACTION_DOWN, 0, 6.5f * cw, 2.5f * ch);
             touch(view, down + 200, MotionEvent.ACTION_MOVE, 50, 6.5f * cw, 6.5f * ch);
             touch(view, down + 200, MotionEvent.ACTION_UP, 100, 6.5f * cw, 6.5f * ch);
@@ -75,6 +79,11 @@ final class InteractionViewRegression {
             touch(view, down + 400, MotionEvent.ACTION_CANCEL, 20, cw, ch);
             touch(view, down + 400, MotionEvent.ACTION_UP, 40, cw, ch);
             check(output(view.getHandle()).isEmpty() && taps[0] == 1, "cancel became click");
+            feed(view.getHandle(), "\033[?1003l\033[?1002l");
+            touch(view, down + 450, MotionEvent.ACTION_DOWN, 0, cw / 2, ch / 2);
+            touch(view, down + 450, MotionEvent.ACTION_UP, 40, cw / 2, ch / 2);
+            check(output(view.getHandle()).equals("\033[<0;1;1M\033[<0;1;1m"),
+                    "partial mouse reset disabled touch clicks");
             feed(view.getHandle(), "\033[?1000l");
             for (int i = 0; i < view.getRows() + 20; i++) feed(view.getHandle(), "row-" + i + "\r\n");
             view.draw(new Canvas(bitmap));

@@ -15,15 +15,21 @@ final class EditorDialog extends Dialog {
     private final View content;
     private String initialState;
     private boolean busy;
+    private final java.util.function.Supplier<String> state;
 
     EditorDialog(Context context, View content) {
+        this(context, content, null);
+    }
+
+    EditorDialog(Context context, View content, java.util.function.Supplier<String> state) {
         super(context, R.style.EditorOverlay);
         this.content = content;
+        this.state = state;
     }
 
     @Override protected void onCreate(Bundle state) {
         super.onCreate(state);
-        initialState = snapshot(content);
+        initialState = currentState();
     }
 
     void setBusy(boolean busy) {
@@ -32,7 +38,7 @@ final class EditorDialog extends Dialog {
 
     @Override public void cancel() {
         if (busy) return;
-        if (initialState != null && !initialState.equals(snapshot(content))) {
+        if (initialState != null && !initialState.equals(currentState())) {
             new MaterialAlertDialogBuilder(getContext())
                     .setTitle("放弃未保存的更改？")
                     .setNegativeButton("继续编辑", null)
@@ -44,6 +50,8 @@ final class EditorDialog extends Dialog {
     }
 
     @Override public void onBackPressed() { cancel(); }
+
+    private String currentState() { return state == null ? snapshot(content) : state.get(); }
 
     private static String snapshot(View view) {
         if (view instanceof EditText) return ((EditText) view).getText().toString() + '\u0000';

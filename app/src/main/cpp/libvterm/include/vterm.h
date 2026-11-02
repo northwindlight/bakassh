@@ -372,6 +372,8 @@ void vterm_keyboard_start_paste(VTerm *vt);
 void vterm_keyboard_end_paste(VTerm *vt);
 
 void vterm_mouse_move(VTerm *vt, int row, int col, VTermModifier mod);
+/* Set touch/wheel coordinates without synthesizing pointer hover motion. */
+void vterm_mouse_position(VTerm *vt, int row, int col);
 void vterm_mouse_button(VTerm *vt, int button, bool pressed, VTermModifier mod);
 
 // ------------

@@ -821,11 +821,15 @@ static void set_dec_mode(VTermState *state, int num, int val)
   case 1000:
   case 1002:
   case 1003:
-    settermprop_int(state, VTERM_PROP_MOUSE,
-        !val          ? VTERM_PROP_MOUSE_NONE  :
-        (num == 1000) ? VTERM_PROP_MOUSE_CLICK :
-        (num == 1002) ? VTERM_PROP_MOUSE_DRAG  :
-                        VTERM_PROP_MOUSE_MOVE);
+    {
+      unsigned int bit = num == 1000 ? 1u : num == 1002 ? 2u : 4u;
+      if(val) state->mouse_modes |= bit;
+      else state->mouse_modes &= ~bit;
+      settermprop_int(state, VTERM_PROP_MOUSE,
+          (state->mouse_modes & 4u) ? VTERM_PROP_MOUSE_MOVE :
+          (state->mouse_modes & 2u) ? VTERM_PROP_MOUSE_DRAG :
+          (state->mouse_modes & 1u) ? VTERM_PROP_MOUSE_CLICK : VTERM_PROP_MOUSE_NONE);
+    }
     break;
 
   case 1004:
@@ -902,15 +906,15 @@ static void request_dec_mode(VTermState *state, int num)
       break;
 
     case 1000:
-      reply = state->mouse_flags == MOUSE_WANT_CLICK;
+      reply = !!(state->mouse_modes & 1u);
       break;
 
     case 1002:
-      reply = state->mouse_flags == (MOUSE_WANT_CLICK|MOUSE_WANT_DRAG);
+      reply = !!(state->mouse_modes & 2u);
       break;
 
     case 1003:
-      reply = state->mouse_flags == (MOUSE_WANT_CLICK|MOUSE_WANT_MOVE);
+      reply = !!(state->mouse_modes & 4u);
       break;
 
     case 1004:
@@ -2115,7 +2119,10 @@ void vterm_state_reset(VTermState *state, int hard)
   state->mode.bracketpaste    = 0;
   state->mode.report_focus    = 0;
 
-  state->mouse_flags = 0;
+  state->mouse_modes = 0;
+  state->mouse_buttons = 0;
+  state->mouse_protocol = MOUSE_X10;
+  settermprop_int(state, VTERM_PROP_MOUSE, VTERM_PROP_MOUSE_NONE);
 
   state->vt->mode.ctrl8bit   = 0;
 

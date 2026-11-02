@@ -63,21 +63,22 @@ ConnectBot 1.11.0 因本次 tmux 场景无法正常滚动，未形成有效帧�
 - 轻点支持鼠标的 TUI 发送真实点击；普通 shell 轻点弹键盘，长按保留为本地选择
 - 捏合时逐帧调整实际字号和行列数，松手后恢复行缓存
 - 长按选择连续文本，浮动菜单复制 / 全选 / 粘贴；选择期间保留画面快照，不向 tmux 发送鼠标事件
-- 扩展按键两行，可自定义，键名与 Termux 的 `extra-keys` 相同
+- 图形化快捷键布局：点选替换、拖动 / 按钮排序、增删按键和行；默认提供 Tab，保留旧自定义配置
 - Pixel 风格界面：跟随系统深浅色与 Android 12+ 壁纸取色；大标题、圆角分组、独立密钥管理与全屏编辑页，支持未保存更改保护
 - 系统文件选择器导入私钥，也可粘贴；自动识别加密状态，后台校验并保留原有加密保护
 - 终端固定深色；工具栏支持显示 / 隐藏扩展按键，键盘按钮支持切换输入法
 - 白色实心光标，中文双宽字符上的光标覆盖两格，光标内文字保持可读
-- 多会话：常驻横向标签切换 / 关闭，后台新输出提示，会话总览支持重命名和连接状态；同一主机可独立连接多次
+- 多会话：左侧抽屉覆盖显示，点按切换、长按 / 更多菜单管理；不常驻占用终端高度，同一主机可独立连接多次
 - 终端内直接选择主机新建连接，取消认证保留当前会话；通知返回最近使用的会话
 - 根据远端模式使用 bracketed paste，粘贴标记与正文保持发送顺序
 - 前台服务持有 SSH 和终端；返回主页、重建界面保留连接，断线后保留最后画面
 - 后台保活设置：常驻通知、可选 CPU / Wi-Fi 休眠锁、电池优化与厂商后台设置入口；SSH 每 30 秒发送保活探测
 
-**0.4.0 开发版** 修复点击和非 tmux 滚动，改进会话管理；32 项主机回归与 11 项 loopback SSH 回归通过。
+**0.4.1 开发版** 改用会话侧栏和图形化快捷键编辑，补齐完整鼠标模式组合下的点击兼容性；40 项主机回归与 11 项 loopback SSH 回归通过。
 本轮未连接 ADB 设备，新增 Android 手势 / 画面回归仅编译，尚未执行。
 构建与离线回归不能证明厂商系统上的长期抗杀效果；强行停止 / 进程被杀后需重新连接。
-当前改动、使用方式与验收边界见 [触摸与多会话改进](docs/触摸与多会话改进-20261102.md)。
+当前改动、使用方式与验收边界见 [会话侧栏、快捷键与点击兼容](docs/会话侧栏与快捷键-0.4.1.md)。
+此前历史滚动实现见 [触摸与多会话改进](docs/触摸与多会话改进-20261102.md)。
 后台服务设计见 [多会话与终端显示修复](docs/多会话与终端显示修复-20261024.md)。
 
 ## 快速开始
@@ -106,13 +107,15 @@ app/src/main/java/dev/northwind/bakassh/
 ├── PrivateKeyImport.java   私钥文件读取与解析校验
 ├── MainActivity.java       终端界面：SSH、输入、滚动、缩放、选择复制
 ├── SessionService.java     前台服务、会话列表、通知与休眠锁
-├── SessionSwitcher.java    终端 / 主页共享的会话总览与管理
+├── SessionDrawer.java      覆盖式会话侧栏
+├── SessionSwitcher.java    主页会话总览与共享管理操作
 ├── TerminalSession.java    独立 SSH / 终端生命周期与顺序 IO
 ├── TerminalView.java       渲染器（位图字体 + 行缓存 + 脏行）
 ├── TerminalSelection.java  连续文本选择与复制快照
 ├── NativeTerm.java         libvterm 的 JNI 声明
 ├── SshTransport.java       JSch 传输
-├── ExtraKeys.java          扩展按键配置与键位映射
+├── ExtraKeysEditor.java    图形化快捷键编辑与预览
+├── KeyLayout.java / ExtraKeys.java / TerminalKeys.java
 ├── HostStore.java / Host.java
 └── KeyManager.java         本机密钥对
 app/src/main/java/org/connectbot/   从 ConnectBot 引入的数据层
