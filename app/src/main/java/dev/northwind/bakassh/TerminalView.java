@@ -159,6 +159,10 @@ public class TerminalView extends View {
 
     /** Borrowed service handle: releasing this View must not close the session. */
     public void attachSession(long handle) {
+        stopFling();
+        removeCallbacks(longPress);
+        touchPressed = false;
+        touchSuppressed = true;
         cancelZoom();
         clearSelection();
         this.handle = handle;
@@ -175,11 +179,24 @@ public class TerminalView extends View {
     public interface InputSink {
         void mouse(int row, int col, int button, boolean pressed);
         void tap();
+        default void tap(int row, int col) { tap(); }
+        default void scroll(int row, int col, int lines) {
+            for (int i = 0; i < Math.abs(lines); i++) mouse(row, col, lines > 0 ? 4 : 5, true);
+        }
     }
 
     private InputSink inputSink;
 
     public void setInputSink(InputSink s) { this.inputSink = s; }
+
+    private Runnable scrollListener;
+    public void setScrollListener(Runnable listener) { scrollListener = listener; }
+    public void followOutput() {
+        stopFling();
+        clearSelection();
+        if (handle != 0) NativeTerm.followOutput(handle);
+        notifyNewData();
+    }
 
     /**
      * 目标列数：列数定死 → 字号由列数反解 → 行数随可用高度自适应（真终端的行为）。
@@ -239,6 +256,7 @@ public class TerminalView extends View {
     public void onWindowFocusChanged(boolean hasWindowFocus) {
         super.onWindowFocusChanged(hasWindowFocus);
         if (!hasWindowFocus) {
+            stopFling();
             removeCallbacks(longPress);
             touchPressed = false;
             touchSuppressed = true;
@@ -248,6 +266,7 @@ public class TerminalView extends View {
 
     @Override
     protected void onDetachedFromWindow() {
+        stopFling();
         removeCallbacks(longPress);
         touchPressed = false;
         touchSuppressed = true;
@@ -415,6 +434,59 @@ public class TerminalView extends View {
     }
 
     private float lastTouchY, scrollAcc;
+    private android.view.VelocityTracker velocityTracker;
+    private final android.widget.OverScroller fling = new android.widget.OverScroller(getContext());
+    private int flingLastRow;
+    private void stopFling() {
+        fling.abortAnimation();
+        if (velocityTracker != null) { velocityTracker.recycle(); velocityTracker = null; }
+    }
+
+    private void scrollLines(int row, int col, int lines) {
+        if (lines == 0 || inputSink == null || handle == 0) return;
+        inputSink.scroll(row, col, lines);
+        awakenScrollBars();
+        notifyNewData();
+    }
+
+    @Override public void computeScroll() {
+        if (handle == 0 || !NativeTerm.isLocalScroll(handle) || selActive || zoom.isActive()) {
+            fling.abortAnimation();
+            return;
+        }
+        if (fling.computeScrollOffset()) {
+            int next = fling.getCurrY();
+            scrollLines(0, 0, next - flingLastRow);
+            flingLastRow = next;
+            if (!fling.isFinished()) postInvalidateOnAnimation();
+        }
+    }
+
+    @Override protected int computeVerticalScrollRange() {
+        return rows + (handle == 0 ? 0 : NativeTerm.getHistorySize(handle));
+    }
+    @Override protected int computeVerticalScrollExtent() { return rows; }
+    @Override protected int computeVerticalScrollOffset() {
+        return handle == 0 ? 0 : NativeTerm.getHistorySize(handle) - NativeTerm.getScrollOffset(handle);
+    }
+
+    @Override public boolean onGenericMotionEvent(android.view.MotionEvent event) {
+        if (event.getActionMasked() == android.view.MotionEvent.ACTION_SCROLL && handle != 0 && inputSink != null) {
+            int lines = Math.round(event.getAxisValue(android.view.MotionEvent.AXIS_VSCROLL) * 3f);
+            scrollLines(Math.max(0, Math.min(rows - 1, (int) (event.getY() / cellH))),
+                    Math.max(0, Math.min(cols - 1, (int) (event.getX() / cellW))), lines);
+            return true;
+        }
+        return super.onGenericMotionEvent(event);
+    }
+
+    @Override public boolean performClick() {
+        super.performClick();
+        if (inputSink != null && handle != 0)
+            inputSink.tap(Math.max(0, Math.min(rows - 1, (int) (touchDownY / cellH))),
+                    Math.max(0, Math.min(cols - 1, (int) (touchDownX / cellW))));
+        return true;
+    }
     private boolean touchPressed, touchMoved, touchSuppressed, touchSelecting;
     private float touchDownX, touchDownY;
     private final Runnable longPress = () -> {
@@ -433,6 +505,7 @@ public class TerminalView extends View {
         if (inputSink == null || handle == 0) return super.onTouchEvent(e);
         int action = e.getActionMasked();
         if (action == android.view.MotionEvent.ACTION_CANCEL) {
+            stopFling();
             removeCallbacks(longPress);
             touchPressed = false;
             handleDrag = 0;
@@ -444,6 +517,7 @@ public class TerminalView extends View {
             return true;
         }
         if (action == android.view.MotionEvent.ACTION_POINTER_DOWN) {
+            stopFling();
             removeCallbacks(longPress);
             touchSuppressed = true;
             handleDrag = 0;
@@ -465,6 +539,9 @@ public class TerminalView extends View {
         final float slop = android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop();
         switch (action) {
             case android.view.MotionEvent.ACTION_DOWN:
+                stopFling();
+                velocityTracker = android.view.VelocityTracker.obtain();
+                velocityTracker.addMovement(e);
                 touchPressed = true;
                 touchMoved = touchSuppressed = false;
                 touchSelecting = selActive;
@@ -485,6 +562,7 @@ public class TerminalView extends View {
                 } else postDelayed(longPress, android.view.ViewConfiguration.getLongPressTimeout());
                 return true;
             case android.view.MotionEvent.ACTION_MOVE: {
+                if (velocityTracker != null) velocityTracker.addMovement(e);
                 if (touchSuppressed) return true;
                 boolean wasMoved = touchMoved;
                 if (Math.hypot(e.getX() - touchDownX, e.getY() - touchDownY) > slop) {
@@ -499,8 +577,11 @@ public class TerminalView extends View {
                 lastTouchY = e.getY();
                 if (!touchMoved) return true;
                 scrollAcc += wasMoved ? dy : e.getY() - touchDownY;
-                while (scrollAcc >= cellH) { inputSink.mouse(row, col, 4, true); scrollAcc -= cellH; }
-                while (scrollAcc <= -cellH) { inputSink.mouse(row, col, 5, true); scrollAcc += cellH; }
+                int lines = (int) (scrollAcc / cellH);
+                scrollAcc -= lines * cellH;
+                // Keep the wheel over the pane where this gesture began.
+                scrollLines(Math.max(0, Math.min(rows - 1, (int) (touchDownY / cellH))),
+                        Math.max(0, Math.min(cols - 1, (int) (touchDownX / cellW))), lines);
                 return true;
             }
             case android.view.MotionEvent.ACTION_UP:
@@ -508,7 +589,23 @@ public class TerminalView extends View {
                 touchPressed = false;
                 if (!touchSuppressed && !touchMoved && !gestureStartedSelection) {
                     if (selActive && handleDrag == 0) clearSelection();
-                    else if (!selActive && !touchSelecting) inputSink.tap();
+                    else if (!selActive && !touchSelecting) performClick();
+                }
+                if (velocityTracker != null) {
+                    velocityTracker.addMovement(e);
+                    velocityTracker.computeCurrentVelocity(1000,
+                            android.view.ViewConfiguration.get(getContext()).getScaledMaximumFlingVelocity());
+                    float velocity = velocityTracker.getYVelocity();
+                    if (touchMoved && !touchSuppressed && !selActive && !touchSelecting &&
+                            !gestureStartedSelection && NativeTerm.isLocalScroll(handle) &&
+                            Math.abs(velocity) > android.view.ViewConfiguration.get(getContext()).getScaledMinimumFlingVelocity()) {
+                        flingLastRow = NativeTerm.getScrollOffset(handle);
+                        fling.fling(0, flingLastRow, 0, Math.round(velocity / cellH), 0, 0,
+                                0, NativeTerm.getHistorySize(handle));
+                        postInvalidateOnAnimation();
+                    }
+                    velocityTracker.recycle();
+                    velocityTracker = null;
                 }
                 handleDrag = 0;
                 scrollAcc = 0;
@@ -525,6 +622,7 @@ public class TerminalView extends View {
      * （这正是 Termux 的反面：它把重绘交给 IO 分片，我们把它交给 vsync。）
      */
     public void notifyNewData() {
+        if (scrollListener != null) scrollListener.run();
         postInvalidateOnAnimation();
     }
 
@@ -1082,6 +1180,7 @@ public class TerminalView extends View {
     }
 
     public void destroy() {
+        stopFling();
         cancelZoom();
         removeCallbacks(longPress);
         touchPressed = false;

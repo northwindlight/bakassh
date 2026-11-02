@@ -26,17 +26,31 @@
             android:padding="12dp"
             android:src="@drawable/ic_sessions"
             app:tint="?attr/colorOnSurfaceVariant" />
-        <TextView
-            android:id="@+id/tv_term_title"
+        <LinearLayout
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
-            android:ellipsize="middle"
-            android:fontFamily="sans-serif-medium"
-            android:singleLine="true"
-            android:text="@string/terminal_title"
-            android:textColor="?attr/colorOnSurface"
-            android:textSize="15sp" />
+            android:gravity="center_vertical"
+            android:orientation="vertical">
+            <TextView
+                android:id="@+id/tv_term_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="middle"
+                android:fontFamily="sans-serif-medium"
+                android:singleLine="true"
+                android:text="@string/terminal_title"
+                android:textColor="?attr/colorOnSurface"
+                android:textSize="14sp" />
+            <TextView
+                android:id="@+id/tv_term_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="middle"
+                android:singleLine="true"
+                android:textColor="?attr/colorOnSurfaceVariant"
+                android:textSize="10sp" />
+        </LinearLayout>
         <TextView
             android:id="@+id/tv_term_cols"
             android:layout_width="wrap_content"
@@ -73,6 +87,38 @@
             android:src="@drawable/ic_more_vert"
             app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="@color/term_surface"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <HorizontalScrollView
+            android:id="@+id/session_tab_scroll"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:fillViewport="false"
+            android:scrollbars="none">
+            <LinearLayout
+                android:id="@+id/session_tabs"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:paddingEnd="4dp" />
+        </HorizontalScrollView>
+        <ImageButton
+            android:id="@+id/btn_session_add"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="新建会话"
+            android:padding="12dp"
+            android:src="@drawable/ic_add"
+            app:tint="@color/term_primary" />
+    </LinearLayout>
     <FrameLayout
         android:id="@+id/layout_terminal_container"
         android:layout_width="match_parent"
@@ -81,7 +127,18 @@
         <dev.northwind.bakassh.TerminalView
             android:id="@+id/terminal_view"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:scrollbars="vertical" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btn_follow_output"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_gravity="bottom|end"
+            android:layout_margin="12dp"
+            android:text="回到底部"
+            android:textSize="12sp"
+            android:visibility="gone" />
     </FrameLayout>
     <LinearLayout
         android:id="@+id/layout_extra_keys_box"

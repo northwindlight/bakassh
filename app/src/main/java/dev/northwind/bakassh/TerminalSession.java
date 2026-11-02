@@ -16,7 +16,9 @@ final class TerminalSession implements AutoCloseable {
 
     enum State { CONNECTING, CONNECTED, ENDED, FAILED, CLOSED }
 
-    final String id, title, endpoint;
+    final String id, endpoint;
+    String title;
+    boolean unread;
     final AtomicBoolean frameQueued = new AtomicBoolean();
     private final Listener listener;
     private final SshTransport transport = new SshTransport();
@@ -106,8 +108,41 @@ final class TerminalSession implements AutoCloseable {
     void send(byte[] bytes) {
         synchronized (NativeTerm.class) {
             if (handle == 0 || state != State.CONNECTED) return;
+            NativeTerm.followOutput(handle);
             NativeTerm.drainOutput(handle, this::queueBytes);
             queueBytes(bytes);
+        }
+    }
+
+    void scroll(int row, int col, int lines) {
+        synchronized (NativeTerm.class) {
+            if (handle == 0) return;
+            if (state != State.CONNECTED && !NativeTerm.isLocalScroll(handle)) return;
+            NativeTerm.scroll(handle, row, col, lines);
+            NativeTerm.drainOutput(handle, this::queueBytes);
+        }
+    }
+
+    boolean click(int row, int col) {
+        synchronized (NativeTerm.class) {
+            if (handle == 0 || state != State.CONNECTED) return false;
+            boolean sent = NativeTerm.click(handle, row, col);
+            NativeTerm.drainOutput(handle, this::queueBytes);
+            return sent;
+        }
+    }
+
+    void paste(String text) {
+        synchronized (NativeTerm.class) {
+            if (handle == 0 || state != State.CONNECTED) return;
+            NativeTerm.followOutput(handle);
+            NativeTerm.startPaste(handle);
+            NativeTerm.drainOutput(handle, this::queueBytes);
+            // Keep terminal control bytes from terminating a bracketed paste early.
+            queueBytes(text.replace("\u001b", "").replace("\r\n", "\n").replace('\n', '\r')
+                    .getBytes(StandardCharsets.UTF_8));
+            NativeTerm.endPaste(handle);
+            NativeTerm.drainOutput(handle, this::queueBytes);
         }
     }
 

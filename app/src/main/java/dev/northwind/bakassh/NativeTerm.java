@@ -69,4 +69,15 @@ public final class NativeTerm {
 
     /** 鼠标按键：4 = 滚轮上，5 = 滚轮下（libvterm 只在应用开启鼠标上报时才真的发序列）。 */
     public static synchronized native void mouseButton(long h, int button, boolean pressed, int mod);
+
+    /** Positive lines: older text. Routes to mouse wheel, alternate-screen keys or local history. */
+    public static synchronized native void scroll(long h, int row, int col, int lines);
+    /** Returns true only when the application accepts remote mouse clicks. */
+    public static synchronized native boolean click(long h, int row, int col);
+    public static synchronized native int getScrollOffset(long h);
+    public static synchronized native int getHistorySize(long h);
+    public static synchronized native boolean isLocalScroll(long h);
+    public static synchronized native void followOutput(long h);
+    public static synchronized native void startPaste(long h);
+    public static synchronized native void endPaste(long h);
 }

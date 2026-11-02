@@ -57,6 +57,17 @@ public final class SessionRegression {
             await(() -> screen(a).contains("SIZE 91 27") && screen(b).contains("SIZE 80 24"), "independent PTY sizes");
             System.out.println("PASS resizing one session preserves the other PTY");
 
+            send(b, "interaction");
+            await(() -> screen(b).contains("POINTER_READY"), "mouse mode not negotiated");
+            if (!b.click(2, 6)) throw new AssertionError("session click ignored mouse mode");
+            b.scroll(1, 4, 2);
+            b.scroll(1, 4, -1);
+            await(() -> screen(b).contains("PASTE_READY"), "click/wheel bytes did not reach SSH peer");
+            b.paste("hello\r\n\u001b[201~world");
+            await(() -> screen(b).contains("INTERACTION_OK"), "paste payload/markers reordered");
+            if (b.click(0, 0)) throw new AssertionError("mouse disable ignored");
+            System.out.println("PASS actual SSH click/wheel coordinates and bracketed paste stay ordered");
+
             a.close();
             a.close();
             send(a, "ignored");
@@ -67,10 +78,16 @@ public final class SessionRegression {
             if (a.handle() != 0 || b.handle() == 0) throw new AssertionError("native ownership");
             System.out.println("PASS closing one session releases its handle and preserves the other connection");
 
+            send(b, "history");
+            await(() -> screen(b).contains("HISTORY_OK"), "history fixture output lost");
             send(b, "exit");
             await(() -> b.state() == TerminalSession.State.ENDED, "EOF not reflected in session state");
-            if (!screen(b).contains("SURVIVOR")) throw new AssertionError("EOF discarded terminal screen");
+            if (!screen(b).contains("HISTORY_OK")) throw new AssertionError("EOF discarded terminal screen");
             System.out.println("PASS EOF releases IO while retaining the final screen for review");
+            b.scroll(0, 0, 30);
+            if (NativeTerm.getScrollOffset(b.handle()) != 30 || !screen(b).contains("history-"))
+                throw new AssertionError("ended session cannot scroll history");
+            System.out.println("PASS disconnected sessions retain locally scrollable history");
         } finally { a.close(); b.close(); }
 
         for (int i = 0; i < 20; i++) {

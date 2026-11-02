@@ -36,6 +36,7 @@ public final class SessionService extends Service implements TerminalSession.Lis
     private PowerManager.WakeLock wakeLock;
     private WifiManager.WifiLock wifiLock;
     private boolean foreground;
+    private String selectedId;
 
     interface Listener {
         void onSessionsChanged();
@@ -47,6 +48,17 @@ public final class SessionService extends Service implements TerminalSession.Lis
     static SessionService current() { return instance; }
     List<TerminalSession> sessions() { return new ArrayList<>(sessions.values()); }
     TerminalSession get(String id) { return sessions.get(id); }
+    TerminalSession selected() {
+        TerminalSession selected = sessions.get(selectedId);
+        if (selected != null) return selected;
+        for (TerminalSession item : sessions.values()) selected = item;
+        return selected;
+    }
+    void select(String id) {
+        if (!sessions.containsKey(id) || id.equals(selectedId)) return;
+        selectedId = id;
+        promote();
+    }
     void addListener(Listener listener) { if (!listeners.contains(listener)) listeners.add(listener); }
     void removeListener(Listener listener) { listeners.remove(listener); }
 
@@ -94,11 +106,19 @@ public final class SessionService extends Service implements TerminalSession.Lis
         changed();
     }
 
+    void rename(String id, String title) {
+        TerminalSession session = sessions.get(id);
+        if (session == null || title.trim().isEmpty()) return;
+        session.title = title.trim();
+        changed();
+    }
+
     @Override public void onData(TerminalSession session) {
         if (!session.frameQueued.compareAndSet(false, true)) return;
         main.post(() -> {
             session.frameQueued.set(false);
             if (sessions.get(session.id) != session) return;
+            session.unread = true;
             for (Listener listener : new ArrayList<>(listeners)) listener.onSessionData(session);
         });
     }
@@ -164,12 +184,11 @@ public final class SessionService extends Service implements TerminalSession.Lis
         Intent open = new Intent(this, MainActivity.class)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
         int active = 0;
-        String lastId = null;
         for (TerminalSession session : sessions.values()) {
             if (session.isActive()) active++;
-            lastId = session.id;
         }
-        if (lastId != null) open.putExtra(SESSION_ID, lastId);
+        TerminalSession selected = selected();
+        if (selected != null) open.putExtra(SESSION_ID, selected.id);
         int immutable = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         PendingIntent content = PendingIntent.getActivity(this, 0, open, immutable);
         PendingIntent toggle = PendingIntent.getService(this, 1,

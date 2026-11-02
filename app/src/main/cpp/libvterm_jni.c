@@ -25,6 +25,13 @@
 #define MAX_ROWS     512
 #define MAX_MOVE_OPS 256
 #define MAX_DAMAGE   512
+#define HISTORY_LINES 4096
+#define HISTORY_BYTES (16 * 1024 * 1024)
+
+typedef struct {
+    int cols;
+    VTermScreenCell cells[];
+} HistoryLine;
 
 typedef struct {
     VTerm *vt;
@@ -52,12 +59,22 @@ typedef struct {
 
     /* 默认色 */
     int default_fg, default_bg;
+    HistoryLine *history[HISTORY_LINES];
+    int history_start, history_count, view_offset;
+    size_t history_bytes;
+    int mouse_mode, alt_screen;
 } TermCtx;
+
+static void invalidate_view(TermCtx *t) {
+    t->need_full = 1;
+    t->move_count = 0;
+}
 
 /* ---------------- libvterm 回调 ---------------- */
 
 static int cb_damage(VTermRect rect, void *user) {
     TermCtx *t = (TermCtx *) user;
+    if (t->view_offset) invalidate_view(t);
     for (int r = rect.start_row; r < rect.end_row; r++) {
         if (r >= 0 && r < t->rows && !t->dirty[r]) t->dirty[r] = 1;
     }
@@ -66,6 +83,7 @@ static int cb_damage(VTermRect rect, void *user) {
 
 static int cb_moverect(VTermRect dest, VTermRect src, void *user) {
     TermCtx *t = (TermCtx *) user;
+    if (t->view_offset) { invalidate_view(t); return 1; }
     /* Dirty rows describe the old screen until this move is applied. Carry
      * those flags with the rows, or a changed row can become a valid stale
      * bitmap at its destination between two display frames. */
@@ -111,6 +129,14 @@ static int cb_settermprop(VTermProp prop, VTermValue *val, void *user) {
         case VTERM_PROP_CURSORSHAPE:
             t->cursor_shape = val->number;
             break;
+        case VTERM_PROP_MOUSE:
+            t->mouse_mode = val->number;
+            break;
+        case VTERM_PROP_ALTSCREEN:
+            t->alt_screen = val->boolean;
+            t->view_offset = 0;
+            invalidate_view(t);
+            break;
         default:
             break;
     }
@@ -131,16 +157,64 @@ static int cb_resize(int rows, int cols, void *user) {
 }
 
 static int cb_sb_pushline(int cols, const VTermScreenCell *cells, void *user) {
-    (void) cols; (void) cells; (void) user;
-    return 1; /* M1a 先不接回滚历史；M1b 由这里把行喂给我们的行缓冲 */
+    TermCtx *t = user;
+    if (t->alt_screen || cols <= 0) return 1;
+    size_t bytes = sizeof(HistoryLine) + (size_t) cols * sizeof(VTermScreenCell);
+    if (bytes > HISTORY_BYTES) return 1;
+    HistoryLine *line = malloc(bytes);
+    if (!line) return 1;
+    line->cols = cols;
+    memcpy(line->cells, cells, (size_t) cols * sizeof(VTermScreenCell));
+    while (t->history_count && (t->history_count == HISTORY_LINES ||
+            t->history_bytes + bytes > HISTORY_BYTES)) {
+        HistoryLine *old = t->history[t->history_start];
+        t->history_bytes -= sizeof(HistoryLine) + (size_t) old->cols * sizeof(VTermScreenCell);
+        free(old);
+        t->history_start = (t->history_start + 1) % HISTORY_LINES;
+        t->history_count--;
+    }
+    t->history[(t->history_start + t->history_count++) % HISTORY_LINES] = line;
+    t->history_bytes += bytes;
+    if (t->view_offset) {
+        if (t->view_offset < t->history_count) t->view_offset++;
+        invalidate_view(t);
+    }
+    return 1;
 }
 
 static int cb_sb_popline(int cols, VTermScreenCell *cells, void *user) {
-    (void) cols; (void) cells; (void) user;
-    return 0; /* 没有历史可给 */
+    TermCtx *t = user;
+    if (!t->history_count || t->alt_screen) return 0;
+    int index = (t->history_start + --t->history_count) % HISTORY_LINES;
+    HistoryLine *line = t->history[index];
+    int count = cols < line->cols ? cols : line->cols;
+    memset(cells, 0, (size_t) cols * sizeof(VTermScreenCell));
+    memcpy(cells, line->cells, (size_t) count * sizeof(VTermScreenCell));
+    for (int i = count; i < cols; i++) {
+        cells[i].width = 1;
+        vterm_state_get_default_colors(t->state, &cells[i].fg, &cells[i].bg);
+    }
+    /* A width-2 glyph cut by a narrower grid must not keep a missing tail. */
+    if (cols > 0 && cells[cols - 1].width == 2) {
+        memset(cells[cols - 1].chars, 0, sizeof(cells[cols - 1].chars));
+        cells[cols - 1].width = 1;
+    }
+    t->history_bytes -= sizeof(HistoryLine) + (size_t) line->cols * sizeof(VTermScreenCell);
+    free(line);
+    if (t->view_offset) t->view_offset--;
+    invalidate_view(t);
+    return 1;
 }
 
-static int cb_sb_clear(void *user) { (void) user; return 1; }
+static int cb_sb_clear(void *user) {
+    TermCtx *t = user;
+    for (int i = 0; i < t->history_count; i++)
+        free(t->history[(t->history_start + i) % HISTORY_LINES]);
+    t->history_start = t->history_count = t->view_offset = 0;
+    t->history_bytes = 0;
+    invalidate_view(t);
+    return 1;
+}
 
 static void cb_output(const char *s, size_t len, void *user) {
     TermCtx *t = (TermCtx *) user;
@@ -259,6 +333,7 @@ Java_dev_northwind_bakassh_NativeTerm_destroy(JNIEnv *env, jclass clazz, jlong h
     (void) env; (void) clazz;
     TermCtx *t = (TermCtx *) (intptr_t) h;
     if (!t) return;
+    cb_sb_clear(t);
     if (t->vt) vterm_free(t->vt);
     free(t->outbuf);
     free(t);
@@ -350,10 +425,23 @@ static int cell_attrs(const VTermScreenCell *cell) {
 }
 
 static void fill_cell(TermCtx *t, int row, int col, jint *p) {
+    row -= t->view_offset;
     VTermPos pos = { .row = row, .col = col };
     VTermScreenCell cell;
     memset(&cell, 0, sizeof(cell));
-    if (!vterm_screen_get_cell(t->screen, pos, &cell)) {
+    int valid = 0;
+    if (row < 0 && row >= -t->history_count) {
+        HistoryLine *line = t->history[(t->history_start + t->history_count + row) % HISTORY_LINES];
+        if (col < line->cols) {
+            cell = line->cells[col];
+            valid = 1;
+            if (col == t->cols - 1 && cell.width == 2) {
+                cell.chars[0] = 0;
+                cell.width = 1;
+            }
+        }
+    } else if (row >= 0) valid = vterm_screen_get_cell(t->screen, pos, &cell);
+    if (!valid) {
         p[0] = 32; p[1] = t->default_fg; p[2] = t->default_bg; p[3] = 0; p[4] = 1;
         return;
     }
@@ -418,7 +506,7 @@ Java_dev_northwind_bakassh_NativeTerm_getCursor(JNIEnv *env, jclass clazz, jlong
     jint v[4];
     v[0] = pos.row;
     v[1] = pos.col;
-    v[2] = t->cursor_visible;
+    v[2] = t->cursor_visible && !t->view_offset;
     v[3] = t->cursor_shape;
     (*env)->SetIntArrayRegion(env, out, 0, 4, v);
 }
@@ -461,4 +549,80 @@ Java_dev_northwind_bakassh_NativeTerm_mouseButton(JNIEnv *env, jclass clazz, jlo
     if (!t) return;
     vterm_mouse_button(t->vt, button, pressed ? true : false, (VTermModifier) mod);
     vterm_screen_flush_damage(t->screen);
+}
+
+/* Positive lines mean moving toward older text, matching a downward finger drag. */
+JNIEXPORT void JNICALL
+Java_dev_northwind_bakassh_NativeTerm_scroll(JNIEnv *env, jclass clazz, jlong h, jint row, jint col, jint lines) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    if (!t || !lines) return;
+    if (lines > MAX_ROWS) lines = MAX_ROWS;
+    if (lines < -MAX_ROWS) lines = -MAX_ROWS;
+    if (t->mouse_mode && !t->view_offset) {
+        vterm_mouse_move(t->vt, row, col, VTERM_MOD_NONE);
+        for (int i = 0; i < abs(lines); i++)
+            vterm_mouse_button(t->vt, lines > 0 ? 4 : 5, true, VTERM_MOD_NONE);
+    } else if (t->alt_screen) {
+        for (int i = 0; i < abs(lines); i++)
+            vterm_keyboard_key(t->vt, lines > 0 ? VTERM_KEY_UP : VTERM_KEY_DOWN, VTERM_MOD_NONE);
+    } else {
+        int offset = t->view_offset + lines;
+        if (offset < 0) offset = 0;
+        if (offset > t->history_count) offset = t->history_count;
+        if (offset != t->view_offset) { t->view_offset = offset; invalidate_view(t); }
+    }
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_northwind_bakassh_NativeTerm_click(JNIEnv *env, jclass clazz, jlong h, jint row, jint col) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    if (!t || !t->mouse_mode || t->view_offset) return JNI_FALSE;
+    vterm_mouse_move(t->vt, row, col, VTERM_MOD_NONE);
+    vterm_mouse_button(t->vt, 1, true, VTERM_MOD_NONE);
+    vterm_mouse_button(t->vt, 1, false, VTERM_MOD_NONE);
+    return JNI_TRUE;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_northwind_bakassh_NativeTerm_getScrollOffset(JNIEnv *env, jclass clazz, jlong h) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    return t ? t->view_offset : 0;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_northwind_bakassh_NativeTerm_getHistorySize(JNIEnv *env, jclass clazz, jlong h) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    return t ? t->history_count : 0;
+}
+
+JNIEXPORT jboolean JNICALL
+Java_dev_northwind_bakassh_NativeTerm_isLocalScroll(JNIEnv *env, jclass clazz, jlong h) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    return t && !t->alt_screen && (!t->mouse_mode || t->view_offset);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_northwind_bakassh_NativeTerm_followOutput(JNIEnv *env, jclass clazz, jlong h) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    if (t && t->view_offset) { t->view_offset = 0; invalidate_view(t); }
+}
+
+JNIEXPORT void JNICALL
+Java_dev_northwind_bakassh_NativeTerm_startPaste(JNIEnv *env, jclass clazz, jlong h) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    if (t) vterm_keyboard_start_paste(t->vt);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_northwind_bakassh_NativeTerm_endPaste(JNIEnv *env, jclass clazz, jlong h) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    if (t) vterm_keyboard_end_paste(t->vt);
 }

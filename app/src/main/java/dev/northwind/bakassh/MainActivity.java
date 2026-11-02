@@ -34,6 +34,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.chip.Chip;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -58,13 +59,17 @@ public class MainActivity extends AppCompatActivity {
     private MaterialButton shiftButton;
     private TextView tvTermTitle;
     private TextView tvTermCols;
+    private TextView tvTermStatus;
+    private LinearLayout sessionTabs;
+    private MaterialButton followOutputButton;
+    private final java.util.Map<String, Chip> tabViews = new java.util.LinkedHashMap<>();
     private LinearLayout layoutExtraKeysBox;
     private android.view.ActionMode selectionActionMode;
     private long handle;
     private SessionService service;
     private TerminalSession session;
     private String requestedSessionId;
-    private boolean bound, resumed, preparingConnection, attachingSession;
+    private boolean bound, resumed, preparingConnection, attachingSession, pendingHost;
     private android.app.Dialog credentialDialog;
     private final android.content.ServiceConnection connection = new android.content.ServiceConnection() {
         @Override public void onServiceConnected(android.content.ComponentName name, android.os.IBinder binder) {
@@ -82,15 +87,25 @@ public class MainActivity extends AppCompatActivity {
     private final SessionService.Listener sessionListener = new SessionService.Listener() {
         @Override public void onSessionsChanged() {
             if (session != null && service.get(session.id) == null) {
+                int closedIndex = new java.util.ArrayList<>(tabViews.keySet()).indexOf(session.id);
                 detachSession();
                 List<TerminalSession> remaining = service.sessions();
                 if (remaining.isEmpty()) { finish(); return; }
-                attachSession(remaining.get(remaining.size() - 1));
+                attachSession(remaining.get(Math.max(0, Math.min(closedIndex, remaining.size() - 1))));
             }
             updateSessionTitle();
+            updateSessionTabs();
         }
         @Override public void onSessionData(TerminalSession changed) {
-            if (session == changed) view.notifyNewData();
+            if (session == changed) { changed.unread = false; view.notifyNewData(); }
+            else {
+                Chip chip = tabViews.get(changed.id);
+                if (chip != null && !chip.isActivated()) {
+                    chip.setActivated(true);
+                    chip.setText("• " + chip.getText());
+                    chip.setContentDescription(changed.title + "，有新输出");
+                }
+            }
         }
     };
 
@@ -140,6 +155,7 @@ public class MainActivity extends AppCompatActivity {
         requestedSessionId = savedInstanceState == null ? null : savedInstanceState.getString(SessionService.SESSION_ID);
         if (requestedSessionId == null && it != null) requestedSessionId = it.getStringExtra(SessionService.SESSION_ID);
         if (it != null) readHost(it);
+        pendingHost = requestedSessionId == null && it != null && it.hasExtra("host");
 
         view = findViewById(R.id.terminal_view);
         view.setPreferredColumns(HostStore.getZoomColumns(this, 150));
@@ -152,6 +168,12 @@ public class MainActivity extends AppCompatActivity {
 
         tvTermTitle = findViewById(R.id.tv_term_title);
         tvTermCols = findViewById(R.id.tv_term_cols);
+        tvTermStatus = findViewById(R.id.tv_term_status);
+        sessionTabs = findViewById(R.id.session_tabs);
+        followOutputButton = findViewById(R.id.btn_follow_output);
+        followOutputButton.setOnClickListener(v -> view.followOutput());
+        view.setScrollListener(this::updateScrollStatus);
+        findViewById(R.id.btn_session_add).setOnClickListener(v -> newSession());
         String displayTitle = (hName != null && !hName.trim().isEmpty()) ? hName : (hUser + "@" + hHost);
         tvTermTitle.setText(displayTitle);
         tvTermCols.setText(HostStore.getZoomColumns(this, 150) + "列");
@@ -165,21 +187,21 @@ public class MainActivity extends AppCompatActivity {
             menu.getMenu().add(0, 1, 0, layoutExtraKeysBox.getVisibility() == View.VISIBLE ? "隐藏扩展按键" : "显示扩展按键");
             menu.getMenu().add(0, 3, 1, "新建会话");
             menu.getMenu().add(0, 4, 2, "后台保活");
+            menu.getMenu().add(0, 5, 3, "重命名 / 管理当前会话");
             menu.getMenu().add(0, 2, 3, "关闭当前会话");
             menu.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == 1) {
                     layoutExtraKeysBox.setVisibility(layoutExtraKeysBox.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
+                    getPreferences(MODE_PRIVATE).edit().putBoolean("extra_keys_visible",
+                            layoutExtraKeysBox.getVisibility() == View.VISIBLE).apply();
                 } else if (item.getItemId() == 3) {
                     newSession();
                 } else if (item.getItemId() == 4) {
                     BackgroundSettings.show(this);
+                } else if (item.getItemId() == 5 && session != null) {
+                    SessionSwitcher.showActions(this, service, session);
                 } else if (session != null) {
-                    new MaterialAlertDialogBuilder(this).setTitle("关闭当前会话？")
-                            .setMessage("将关闭 " + session.title + " 的 SSH 连接。")
-                            .setNegativeButton("取消", null)
-                            .setPositiveButton("关闭", (d, w) -> {
-                                if (service != null && session != null) service.close(session.id);
-                            }).show();
+                    SessionSwitcher.confirmClose(this, service, session);
                 }
                 return true;
             });
@@ -187,6 +209,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         layoutExtraKeysBox = findViewById(R.id.layout_extra_keys_box);
+        layoutExtraKeysBox.setVisibility(getPreferences(MODE_PRIVATE).getBoolean("extra_keys_visible", true) ? View.VISIBLE : View.GONE);
         populateExtraKeys();
 
         /*
@@ -327,7 +350,7 @@ public class MainActivity extends AppCompatActivity {
         CharSequence cs = cm.getPrimaryClip().getItemAt(0).coerceToText(this);
         if (cs == null) return;
         String t = cs.toString();
-        sendBytes(t.getBytes(StandardCharsets.UTF_8));
+        if (session != null) { view.followOutput(); session.paste(t); }
         out(this, "PASTED chars=" + t.length());
         toast("已粘贴 " + t.length() + " 字符");
         view.clearSelection();
@@ -564,7 +587,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void sendBytes(byte[] bytes) {
-        if (session != null) session.send(bytes);
+        if (session != null) { view.followOutput(); session.send(bytes); }
     }
 
     private void showIme() {
@@ -589,6 +612,12 @@ public class MainActivity extends AppCompatActivity {
                 if (session != null) session.mouse(row, col, button, pressed);
             }
             @Override public void tap() { showIme(); }
+            @Override public void tap(int row, int col) {
+                if (session == null || !session.click(row, col)) showIme();
+            }
+            @Override public void scroll(int row, int col, int lines) {
+                if (session != null) session.scroll(row, col, lines);
+            }
         });
         view.setSelectionListener((active, hasRange) -> updateSelectionToolbar(active));
         view.setZoomListener(columns -> {
@@ -597,6 +626,7 @@ public class MainActivity extends AppCompatActivity {
             tvTermCols.setText(view.getCols() + "列");
         });
         if (service != null) {
+            if (session != null) session.unread = false;
             sessionListener.onSessionsChanged();
             openRequestedSession();
         }
@@ -625,12 +655,13 @@ public class MainActivity extends AppCompatActivity {
         if (requestedSessionId != null) {
             if (credentialDialog != null) credentialDialog.dismiss();
             preparingConnection = false;
+            pendingHost = false;
         }
         if (requestedSessionId == null && intent.hasExtra("host")) {
             if (credentialDialog != null) credentialDialog.dismiss();
             preparingConnection = false;
-            detachSession();
             readHost(intent);
+            pendingHost = true;
         }
         openRequestedSession();
     }
@@ -656,12 +687,13 @@ public class MainActivity extends AppCompatActivity {
             finish();
             return;
         }
-        if (session != null) return;
+        if (session != null && !pendingHost) return;
         if (hHost.isEmpty()) {
-            List<TerminalSession> existing = service.sessions();
-            if (existing.isEmpty()) { finish(); return; }
-            attachSession(existing.get(existing.size() - 1));
+            TerminalSession selected = service.selected();
+            if (selected == null) { finish(); return; }
+            attachSession(selected);
         } else if (view.getWidth() > 0 && view.getHeight() > 0) {
+            pendingHost = false;
             preparingConnection = true;
             prepareConnection();
         }
@@ -675,11 +707,11 @@ public class MainActivity extends AppCompatActivity {
         }
         KeyItem key;
         try { key = KeyManager.getKey(this, hKeyId); }
-        catch (Exception e) { toast("读取密钥失败：" + e.getMessage()); finish(); return; }
+        catch (Exception e) { toast("读取密钥失败：" + e.getMessage()); cancelConnection(); return; }
         if (key == null) {
             credentialDialog = new MaterialAlertDialogBuilder(this).setTitle("没有可用的密钥")
                     .setMessage("请返回主机列表，生成或导入私钥，并在主机配置中选择它。")
-                    .setPositiveButton("返回", (d, w) -> finish()).setOnCancelListener(d -> finish()).show();
+                    .setPositiveButton("返回", (d, w) -> cancelConnection()).setOnCancelListener(d -> cancelConnection()).show();
             return;
         }
         String keyPath = KeyManager.getPrivFile(this, key.id).getAbsolutePath();
@@ -704,7 +736,15 @@ public class MainActivity extends AppCompatActivity {
                     String secret = editor.getText() == null ? "" : editor.getText().toString();
                     editor.setText("");
                     callback.accept(secret);
-                }).setNegativeButton("取消", (d, w) -> finish()).setOnCancelListener(d -> finish()).show();
+                }).setNegativeButton("取消", (d, w) -> cancelConnection()).setOnCancelListener(d -> cancelConnection()).show();
+    }
+
+    private void cancelConnection() {
+        preparingConnection = false;
+        pendingHost = false;
+        hPassword = "";
+        getIntent().removeExtra("password");
+        if (session == null) finish();
     }
 
     private void createSession(String keyPath, String passphrase, String password) {
@@ -721,19 +761,27 @@ public class MainActivity extends AppCompatActivity {
                 getPreferences(MODE_PRIVATE).edit().putBoolean("notification_asked", true).apply();
                 requestPermissions(new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, 51);
             }
-        } catch (Exception e) { toast("创建会话失败：" + e.getMessage()); finish(); }
+        } catch (Exception e) { toast("创建会话失败：" + e.getMessage()); cancelConnection(); }
         hPassword = "";
         getIntent().removeExtra("password");
         preparingConnection = false;
     }
 
     private void attachSession(TerminalSession next) {
-        if (next == session) { updateSessionTitle(); return; }
+        if (next == session) {
+            next.unread = false;
+            updateSessionTitle();
+            updateSessionTabs();
+            updateScrollStatus();
+            return;
+        }
         attachingSession = true;
         detachSession();
         // Set zoom before publishing the new session so geometry callbacks cannot overwrite its grid.
         view.setPreferredColumns(next.zoomColumns);
         session = next;
+        service.select(next.id);
+        next.unread = false;
         attachingSession = false;
         handle = next.handle();
         view.attachSession(handle);
@@ -746,6 +794,8 @@ public class MainActivity extends AppCompatActivity {
         InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
         if (imm != null) imm.restartInput(input);
         updateSessionTitle();
+        updateSessionTabs();
+        updateScrollStatus();
     }
 
     private void detachSession() {
@@ -757,29 +807,77 @@ public class MainActivity extends AppCompatActivity {
 
     private void updateSessionTitle() {
         if (session == null) return;
-        tvTermTitle.setText(session.title + " · " + session.detail());
+        tvTermTitle.setText(session.title);
+        tvTermStatus.setText(session.detail() + " · " + session.endpoint);
         tvTermCols.setText(view.getCols() + "列");
         findViewById(R.id.btn_term_sessions).setContentDescription("会话 · " + service.sessions().size());
     }
 
     private void showSessions() {
         if (service == null) return;
-        List<TerminalSession> all = service.sessions();
-        String[] labels = new String[all.size()];
-        for (int i = 0; i < labels.length; i++) {
-            TerminalSession item = all.get(i);
-            labels[i] = (item == session ? "● " : "○ ") + (i + 1) + "  " + item.title + " · " + item.detail();
-        }
-        new MaterialAlertDialogBuilder(this).setTitle("会话（" + all.size() + "）")
-                .setItems(labels, (dialog, index) -> {
-                    TerminalSession selected = service.get(all.get(index).id);
-                    if (selected != null) attachSession(selected);
-                }).setPositiveButton("新建会话", (d, w) -> newSession()).setNegativeButton("关闭", null).show();
+        SessionSwitcher.show(this, service, session == null ? null : session.id, this::attachSession, this::newSession);
     }
 
     private void newSession() {
-        startActivity(new Intent(this, HostListActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
-        finish();
+        if (preparingConnection || service == null) return;
+        List<Host> hosts = HostStore.load(this);
+        if (hosts.isEmpty()) {
+            startActivity(new Intent(this, HostListActivity.class)
+                    .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            return;
+        }
+        String[] labels = new String[hosts.size()];
+        for (int i = 0; i < labels.length; i++) labels[i] = hosts.get(i).title() + "\n" + hosts.get(i).user + "@" + hosts.get(i).host;
+        new MaterialAlertDialogBuilder(this).setTitle("新建连接")
+                .setItems(labels, (d, index) -> {
+                    Host host = hosts.get(index);
+                    hName = host.name; hHost = host.host; hPort = host.port; hUser = host.user;
+                    hStartup = host.startup; hAuthType = host.authType; hKeyId = host.keyId; hPassword = host.password;
+                    pendingHost = true;
+                    openRequestedSession();
+                }).setNeutralButton("管理主机", (d, w) -> startActivity(new Intent(this, HostListActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)))
+                .setNegativeButton("取消", null).show();
+    }
+
+    private void updateScrollStatus() {
+        int offset = handle == 0 ? 0 : NativeTerm.getScrollOffset(handle);
+        followOutputButton.setVisibility(offset == 0 ? View.GONE : View.VISIBLE);
+        if (offset > 0) followOutputButton.setText("↓ 回到底部 · " + offset + " 行");
+    }
+
+    private void updateSessionTabs() {
+        if (service == null) return;
+        sessionTabs.removeAllViews();
+        tabViews.clear();
+        List<TerminalSession> sessions = service.sessions();
+        for (int i = 0; i < sessions.size(); i++) {
+            TerminalSession item = sessions.get(i);
+            Chip chip = new Chip(this);
+            chip.setText(SessionSwitcher.label(item, i + 1, item == session));
+            chip.setTextSize(12);
+            chip.setMaxWidth(dp(240));
+            chip.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            chip.setCheckable(true);
+            chip.setChecked(item == session);
+            chip.setActivated(item.unread);
+            chip.setCheckedIconVisible(false);
+            chip.setCloseIconResource(R.drawable.ic_close);
+            chip.setCloseIconVisible(true);
+            chip.setCloseIconContentDescription("关闭 " + item.title);
+            chip.setContentDescription(item.title + "，" + item.detail() + (item.unread ? "，有新输出" : ""));
+            chip.setOnClickListener(v -> { if (service.get(item.id) != null) attachSession(item); });
+            chip.setOnCloseIconClickListener(v -> SessionSwitcher.confirmClose(this, service, item));
+            chip.setOnLongClickListener(v -> { SessionSwitcher.showActions(this, service, item); return true; });
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(48));
+            lp.setMarginEnd(dp(4));
+            sessionTabs.addView(chip, lp);
+            tabViews.put(item.id, chip);
+            if (item == session) chip.post(() -> {
+                android.widget.HorizontalScrollView scroll = findViewById(R.id.session_tab_scroll);
+                scroll.smoothScrollTo(Math.max(0, chip.getLeft() - dp(12)), 0);
+            });
+        }
     }
 
     @Override protected void onDestroy() {

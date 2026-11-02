@@ -169,14 +169,11 @@ public class HostListActivity extends AppCompatActivity {
     private void showActiveSessions() {
         SessionService service = SessionService.current();
         if (service == null) return;
-        List<TerminalSession> sessions = service.sessions();
-        String[] labels = new String[sessions.size()];
-        for (int i = 0; i < labels.length; i++) labels[i] = (i + 1) + "  " + sessions.get(i).title + " · " + sessions.get(i).detail();
-        new MaterialAlertDialogBuilder(this).setTitle("会话")
-                .setItems(labels, (dialog, index) -> startActivity(new Intent(this, MainActivity.class)
-                        .putExtra(SessionService.SESSION_ID, sessions.get(index).id)
-                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)))
-                .setNegativeButton("关闭", null).show();
+        SessionSwitcher.show(this, service, null,
+                selected -> startActivity(new Intent(this, MainActivity.class)
+                        .putExtra(SessionService.SESSION_ID, selected.id)
+                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP)),
+                () -> editDialog(-1));
     }
 
     /** 编辑页独占窗口；表单可滚动，键盘弹出时保留顶栏操作。 */
