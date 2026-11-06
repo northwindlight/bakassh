@@ -7,9 +7,16 @@ import java.util.List;
 /** Editable rows of keys, independent of Android and the old delimiter format. */
 final class KeyLayout {
     static final int MAX_ROWS = 4, MAX_KEYS = 10, MAX_TEXT = 64;
-    static final String DEFAULT = "ESC,TAB,CTRL,ALT,UP|HOME,END,LEFT,DOWN,RIGHT";
-    private static final String PREVIOUS_DEFAULT = "ESC,BKSP,ALT,UP,KEYBOARD|CTRL,SHIFT,LEFT,DOWN,RIGHT";
-    private static final String FIRST_DEFAULT = "ESC,/,-,HOME,UP,END,PGUP,FONT-|TAB,CTRL,ALT,LEFT,DOWN,RIGHT,PGDN,FONT+,KEYBOARD,PASTE";
+    static final String DEFAULT = "ESC,TAB,ALT,UP,KEYBOARD|CTRL,SHIFT,LEFT,DOWN,RIGHT";
+    /**
+     * 历史默认方案。用户没改过布局时，迁移到新的默认；改过的保持原样。
+     * 新默认把 Ctrl 挪到第二行、补上 Shift 和键盘，去掉 Home / End。
+     */
+    private static final String[] DEPRECATED_DEFAULTS = {
+            "ESC,BKSP,ALT,UP,KEYBOARD|CTRL,SHIFT,LEFT,DOWN,RIGHT",
+            "ESC,TAB,CTRL,ALT,UP|HOME,END,LEFT,DOWN,RIGHT",
+            "ESC,/,-,HOME,UP,END,PGUP,FONT-|TAB,CTRL,ALT,LEFT,DOWN,RIGHT,PGDN,FONT+,KEYBOARD,PASTE",
+    };
     private final List<List<String>> rows = new ArrayList<>();
 
     KeyLayout(List<String[]> source) {
@@ -25,8 +32,8 @@ final class KeyLayout {
 
     static KeyLayout defaults() { return fromLegacy(DEFAULT); }
     static KeyLayout migrateLegacy(String text) {
-        if (text == null || text.trim().isEmpty() || text.equals(PREVIOUS_DEFAULT) || text.equals(FIRST_DEFAULT))
-            return defaults();
+        if (text == null || text.trim().isEmpty()) return defaults();
+        for (String deprecated : DEPRECATED_DEFAULTS) if (text.equals(deprecated)) return defaults();
         return fromLegacy(text);
     }
     static KeyLayout fromLegacy(String text) {

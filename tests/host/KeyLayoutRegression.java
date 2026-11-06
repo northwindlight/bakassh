@@ -16,14 +16,19 @@ public final class KeyLayoutRegression {
     }
     public static void main(String[] args) {
         KeyLayout layout = KeyLayout.defaults();
-        check(content(layout).contains("TAB") && !content(layout).contains("BKSP"), "default lacks Tab");
-        check(content(KeyLayout.migrateLegacy("ESC,BKSP,ALT,UP,KEYBOARD|CTRL,SHIFT,LEFT,DOWN,RIGHT"))
-                .equals(content(layout)), "old default did not migrate");
+        check(content(layout).equals("[ESC, TAB, ALT, UP, KEYBOARD][CTRL, SHIFT, LEFT, DOWN, RIGHT]"),
+                "default layout is not the requested one: " + content(layout));
+        for (String oldDefault : new String[]{
+                "ESC,BKSP,ALT,UP,KEYBOARD|CTRL,SHIFT,LEFT,DOWN,RIGHT",
+                "ESC,TAB,CTRL,ALT,UP|HOME,END,LEFT,DOWN,RIGHT",
+                "ESC,/,-,HOME,UP,END,PGUP,FONT-|TAB,CTRL,ALT,LEFT,DOWN,RIGHT,PGDN,FONT+,KEYBOARD,PASTE"})
+            check(content(KeyLayout.migrateLegacy(oldDefault)).equals(content(layout)),
+                    "old default did not migrate: " + oldDefault);
         KeyLayout custom = KeyLayout.migrateLegacy("ESC,TAB,/|CTRL,c,RIGHT");
         check(custom.size(0) == 3 && custom.key(1, 1).equals("c"), "custom legacy layout overwritten");
         KeyLayout wide = KeyLayout.migrateLegacy("a,b,c,d,e,f,g,h,i,j,k");
         check(wide.size(0) == 11, "wide legacy layout discarded");
-        System.out.println("PASS Tab default migration preserves existing custom layouts");
+        System.out.println("PASS 0.4.x defaults migrate to Esc/Tab/Alt/↑/键盘 · Ctrl/Shift/←/↓/→");
 
         String[] original = {"TAB", "ESC"};
         layout = new KeyLayout(Collections.singletonList(original));

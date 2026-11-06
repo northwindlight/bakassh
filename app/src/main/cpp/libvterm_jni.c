@@ -28,6 +28,30 @@
 #define HISTORY_LINES 4096
 #define HISTORY_BYTES (16 * 1024 * 1024)
 
+/*
+ * ANSI 16 色调色板：Windows Terminal 内置的 "One Half Dark" 方案。
+ *
+ * WT 的配色不是算出来的，而是一张固定方案表（Campbell / One Half Dark / ...），
+ * 由终端自己按方案名取用。这里不用 WT 的默认 Campbell：它的蓝 #0037DA、紫 #881798
+ * 是给 Windows 控制台自己的深蓝背景调的，放到本终端的近黑背景 #101014 上，
+ * WCAG 对比度只有 2.31 / 2.37 —— 比 libvterm 原来那对纯蓝纯紫（1.88 / 4.74）还难认。
+ * One Half Dark 是专为深色终端设计的柔和方案，同背景上蓝 8.03、紫 6.45，
+ * 其余 14 色也都在 3.1 以上（低于 3 的只有 ANSI 黑，它本来就该贴近背景）。
+ */
+static const uint32_t ansi_palette[16] = {
+    0x282C34, 0xE06C75, 0x98C379, 0xE5C07B, 0x61AFEF, 0xC678DD, 0x56B6C2, 0xDCDFE4,
+    0x5A6374, 0xE06C75, 0x98C379, 0xE5C07B, 0x61AFEF, 0xC678DD, 0x56B6C2, 0xDCDFE4,
+};
+
+static void apply_ansi_palette(VTermState *state) {
+    for (int i = 0; i < 16; i++) {
+        VTermColor color;
+        uint32_t rgb = ansi_palette[i];
+        vterm_color_rgb(&color, (uint8_t) (rgb >> 16), (uint8_t) (rgb >> 8), (uint8_t) rgb);
+        vterm_state_set_palette_color(state, i, &color);
+    }
+}
+
 typedef struct {
     int cols;
     VTermScreenCell cells[];
@@ -322,6 +346,8 @@ Java_dev_northwind_bakassh_NativeTerm_create(JNIEnv *env, jclass clazz, jint col
     vterm_color_rgb(&bg, (uint8_t) (t->default_bg >> 16), (uint8_t) (t->default_bg >> 8), (uint8_t) t->default_bg);
     vterm_state_set_default_colors(t->state, &fg, &bg);
     vterm_screen_set_default_colors(t->screen, &fg, &bg);
+    /* 必须放在 reset 之后：vterm_state_newpen() 会把 libvterm 自带的 ANSI 表写进去 */
+    apply_ansi_palette(t->state);
 
     t->need_full = 1;
     LOGI("libvterm created %dx%d (vterm %s)", cols, rows, "0.3.x-neovim-fork");
@@ -572,6 +598,23 @@ Java_dev_northwind_bakassh_NativeTerm_scroll(JNIEnv *env, jclass clazz, jlong h,
         if (offset > t->history_count) offset = t->history_count;
         if (offset != t->view_offset) { t->view_offset = offset; invalidate_view(t); }
     }
+}
+
+/*
+ * 纯本地滚动：只改 view_offset，绝不转成远端滚轮或方向键。
+ * 拖选到屏幕边缘时用它把回滚历史翻出来，鼠标模式下的 TUI（tmux/Claude Code）不会被喂滚轮事件。
+ */
+JNIEXPORT void JNICALL
+Java_dev_northwind_bakassh_NativeTerm_scrollView(JNIEnv *env, jclass clazz, jlong h, jint lines) {
+    (void) env; (void) clazz;
+    TermCtx *t = (TermCtx *) (intptr_t) h;
+    if (!t || !lines || t->alt_screen) return;   /* 备用屏没有回滚历史 */
+    if (lines > MAX_ROWS) lines = MAX_ROWS;
+    if (lines < -MAX_ROWS) lines = -MAX_ROWS;
+    int offset = t->view_offset + lines;
+    if (offset < 0) offset = 0;
+    if (offset > t->history_count) offset = t->history_count;
+    if (offset != t->view_offset) { t->view_offset = offset; invalidate_view(t); }
 }
 
 JNIEXPORT jboolean JNICALL

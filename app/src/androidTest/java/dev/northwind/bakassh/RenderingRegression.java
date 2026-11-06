@@ -79,6 +79,26 @@ final class RenderingRegression {
                 }
             }
 
+            /*
+             * 制表线拼接：整行 U+2500 在每一列都必须有墨迹。
+             * 位图按格子裁剪 / 落点取整不一致时，某些列会露出背景色，线就成了虚线。
+             */
+            feed(first, "\033[2J\033[H\033[?25l");
+            StringBuilder boxLine = new StringBuilder();
+            for (int i = 0; i < view.getCols(); i++) boxLine.append('─');
+            feed(first, boxLine.toString());
+            view.draw(new Canvas(frame));
+            int solidY = -1, solidCount = 0;
+            int scanWidth = (int) (cellW * view.getCols());
+            for (int y = 0; y < (int) cellH; y++) {
+                int count = 0;
+                for (int x = 0; x < scanWidth; x++)
+                    if (frame.getPixel(x, y) != 0xff101014) count++;
+                if (count > solidCount) { solidCount = count; solidY = y; }
+            }
+            check(solidCount >= scanWidth - 1,
+                    "box-drawing line leaves gaps: " + solidCount + "/" + scanWidth + " at y=" + solidY);
+
             feed(first, "\033[2J\033[HAAA\033[?25l");
             feed(second, "\033[2J\033[HBBB\033[?25l");
             view.attachSession(first);

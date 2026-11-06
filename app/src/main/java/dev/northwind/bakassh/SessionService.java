@@ -25,7 +25,6 @@ import java.util.UUID;
 public final class SessionService extends Service implements TerminalSession.Listener {
     static final String SESSION_ID = "session_id";
     private static final String CHANNEL = "ssh-sessions";
-    private static final String TOGGLE_WAKE = "dev.northwind.bakassh.TOGGLE_WAKE";
     private static final String CLOSE_ALL = "dev.northwind.bakassh.CLOSE_ALL";
     private static final int NOTIFICATION_ID = 1;
     private static SessionService instance;
@@ -82,13 +81,15 @@ public final class SessionService extends Service implements TerminalSession.Lis
             for (TerminalSession session : sessions()) session.close();
             sessions.clear();
             changed();
-        } else if (intent != null && TOGGLE_WAKE.equals(intent.getAction())) {
-            setKeepAwake(!keepAwake());
         }
         // TCP connections cannot survive process death. Do not create a misleading empty restart.
         if (sessions.isEmpty()) main.postDelayed(this::stopIfEmpty, 10000);
         return START_NOT_STICKY;
     }
+
+    /** 后台状态诊断用：前台服务是否已提升、休眠锁是否真的拿到。 */
+    boolean foregroundActive() { return foreground; }
+    boolean locksHeld() { return wakeLock != null && wakeLock.isHeld(); }
 
     TerminalSession create(Host host, String keyPath, String passphrase, String password,
                            int cols, int rows, float zoomColumns) {
@@ -141,18 +142,12 @@ public final class SessionService extends Service implements TerminalSession.Lis
         stopSelf();
     }
 
-    boolean keepAwake() { return getSharedPreferences("sshterm", MODE_PRIVATE).getBoolean("session_keep_awake", false); }
-    void setKeepAwake(boolean enabled) {
-        getSharedPreferences("sshterm", MODE_PRIVATE).edit().putBoolean("session_keep_awake", enabled).apply();
-        changed();
-    }
-
     @android.annotation.SuppressLint("WakelockTimeout")
     @SuppressWarnings("deprecation")
     private void updateLocks() {
         boolean active = false;
         for (TerminalSession session : sessions.values()) active |= session.isActive();
-        if (active && keepAwake()) {
+        if (active) {
             if (wakeLock == null) {
                 PowerManager power = (PowerManager) getSystemService(POWER_SERVICE);
                 wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "bakaSSH:sessions");
@@ -191,16 +186,13 @@ public final class SessionService extends Service implements TerminalSession.Lis
         if (selected != null) open.putExtra(SESSION_ID, selected.id);
         int immutable = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         PendingIntent content = PendingIntent.getActivity(this, 0, open, immutable);
-        PendingIntent toggle = PendingIntent.getService(this, 1,
-                new Intent(this, SessionService.class).setAction(TOGGLE_WAKE), immutable);
         PendingIntent close = PendingIntent.getService(this, 2,
                 new Intent(this, SessionService.class).setAction(CLOSE_ALL), immutable);
         return new NotificationCompat.Builder(this, CHANNEL)
                 .setSmallIcon(R.drawable.ic_terminal).setContentTitle("bakaSSH · " + active + " 个活动会话")
-                .setContentText(keepAwake() && active > 0 ? "休眠锁已开启 · 点击返回终端" : "点击返回终端")
+                .setContentText(active > 0 ? "常驻后台 · 休眠锁已开启" : "点击返回终端")
                 .setContentIntent(content).setOngoing(true).setSilent(true).setOnlyAlertOnce(true)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .addAction(0, keepAwake() ? "释放休眠锁" : "保持唤醒", toggle)
                 .addAction(0, "断开全部", close).build();
     }
 

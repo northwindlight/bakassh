@@ -49,6 +49,35 @@ public final class NativeRegression {
         }
     }
 
+    /**
+     * ANSI 16 色必须就是 Windows Terminal "One Half Dark" 那张表。
+     * 走完整链路（SGR → libvterm state → color_to_rgb），不是只看常量。
+     */
+    private static void ansiPalette() {
+        int[] expected = {
+                0x282C34, 0xE06C75, 0x98C379, 0xE5C07B, 0x61AFEF, 0xC678DD, 0x56B6C2, 0xDCDFE4,
+                0x5A6374, 0xE06C75, 0x98C379, 0xE5C07B, 0x61AFEF, 0xC678DD, 0x56B6C2, 0xDCDFE4,
+        };
+        long h = NativeTerm.create(32, 4);
+        try {
+            StringBuilder normal = new StringBuilder("\033[1;1H");
+            for (int i = 0; i < 8; i++) normal.append("\033[").append(30 + i).append("mX");
+            feed(h, normal.toString());
+            StringBuilder bright = new StringBuilder("\033[2;1H");
+            for (int i = 0; i < 8; i++) bright.append("\033[").append(90 + i).append("mX");
+            feed(h, bright.toString());
+            int[] first = row(h, 0, 32), second = row(h, 1, 32);
+            for (int i = 0; i < 16; i++) {
+                int actual = (i < 8 ? first : second)[(i % 8) * 5 + 1];
+                if (actual != expected[i])
+                    throw new AssertionError("ANSI " + i + " = #" + Integer.toHexString(actual)
+                            + ", expected #" + Integer.toHexString(expected[i]));
+            }
+        } finally {
+            NativeTerm.destroy(h);
+        }
+    }
+
     private static void scrolling(int count, int capacity) {
         long h = NativeTerm.create(20, 8);
         try {
@@ -189,6 +218,7 @@ public final class NativeRegression {
         run("dirty row follows scrolling", () -> scrolling(1, 256));
         run("move consumer capacity", () -> scrolling(150, 128));
         run("move producer overflow", () -> scrolling(300, 256));
+        run("ANSI palette is One Half Dark", NativeRegression::ansiPalette);
         run("partial output reads", NativeRegression::outputChunks);
         run("XTVERSION reply without a keypress", NativeRegression::automaticVersionReply);
         run("TUI fixed header/footer and scroll margins", NativeRegression::fixedTuiRegions);

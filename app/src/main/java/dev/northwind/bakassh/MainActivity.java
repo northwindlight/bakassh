@@ -185,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
             androidx.appcompat.widget.PopupMenu menu = new androidx.appcompat.widget.PopupMenu(this, v);
             menu.getMenu().add(0, 1, 0, layoutExtraKeysBox.getVisibility() == View.VISIBLE ? "隐藏扩展按键" : "显示扩展按键");
             menu.getMenu().add(0, 3, 1, "新建会话");
-            menu.getMenu().add(0, 4, 2, "后台保活");
+            menu.getMenu().add(0, 4, 2, "后台常驻");
             menu.getMenu().add(0, 5, 3, "重命名 / 管理当前会话");
             menu.getMenu().add(0, 6, 4, "编辑快捷键");
             menu.getMenu().add(0, 2, 3, "关闭当前会话");

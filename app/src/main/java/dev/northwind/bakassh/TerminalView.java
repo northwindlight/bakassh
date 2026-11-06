@@ -31,14 +31,21 @@ public class TerminalView extends View {
 
     /** 位图槽位比屏幕行多留一些，滚动时进出的行可以复用槽位。 */
     private static final int SLOT_EXTRA = 64;
-    /** 单个槽位位图相对 cellH 多留的高度余量（防止字形被裁）。 */
-    private static final float ROW_BITMAP_SLACK = 1.15f;
+    /**
+     * 字形位图相对单元格向外多留的像素（见 glyphPad）。
+     * Cascadia Mono 的制表符/块元素是「故意画到格子外面」的：─ 左右各溢出 0.05em，
+     * │ 和 ┼ 上下各溢出 0.2em，就靠这点重叠和邻格拼成一条不断开的线。
+     * 位图如果正好裁到格子边界，这段溢出会被切掉，拼接处就成了细缝。
+     */
+    private static final float GLYPH_OVERSCAN_EM = 0.06f;
 
     private long handle;
     private boolean ownsNative = true;
     private int cols, rows;
 
     private float cellW, cellH, baseline, textSize;
+    /** 字形位图四周的留白（px），保证相邻格的字形在像素上真正叠在一起。 */
+    private int glyphPad = 2;
 
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bgPaint = new Paint();
@@ -221,6 +228,46 @@ public class TerminalView extends View {
     private final Paint selPaint = new Paint();
     private final Paint handlePaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private android.view.ScaleGestureDetector scaleDetector;
+    /** 正在把快照画进位图：此时不叠加选区高亮，否则高亮会被烘进快照。 */
+    private boolean bakingSnapshot;
+    /** 拖选到边缘后的自动滚动方向：0 停、+1 历史、-1 回到底部。 */
+    private int selectionScrollDir;
+    private float selectionTouchX, selectionTouchY;
+    private static final long SELECTION_SCROLL_MS = 40;
+    private final Runnable selectionScroll = new Runnable() {
+        @Override public void run() {
+            if (!selActive || handleDrag == 0 || selectionScrollDir == 0 || handle == 0) return;
+            int before = viewOffset();
+            NativeTerm.scrollView(handle, selectionScrollDir);
+            if (viewOffset() == before) { selectionScrollDir = 0; return; }  // 到头了，别再唤醒
+            syncSelectionRows();
+            redrawSelectionSnapshot();
+            // 手指停在边缘，焦点跟到刚露出来的那一行
+            int row = selectionScrollDir > 0 ? 0 : rows - 1;
+            int col = Math.max(0, Math.min(cols - 1, (int) (selectionTouchX / cellW)));
+            moveSelectionHandle(row, col);
+            invalidate();
+            postDelayed(this, SELECTION_SCROLL_MS);
+        }
+    };
+
+    private void stopSelectionScroll() {
+        selectionScrollDir = 0;
+        removeCallbacks(selectionScroll);
+    }
+
+    /** 手指在上下边缘带内时启动自动滚动；离开边缘或抬手就停。 */
+    private void updateSelectionScroll(float x, float y) {
+        selectionTouchX = x;
+        selectionTouchY = y;
+        // 边缘带约 1.5 行（大字号时按行高走，小字号时也给 12dp 的手感）
+        float edge = Math.max(cellH * 1.5f, 12f * getResources().getDisplayMetrics().density);
+        int dir = y < edge ? 1 : y > getHeight() - edge ? -1 : 0;
+        if (dir == selectionScrollDir) return;
+        selectionScrollDir = dir;
+        removeCallbacks(selectionScroll);
+        if (dir != 0) post(selectionScroll);
+    }
 
     public void setSelectionListener(SelectionListener l) { this.selListener = l; }
     public void setZoomListener(ZoomListener l) { this.zoomListener = l; }
@@ -258,6 +305,7 @@ public class TerminalView extends View {
         super.onWindowFocusChanged(hasWindowFocus);
         if (!hasWindowFocus) {
             releaseMouse();
+            stopSelectionScroll();
             stopFling();
             removeCallbacks(longPress);
             touchPressed = false;
@@ -269,6 +317,7 @@ public class TerminalView extends View {
     @Override
     protected void onDetachedFromWindow() {
         releaseMouse();
+        stopSelectionScroll();
         stopFling();
         removeCallbacks(longPress);
         touchPressed = false;
@@ -320,7 +369,12 @@ public class TerminalView extends View {
         glyphCache.clear();
     }
 
-    /** 取（或生成）字形位图：宽度恰好 width*cellW、高度 rowBitmapH，已用 fg 画好。 */
+    /**
+     * 取（或生成）字形位图：内容宽 width*cellW、高 rowBitmapH，
+     * 四周再各留 glyphPad 像素，已用 fg 画好。
+     * 留白是拼缝的关键：制表符/块元素的墨迹本来就要越过格子边界，
+     * 位图裁在格子边上会把它们截断，屏幕上的表格线/背景块就会出现细缝。
+     */
     private Bitmap glyphFor(int cp, int width, int style, int fg) {
         /*
          * key 必须把颜色放到高位！之前写成
@@ -328,16 +382,16 @@ public class TerminalView extends View {
          * 颜色占 bit0-23、width/style 塞在 bit18-23 —— 直接重叠，不同格子会撞到同一个 key，
          * 于是屏幕上出现成片用错字形的杂点。
          */
-        long key = ((long) cp << 40) | ((long) (width & 7) << 37) | ((long) (style & 7) << 34)
-                | (fg & 0xFFFFFFL);
+        long key = ((long) cp << 48) | ((long) (glyphPad & 15) << 44) | ((long) (width & 7) << 41)
+                | ((long) (style & 7) << 38) | (fg & 0xFFFFFFL);
         Bitmap b = glyphCache.get(key);
         if (b != null) return b;
         if (glyphCache.size() > 6000) {
             glyphEvictions++;
             clearGlyphCache();
         }
-        int gw = Math.max(1, Math.round(width * cellW));
-        int gh = Math.max(1, rowBitmapH);
+        int gw = GlyphGeometry.bitmapWidth(width, cellW, glyphPad);
+        int gh = Math.max(1, rowBitmapH) + glyphPad * 2;
         b = Bitmap.createBitmap(gw, gh, Bitmap.Config.ARGB_8888);
         Canvas gc = new Canvas(b);
         boolean bold = (style & 1) != 0;
@@ -352,7 +406,7 @@ public class TerminalView extends View {
         float target = width * cellW;
         // Grid positions are fixed; a narrow glyph must never be stretched to fill its cell.
         if (adv > 0.05f) textPaint.setTextScaleX(Math.min(1f, target / adv));
-        gc.drawText(cpBuf, 0, nch, 0f, baseline, textPaint);
+        gc.drawText(cpBuf, 0, nch, glyphPad, glyphPad + baseline, textPaint);
         glyphCache.put(key, b);
         return b;
     }
@@ -370,23 +424,53 @@ public class TerminalView extends View {
 
     public boolean isSelecting() { return selActive; }
 
+    /** 当前视图距屏幕底部的回滚行数；可见行 r 的绝对行号 = r - viewOffset()。 */
+    private int viewOffset() { return handle == 0 ? 0 : NativeTerm.getScrollOffset(handle); }
+
+    /** 把当前可见行按绝对行号补进选区（已经取过的行保持快照，不被远端输出改写）。 */
+    private void syncSelectionRows() {
+        if (selection == null || handle == 0) return;
+        int base = viewOffset();
+        int[] cellBuf = new int[cols * 5];
+        synchronized (NativeTerm.class) {
+            for (int r = 0; r < rows; r++) {
+                int absolute = r - base;
+                if (selection.has(absolute)) continue;
+                NativeTerm.getRow(handle, r, cellBuf);
+                selection.put(absolute, cellBuf);
+            }
+        }
+    }
+
+    /**
+     * 重画选区的冻结快照。拖选时视图滚动了，快照必须跟着换画面，
+     * 否则看到的还是滚动前那一屏。绘制期间屏蔽选区叠加层，避免把高亮烘进位图。
+     */
+    private void redrawSelectionSnapshot() {
+        if (handle == 0 || getWidth() <= 0 || getHeight() <= 0) return;
+        if (selectionSnapshot == null || selectionSnapshot.getWidth() != getWidth()
+                || selectionSnapshot.getHeight() != getHeight()) {
+            if (selectionSnapshot != null) selectionSnapshot.recycle();
+            selectionSnapshot = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
+        }
+        bakingSnapshot = true;
+        try { drawFrame(new Canvas(selectionSnapshot)); }
+        finally { bakingSnapshot = false; }
+    }
+
     private void captureSelection() {
         finishZoom(false);
         if (geometryPending) updateGeometry(true);
         else if (bitmapGeometryDirty) rebuildRowCache();
-        synchronized (NativeTerm.class) {
-            int[][] cells = new int[rows][cols * 5];
-            for (int r = 0; r < rows; r++) NativeTerm.getRow(handle, r, cells[r]);
-            selection = new TerminalSelection(cols, cells);
-            selectionSnapshot = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
-            drawFrame(new Canvas(selectionSnapshot));
-        }
+        selection = new TerminalSelection(cols);
+        syncSelectionRows();
+        redrawSelectionSnapshot();
     }
 
     private void startSelection(int row, int col) {
         if (handle == 0 || getWidth() <= 0 || getHeight() <= 0) return;
         captureSelection();
-        selection.selectWord(row, col);
+        selection.selectWord(row - viewOffset(), col);
         selActive = true;
         gestureStartedSelection = true;
         performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
@@ -396,8 +480,9 @@ public class TerminalView extends View {
 
     private void moveSelectionHandle(int row, int col) {
         if (selection == null) return;
-        if (handleDrag == 1) selection.moveAnchor(row, col);
-        else selection.moveFocus(row, col);
+        int absolute = row - viewOffset();
+        if (handleDrag == 1) selection.moveAnchor(absolute, col);
+        else selection.moveFocus(absolute, col);
         notifySelection();
         invalidate();
     }
@@ -415,6 +500,7 @@ public class TerminalView extends View {
         if (!selActive) return;
         selActive = false;
         selection = null;
+        stopSelectionScroll();
         if (selectionSnapshot != null) { selectionSnapshot.recycle(); selectionSnapshot = null; }
         notifySelection();
         invalidate();
@@ -430,10 +516,13 @@ public class TerminalView extends View {
 
     public void getSelectionBounds(Rect rect) {
         if (!selActive || selection == null) { rect.set(0, 0, getWidth(), 1); return; }
-        int first = selection.start() / cols, last = selection.end() / cols;
-        rect.set((int) (selection.firstColumn(first) * cellW), (int) (first * cellH),
-                (int) ((selection.lastColumn(first) + 1) * cellW),
-                Math.min(getHeight(), (int) ((last + 1) * cellH)));
+        int base = viewOffset();
+        int first = selection.startRow(), last = selection.endRow();
+        int visibleFirst = Math.max(0, first + base), visibleLast = Math.min(rows - 1, last + base);
+        if (visibleFirst > visibleLast) { rect.set(0, 0, getWidth(), 1); return; }
+        rect.set((int) (selection.firstColumn(first) * cellW), (int) (visibleFirst * cellH),
+                (int) ((selection.lastColumn(last) + 1) * cellW),
+                (int) ((visibleLast + 1) * cellH));
     }
 
     private float lastTouchY, scrollAcc;
@@ -526,6 +615,7 @@ public class TerminalView extends View {
         int action = e.getActionMasked();
         if (action == android.view.MotionEvent.ACTION_CANCEL) {
             releaseMouse();
+            stopSelectionScroll();
             stopFling();
             removeCallbacks(longPress);
             touchPressed = false;
@@ -588,11 +678,14 @@ public class TerminalView extends View {
                 handleDrag = 0;
                 if (selActive) {
                     float radius = 24f * getResources().getDisplayMetrics().density;
+                    int base = viewOffset();
                     int start = selection.start(), end = selection.end();
-                    float sx = (start % cols) * cellW, sy = (start / cols + 1) * cellH;
-                    float ex = (end % cols + 1) * cellW, ey = (end / cols + 1) * cellH;
-                    double ds = Math.hypot(e.getX() - sx, e.getY() - sy);
-                    double de = Math.hypot(e.getX() - ex, e.getY() - ey);
+                    int startRow = Math.floorDiv(start, cols) + base, endRow = Math.floorDiv(end, cols) + base;
+                    float sx = Math.floorMod(start, cols) * cellW, sy = (startRow + 1) * cellH;
+                    float ex = Math.floorMod(end, cols) * cellW + cellW, ey = (endRow + 1) * cellH;
+                    // 把手滚出屏幕时不参与命中（它没画出来）
+                    double ds = startRow >= 0 && startRow < rows ? Math.hypot(e.getX() - sx, e.getY() - sy) : Double.MAX_VALUE;
+                    double de = endRow >= 0 && endRow < rows ? Math.hypot(e.getX() - ex, e.getY() - ey) : Double.MAX_VALUE;
                     if (Math.min(ds, de) <= radius)
                         handleDrag = ds <= de ? selection.startHandle() : 3 - selection.startHandle();
                 } else postDelayed(longPress, android.view.ViewConfiguration.getLongPressTimeout());
@@ -606,7 +699,11 @@ public class TerminalView extends View {
                     removeCallbacks(longPress);
                 }
                 if (selActive || touchSelecting || gestureStartedSelection) {
-                    if (selActive && handleDrag != 0 && touchMoved) moveSelectionHandle(row, col);
+                    if (selActive && handleDrag != 0 && touchMoved) {
+                        // 拖到上下边缘就自动翻历史：选区能跨过一屏
+                        updateSelectionScroll(e.getX(), e.getY());
+                        moveSelectionHandle(row, col);
+                    }
                     return true;
                 }
                 float dy = e.getY() - lastTouchY;
@@ -622,6 +719,7 @@ public class TerminalView extends View {
             }
             case android.view.MotionEvent.ACTION_UP:
                 tapX = e.getX(); tapY = e.getY();
+                stopSelectionScroll();
                 removeCallbacks(longPress);
                 touchPressed = false;
                 if (!touchSuppressed && !touchMoved && !gestureStartedSelection) {
@@ -702,6 +800,11 @@ public class TerminalView extends View {
         Paint.FontMetrics fm0 = textPaint.getFontMetrics();
         baseAdvance = fontPx * latinAdvance100 / 100f;
         asciiScale = 1f;
+        /*
+         * 留白至少 2px：格子宽是连续值（width/列数），而位图落点只能落在整数像素上，
+         * 两者的取整误差最大 1px；留白必须大于它，邻格的墨迹才会重叠而不是留缝。
+         */
+        glyphPad = Math.max(2, (int) Math.ceil(fontPx * GLYPH_OVERSCAN_EM));
         baseline = (cellH - (-fm0.ascent + fm0.descent)) / 2f - fm0.ascent;
         geometryPending = false;
         bitmapGeometryDirty = true;
@@ -1118,7 +1221,8 @@ public class TerminalView extends View {
                 int style = (attrs & 1) | ((attrs & 4) >> 1);
                 Bitmap g = glyphFor(cp, width, style, fg);
                 glyphCount++;
-                c.drawBitmap(g, col * cellW, 0f, null);
+                // 位图四周留了 glyphPad，落点相应左移/上移，内容仍对齐格子原点
+                c.drawBitmap(g, GlyphGeometry.bitmapLeft(col, cellW, glyphPad), -glyphPad, null);
             }
 
             // 下划线 / 删除线用矩形画，比让字体画更可控（颜色跟 fg 走）
@@ -1160,18 +1264,25 @@ public class TerminalView extends View {
 
     /** Continuous text selection, with handles below the text instead of over it. */
     private void drawSelectionOverlay(Canvas canvas) {
-        if (!selActive || selection == null) return;
+        if (!selActive || selection == null || bakingSnapshot) return;
+        int base = viewOffset();
         int start = selection.start(), end = selection.end();
-        for (int r = start / cols; r <= end / cols; r++) {
-            canvas.drawRect(selection.firstColumn(r) * cellW, r * cellH,
-                    (selection.lastColumn(r) + 1) * cellW, (r + 1) * cellH, selPaint);
+        int startRow = Math.floorDiv(start, cols), endRow = Math.floorDiv(end, cols);
+        for (int absolute = startRow; absolute <= endRow; absolute++) {
+            int r = absolute + base;
+            if (r < 0 || r >= rows) continue;          // 选区伸到屏幕外时只画可见部分
+            canvas.drawRect(selection.firstColumn(absolute) * cellW, r * cellH,
+                    (selection.lastColumn(absolute) + 1) * cellW, (r + 1) * cellH, selPaint);
         }
         float radius = 6f * getResources().getDisplayMetrics().density;
         handlePaint.setColor(0xFF33AAFF);
-        float sx = start % cols * cellW, sy = (start / cols + 1) * cellH;
-        float ex = (end % cols + 1) * cellW, ey = (end / cols + 1) * cellH;
-        drawSelectionHandle(canvas, sx, sy, radius, -1);
-        drawSelectionHandle(canvas, ex, ey, radius, 1);
+        int startViewRow = startRow + base, endViewRow = endRow + base;
+        if (startViewRow >= 0 && startViewRow < rows)
+            drawSelectionHandle(canvas, Math.floorMod(start, cols) * cellW,
+                    (startViewRow + 1) * cellH, radius, -1);
+        if (endViewRow >= 0 && endViewRow < rows)
+            drawSelectionHandle(canvas, (Math.floorMod(end, cols) + 1) * cellW,
+                    (endViewRow + 1) * cellH, radius, 1);
     }
 
     private void drawSelectionHandle(Canvas canvas, float x, float y, float radius, int side) {
@@ -1218,6 +1329,7 @@ public class TerminalView extends View {
 
     public void destroy() {
         releaseMouse();
+        stopSelectionScroll();
         stopFling();
         cancelZoom();
         removeCallbacks(longPress);

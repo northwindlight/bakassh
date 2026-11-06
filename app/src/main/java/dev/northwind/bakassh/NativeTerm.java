@@ -72,6 +72,8 @@ public final class NativeTerm {
 
     /** Positive lines: older text. Routes to mouse wheel, alternate-screen keys or local history. */
     public static synchronized native void scroll(long h, int row, int col, int lines);
+    /** 只滚动本地回滚视图（拖选时用），不会把滚动转发成远端滚轮/方向键。 */
+    public static synchronized native void scrollView(long h, int lines);
     /** Returns true only when the application accepts remote mouse clicks. */
     public static synchronized native boolean click(long h, int row, int col);
     public static synchronized native boolean hasMouseTracking(long h);
