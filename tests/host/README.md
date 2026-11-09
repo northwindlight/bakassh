@@ -18,7 +18,9 @@ XTVERSION 即时回包，以及连续文本选择、反向拖选、中文双宽�
 鼠标滚轮、备用屏幕方向键回退和 bracketed paste。0.4.1 补充完整 1000/1002/1003/1006 模式、
 无手指悬停事件、独立模式复位 / 查询、硬复位和 Tab / Shift+Tab / 修饰方向键，共 13 项。
 `KeyLayoutRegression` 另有 5 项，检查默认 Tab 迁移、保留旧自定义、草稿隔离、字面符号、
-跨行排序及无损失败边界。主机回归合计 40 项。
+跨行排序及无损失败边界。另含字形拼缝几何回归，以及 `KeyRepeatRegression` 的 6 项方向键连发回归，
+主机回归合计 51 项。连发测试使用可控时钟检查首次延迟、重复间隔、抬手 / 取消、快速重新按下、
+回调期间停止 / 替换和真实 JNI 的四方向 application cursor 编码。
 
 SSH 回归需要 Python 3 + Paramiko、ssh-keygen 和项目使用的 JSch JAR：
 
@@ -55,6 +57,7 @@ adb shell am instrument -w dev.northwind.bakassh.test/dev.northwind.bakassh.Zoom
 新增 `InteractionViewRegression`，使用真实 MotionEvent 验证轻点远端 / shell、取消、
 抬起坐标、完整鼠标模式、滚轮起点及本地历史前后画面，不连接真实主机。
 `ShortcutUiRegression` 使用隔离偏好检查结构化布局保存 / 旧配置回退，并检查开关侧栏不改变终端高度。
+`KeyRepeatViewRegression` 检查短按无额外抬手点击、滑出 / 取消、隐藏 / 禁用 / 失焦停止和辅助功能点击。
 **本轮无 ADB 设备，只编译了这些测试，未执行。** 前台服务、系统通知、锁屏和厂商后台限制仍须真机验收。
 
 私钥导入回归（真实 ssh-keygen / OpenSSL 密钥和 JSch，强制使用 Android 所用的 BC 签名实现）：

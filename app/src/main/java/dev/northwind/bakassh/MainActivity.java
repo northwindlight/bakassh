@@ -104,6 +104,7 @@ public class MainActivity extends AppCompatActivity {
     /** 粘滞修饰键：点一下点亮，作用于下一个输入的键。 */
     private boolean ctrlOn, altOn, shiftOn;
     private String renderedKeyLayout;
+    private final java.util.List<RepeatKeyButton> repeatKeys = new java.util.ArrayList<>();
 
     // 连接参数
     private String hName = "";
@@ -135,6 +136,11 @@ public class MainActivity extends AppCompatActivity {
 
         // 全屏终端：把内容让开刘海/挖孔和底部手势条，否则顶栏会被摄像头挖孔盖住。
         drawer = findViewById(R.id.terminal_drawer);
+        drawer.addDrawerListener(new androidx.drawerlayout.widget.DrawerLayout.SimpleDrawerListener() {
+            @Override public void onDrawerSlide(View drawerView, float slideOffset) {
+                if (slideOffset > 0) stopKeyRepeats();
+            }
+        });
         sessionDrawer = new SessionDrawer(findViewById(R.id.session_drawer));
         final View terminalRoot = drawer;
         ViewCompat.setOnApplyWindowInsetsListener(terminalRoot, (v, insets) -> {
@@ -191,6 +197,7 @@ public class MainActivity extends AppCompatActivity {
             menu.getMenu().add(0, 2, 3, "关闭当前会话");
             menu.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == 1) {
+                    stopKeyRepeats();
                     layoutExtraKeysBox.setVisibility(layoutExtraKeysBox.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
                     getPreferences(MODE_PRIVATE).edit().putBoolean("extra_keys_visible",
                             layoutExtraKeysBox.getVisibility() == View.VISIBLE).apply();
@@ -458,6 +465,8 @@ public class MainActivity extends AppCompatActivity {
         KeyLayout layout = ExtraKeys.getLayout(this);
         String encoded = ExtraKeys.encode(layout);
         if (encoded.equals(renderedKeyLayout)) return;
+        stopKeyRepeats();
+        repeatKeys.clear();
         renderedKeyLayout = encoded;
         clearModifiers();
         ctrlButton = altButton = shiftButton = null;
@@ -470,7 +479,7 @@ public class MainActivity extends AppCompatActivity {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             for (String key : rowKeys) {
-                MaterialButton b = keyButton(ExtraKeys.label(key));
+                MaterialButton b = keyButton(key);
                 b.setTag(key);
                 b.setOnClickListener(v -> onExtraKey((String) v.getTag()));
                 String n = key.toUpperCase(java.util.Locale.ROOT);
@@ -496,9 +505,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** Pixel Material 3 药丸圆角按键（高度与波纹适配） */
-    private MaterialButton keyButton(String text) {
-        MaterialButton b = new MaterialButton(this);
-        b.setText(text);
+    private MaterialButton keyButton(String key) {
+        MaterialButton b;
+        if (TerminalKeys.isDirection(key)) {
+            RepeatKeyButton repeat = new RepeatKeyButton(this);
+            repeatKeys.add(repeat);
+            b = repeat;
+        } else b = new MaterialButton(this);
+        b.setText(ExtraKeys.label(key));
         b.setAllCaps(false);
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         b.setSingleLine(true);
@@ -647,6 +661,15 @@ public class MainActivity extends AppCompatActivity {
 
     private final Runnable showKeyboard = this::showIme;
 
+    private void stopKeyRepeats() {
+        for (RepeatKeyButton button : repeatKeys) button.stopRepeating();
+    }
+
+    @Override protected void onPause() {
+        stopKeyRepeats();
+        super.onPause();
+    }
+
     @Override protected void onStop() {
         resumed = false;
         if (service != null) service.removeListener(sessionListener);
@@ -779,6 +802,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void attachSession(TerminalSession next) {
+        stopKeyRepeats();
         if (next == session) {
             next.unread = false;
             updateSessionTitle();
@@ -810,6 +834,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void detachSession() {
+        stopKeyRepeats();
         view.clearSelection();
         view.attachSession(0);
         session = null;

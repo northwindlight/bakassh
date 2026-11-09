@@ -14,4 +14,9 @@ final class TerminalKeys {
     }
 
     static String text(String name) { return name.equalsIgnoreCase("SPACE") ? " " : name; }
+
+    static boolean isDirection(String name) {
+        int key = code(name);
+        return key >= 5 && key <= 8;
+    }
 }
