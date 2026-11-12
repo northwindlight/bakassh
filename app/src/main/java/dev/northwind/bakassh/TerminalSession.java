@@ -29,6 +29,8 @@ final class TerminalSession implements AutoCloseable {
     private int cols, rows;
     private volatile State state = State.CONNECTING;
     private volatile String detail = "正在连接";
+    volatile HostKeyRequest hostKeyRequest;
+    volatile HostKeyTrust.Changed hostKeyChange;
     float zoomColumns;
 
     TerminalSession(String id, String title, String endpoint, int cols, int rows,
@@ -56,6 +58,11 @@ final class TerminalSession implements AutoCloseable {
 
     void connect(String host, int port, String user, String authType, String keyPath,
                  String passphrase, String password, String startup) {
+        connect(host, port, user, authType, keyPath, passphrase, password, startup, null);
+    }
+
+    void connect(String host, int port, String user, String authType, String keyPath,
+                 String passphrase, String password, String startup, HostKeyTrust.Store trustedHosts) {
         connector = new Thread(() -> {
             try {
                 int c, r;
@@ -72,7 +79,7 @@ final class TerminalSession implements AutoCloseable {
                             @Override public void onStatus(String status) {
                                 end(State.ENDED, status.startsWith("channel EOF") ? "会话已结束" : "连接已断开");
                             }
-                        });
+                        }, trustedHosts == null ? null : new HostKeyTrust(host, port, trustedHosts, this::confirmHostKey));
                 synchronized (NativeTerm.class) {
                     if (state != State.CONNECTING) return;
                     state = State.CONNECTED;
@@ -87,12 +94,29 @@ final class TerminalSession implements AutoCloseable {
                     catch (RejectedExecutionException ignored) { }
                 }
             } catch (Exception e) {
+                if (e instanceof HostKeyTrust.Changed) hostKeyChange = (HostKeyTrust.Changed) e;
                 transport.disconnect();
                 end(State.FAILED, "连接失败：" + e.getMessage());
             }
         }, "ssh-connect-" + id);
         connector.setDaemon(true);
         connector.start();
+    }
+
+    private boolean confirmHostKey(HostKeyTrust.Challenge challenge) throws InterruptedException {
+        HostKeyRequest request = new HostKeyRequest(challenge);
+        synchronized (NativeTerm.class) {
+            if (!isActive() || Thread.currentThread().isInterrupted()) return false;
+            hostKeyRequest = request;
+            detail = "等待确认主机指纹";
+        }
+        listener.onState(this);
+        try { return request.await(); }
+        finally {
+            hostKeyRequest = null;
+            if (isActive()) detail = "正在连接";
+            listener.onState(this);
+        }
     }
 
     private void end(State next, String message) {
@@ -200,6 +224,8 @@ final class TerminalSession implements AutoCloseable {
             handle = 0;
         }
         writer.shutdownNow();
+        HostKeyRequest request = hostKeyRequest;
+        if (request != null) request.answer(false);
         if (connector != null) connector.interrupt();
         // JSch disconnect can wait for network IO; never block the main thread.
         Thread closer = new Thread(transport::disconnect, "ssh-close-" + id);

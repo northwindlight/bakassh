@@ -32,6 +32,7 @@ public final class SessionRegression {
     }
     public static void main(String[] args) throws Exception {
         int port = Integer.parseInt(args[0]);
+        TestHostKeys trusted = new TestHostKeys(port, args[3]);
         AtomicInteger updates = new AtomicInteger();
         TerminalSession.Listener listener = new TerminalSession.Listener() {
             public void onData(TerminalSession session) { updates.incrementAndGet(); }
@@ -40,8 +41,8 @@ public final class SessionRegression {
         TerminalSession a = new TerminalSession("a", "same-host", "loopback", 80, 24, 80, listener);
         TerminalSession b = new TerminalSession("b", "same-host", "loopback", 80, 24, 80, listener);
         try {
-            a.connect("127.0.0.1", port, args[1], "publickey", args[2], null, null, "");
-            b.connect("127.0.0.1", port, args[1], "publickey", args[2], null, null, "");
+            a.connect("127.0.0.1", port, args[1], "publickey", args[2], null, null, "", trusted);
+            b.connect("127.0.0.1", port, args[1], "publickey", args[2], null, null, "", trusted);
             await(() -> a.state() == TerminalSession.State.CONNECTED && b.state() == TerminalSession.State.CONNECTED,
                     "simultaneous connect: " + a.detail() + "/" + b.detail());
             await(() -> screen(a).contains("VERSION_OK") && screen(b).contains("VERSION_OK"), "background query replies");
@@ -99,7 +100,7 @@ public final class SessionRegression {
 
         for (int i = 0; i < 20; i++) {
             TerminalSession cancelled = new TerminalSession("cancel-" + i, "cancel", "loopback", 80, 24, 80, listener);
-            cancelled.connect("127.0.0.1", port, args[1], "publickey", args[2], null, null, "");
+            cancelled.connect("127.0.0.1", port, args[1], "publickey", args[2], null, null, "", trusted);
             cancelled.close();
             if (cancelled.handle() != 0 || cancelled.state() != TerminalSession.State.CLOSED)
                 throw new AssertionError("cancelled connection revived");

@@ -9,12 +9,13 @@ public final class TransportRegression {
     public static void main(String[] args) throws Exception {
         int port = Integer.parseInt(args[0]);
         SshTransport transport = new SshTransport();
+        TestHostKeys trusted = new TestHostKeys(port, args[3]);
         long h = NativeTerm.create(80, 24);
         StringBuffer received = new StringBuffer();
         CountDownLatch version = new CountDownLatch(1), pong = new CountDownLatch(1);
         CountDownLatch size = new CountDownLatch(1), ended = new CountDownLatch(1);
         try {
-            transport.connect("127.0.0.1", port, args[1], args[2], 80, 24, new SshTransport.Listener() {
+            transport.connect("127.0.0.1", port, args[1], "publickey", args[2], null, null, 80, 24, new SshTransport.Listener() {
                 @Override public void onBytes(byte[] bytes, int len) {
                     NativeTerm.receive(h, bytes, len, reply -> {
                         try { transport.write(reply); }
@@ -27,7 +28,7 @@ public final class TransportRegression {
                     if (text.contains("SIZE 91 27")) size.countDown();
                 }
                 @Override public void onStatus(String status) { ended.countDown(); }
-            });
+            }, trusted.verifier(port));
             if (!version.await(4, TimeUnit.SECONDS)) throw new AssertionError("reply requires a user key: " + received);
             System.out.println("PASS SSH XTVERSION exchange without user input");
             transport.write("ping\n");

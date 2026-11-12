@@ -19,7 +19,8 @@ XTVERSION 即时回包，以及连续文本选择、反向拖选、中文双宽�
 无手指悬停事件、独立模式复位 / 查询、硬复位和 Tab / Shift+Tab / 修饰方向键，共 13 项。
 `KeyLayoutRegression` 另有 5 项，检查默认 Tab 迁移、保留旧自定义、草稿隔离、字面符号、
 跨行排序及无损失败边界。另含字形拼缝几何回归，以及 `KeyRepeatRegression` 的 6 项方向键连发回归，
-主机回归合计 53 项，包含 UTF-8 中文 / emoji 的每个切包边界、逐字节输入、DEC 字符集切换与解码器复位。
+主机回归合计 57 项，包含 UTF-8 中文 / emoji 的每个切包边界、逐字节输入、DEC 字符集切换与解码器复位，
+以及 4 项 AES-GCM 格式、随机 IV、认证失败和缺失密钥不自动重建检查（JCE 后端）。
 连发测试使用可控时钟检查首次延迟、重复间隔、抬手 / 取消、快速重新按下、
 回调期间停止 / 替换和真实 JNI 的四方向 application cursor 编码。
 
@@ -41,6 +42,21 @@ PTY 请求、版本查询应答、键入、窗口大小变更与 EOF；不登录
 关闭一条后另一条继续收发、EOF 保留最后画面，以及连接期间反复取消的生命周期。
 另核对真实 SSH 完整鼠标模式及部分关闭、点击 / 滚轮、粘贴和修饰快捷键的字节顺序，
 以及 EOF 后仍可本地回滚，共 11 项。
+
+0.4.5 再增加 10 项主机信任检查（合计 21 项）：对照 OpenSSH 的 SHA-256 指纹、显式首次确认、
+已知公钥重连、指纹变更、存储失败、并发确认和取消 / 迟到点击。合成服务端记录认证请求，
+实际检查未信任时没有密码或公钥认证；旧会话回归也显式预置合成服务器公钥，不关闭校验。
+
+密码迁移 / 存储失败 / 主机公钥持久化另有 9 项：
+
+```bash
+# 测试使用 Android org.json 的独立 Java 移植，应用本身不增加此依赖。
+curl -fL https://repo.maven.apache.org/maven2/com/vaadin/external/google/android-json/0.0.20131108.vaadin1/android-json-0.0.20131108.vaadin1.jar -o /tmp/android-json.jar
+JSON_JAR=/tmp/android-json.jar JSCH_JAR=/path/to/jsch-0.2.26.jar bash tests/host/storage.sh
+```
+
+运行真实 `HostStore` / `KnownHostsStore`，注入 JCE 密码后端和偏好适配器；同时模拟 commit 失败后
+内存已改变、磁盘仍为旧数据的 Android 行为。这不代替真机 Android Keystore / SharedPreferences 测试。
 
 这些回归不运行 Android View、输入法或触摸系统。APK 构建和 lint 另外运行：
 
@@ -64,6 +80,14 @@ adb shell am instrument -w dev.northwind.bakassh.test/dev.northwind.bakassh.Zoom
 `ShortcutUiRegression` 使用隔离偏好检查结构化布局保存 / 旧配置回退，并检查开关侧栏不改变终端高度。
 `KeyRepeatViewRegression` 检查短按无额外抬手点击、滑出 / 取消、隐藏 / 禁用 / 失焦停止和辅助功能点击。
 **本轮无 ADB 设备，只编译了这些测试，未执行。** 前台服务、系统通知、锁屏和厂商后台限制仍须真机验收。
+
+Android 密码迁移与主机公钥存储单独执行（随机测试 alias / 偏好，不改真实凭据）：
+
+```bash
+adb shell am instrument -w -e mode security dev.northwind.bakassh.test/dev.northwind.bakassh.ZoomInstrumentation
+```
+
+首连 / 换钥 / 管理弹窗、原地升级和后台验收顺序见 [0.4.5 ADB 清单](../../docs/主机信任与密码保护-0.4.5.md)。
 
 私钥导入回归（真实 ssh-keygen / OpenSSL 密钥和 JSch，强制使用 Android 所用的 BC 签名实现）：
 

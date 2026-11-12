@@ -6,6 +6,8 @@ import org.json.JSONObject;
 /** 一台保存下来的 SSH 主机。 */
 public class Host {
 
+    public String id = java.util.UUID.randomUUID().toString();
+
     public String name = "";
     public String host = "";
     public int port = 22;
@@ -18,6 +20,9 @@ public class Host {
     public String keyId = "default";
     /** 保存的密码（可选；为空时若选择密码认证则连接时询问） */
     public String password = "";
+    /** Ciphertext is retained if the device key is unavailable, never substituted with plaintext. */
+    String encryptedPassword = "";
+    boolean passwordUnavailable;
 
     public Host() { }
 
@@ -56,6 +61,7 @@ public class Host {
 
     public JSONObject toJson() throws JSONException {
         JSONObject o = new JSONObject();
+        o.put("id", id);
         o.put("name", name);
         o.put("host", host);
         o.put("port", port);
@@ -63,12 +69,14 @@ public class Host {
         o.put("startup", startup);
         o.put("authType", authType);
         o.put("keyId", keyId);
-        o.put("password", password);
+        if (!encryptedPassword.isEmpty()) o.put("passwordEncrypted", encryptedPassword);
         return o;
     }
 
     public static Host fromJson(JSONObject o) {
         Host h = new Host();
+        h.id = o.optString("id", h.id);
+        if (h.id.isEmpty()) h.id = java.util.UUID.randomUUID().toString();
         h.name = o.optString("name", "");
         h.host = o.optString("host", "");
         h.port = o.optInt("port", 22);
@@ -76,7 +84,12 @@ public class Host {
         h.startup = o.optString("startup", "");
         h.authType = o.optString("authType", "publickey");
         h.keyId = o.optString("keyId", "default");
-        h.password = o.optString("password", "");
+        h.encryptedPassword = o.optString("passwordEncrypted", "");
         return h;
+    }
+
+    byte[] passwordContext() {
+        return ("bakaSSH/password/v1\u0000" + id + "\u0000" + host + "\u0000" + port + "\u0000" + user)
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
     }
 }

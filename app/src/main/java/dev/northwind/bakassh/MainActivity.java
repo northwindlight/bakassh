@@ -70,6 +70,9 @@ public class MainActivity extends AppCompatActivity {
     private String requestedSessionId;
     private boolean bound, resumed, preparingConnection, attachingSession, pendingHost;
     private android.app.Dialog credentialDialog;
+    private android.app.Dialog hostKeyDialog;
+    private HostKeyRequest displayedHostKey;
+    private final java.util.Set<String> displayedKeyChanges = new java.util.HashSet<>();
     private final android.content.ServiceConnection connection = new android.content.ServiceConnection() {
         @Override public void onServiceConnected(android.content.ComponentName name, android.os.IBinder binder) {
             service = ((SessionService.LocalBinder) binder).service();
@@ -94,6 +97,7 @@ public class MainActivity extends AppCompatActivity {
             }
             updateSessionTitle();
             updateSessionDrawer();
+            updateHostKeyPrompt();
         }
         @Override public void onSessionData(TerminalSession changed) {
             if (session == changed) { changed.unread = false; view.notifyNewData(); }
@@ -115,6 +119,8 @@ public class MainActivity extends AppCompatActivity {
     private String hAuthType = "publickey";
     private String hKeyId = "default";
     private String hPassword = "";
+    private String hHostId;
+    private boolean hPasswordUnavailable;
 
     static void out(Activity a, String line) {
         Log.i(TAG, line);
@@ -672,6 +678,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override protected void onStop() {
         resumed = false;
+        dismissHostKeyPrompt();
         if (service != null) service.removeListener(sessionListener);
         input.removeCallbacks(showKeyboard);
         super.onStop();
@@ -708,7 +715,10 @@ public class MainActivity extends AppCompatActivity {
         hStartup = intent.getStringExtra("startup") == null ? "" : intent.getStringExtra("startup");
         hAuthType = intent.getStringExtra("auth_type") == null ? "publickey" : intent.getStringExtra("auth_type");
         hKeyId = intent.getStringExtra("key_id") == null ? "default" : intent.getStringExtra("key_id");
-        hPassword = intent.getStringExtra("password") == null ? "" : intent.getStringExtra("password");
+        hPassword = "";
+        hHostId = intent.getStringExtra("host_id");
+        hPasswordUnavailable = false;
+        intent.removeExtra("password");
     }
 
     private void openRequestedSession() {
@@ -735,7 +745,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void prepareConnection() {
         if ("password".equalsIgnoreCase(hAuthType)) {
-            if (hPassword.isEmpty()) promptSecret("SSH 密码认证", "主机登录密码", password -> createSession(null, null, password));
+            if (hHostId != null) {
+                try {
+                    for (Host host : HostStore.load(this)) if (hHostId.equals(host.id) && hHost.equals(host.host)
+                            && hPort == host.port && hUser.equals(host.user)) {
+                        hPassword = host.password;
+                        hPasswordUnavailable = host.passwordUnavailable;
+                        break;
+                    }
+                } catch (IllegalStateException error) { toast(error.getMessage()); cancelConnection(); return; }
+            }
+            if (hPassword.isEmpty()) promptSecret(hPasswordUnavailable ? "保存的密码无法解密，请重新输入" : "SSH 密码认证",
+                    "主机登录密码", password -> createSession(null, null, password));
             else createSession(null, null, hPassword);
             return;
         }
@@ -760,6 +781,7 @@ public class MainActivity extends AppCompatActivity {
         field.setHint(hint);
         TextInputEditText editor = new TextInputEditText(this);
         editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        editor.setSaveEnabled(false);
         field.addView(editor);
         LinearLayout box = new LinearLayout(this);
         box.setPadding(dp(24), dp(8), dp(24), dp(4));
@@ -808,6 +830,7 @@ public class MainActivity extends AppCompatActivity {
             updateSessionTitle();
             updateSessionDrawer();
             updateScrollStatus();
+            updateHostKeyPrompt();
             return;
         }
         attachingSession = true;
@@ -831,9 +854,34 @@ public class MainActivity extends AppCompatActivity {
         updateSessionTitle();
         updateSessionDrawer();
         updateScrollStatus();
+        updateHostKeyPrompt();
+    }
+
+    private void dismissHostKeyPrompt() {
+        if (hostKeyDialog != null) hostKeyDialog.dismiss();
+        hostKeyDialog = null;
+        displayedHostKey = null;
+    }
+
+    private void updateHostKeyPrompt() {
+        HostKeyRequest request = session == null ? null : session.hostKeyRequest;
+        if (!resumed || session == null || isFinishing() || isDestroyed()) { dismissHostKeyPrompt(); return; }
+        if (request != null && request.pending()) {
+            if (displayedHostKey == request && hostKeyDialog != null && hostKeyDialog.isShowing()) return;
+            dismissHostKeyPrompt();
+            displayedHostKey = request;
+            hostKeyDialog = HostKeyDialogs.confirm(this, request);
+        } else {
+            if (displayedHostKey != null) dismissHostKeyPrompt();
+            if (session.hostKeyChange != null && displayedKeyChanges.add(session.id)) {
+                dismissHostKeyPrompt();
+                hostKeyDialog = HostKeyDialogs.changed(this, session.hostKeyChange);
+            }
+        }
     }
 
     private void detachSession() {
+        dismissHostKeyPrompt();
         stopKeyRepeats();
         view.clearSelection();
         view.attachSession(0);
@@ -858,7 +906,9 @@ public class MainActivity extends AppCompatActivity {
     private void newSession() {
         drawer.closeDrawers();
         if (preparingConnection || service == null) return;
-        List<Host> hosts = HostStore.load(this);
+        List<Host> hosts;
+        try { hosts = HostStore.load(this); }
+        catch (IllegalStateException error) { toast(error.getMessage()); return; }
         if (hosts.isEmpty()) {
             startActivity(new Intent(this, HostListActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP));
@@ -871,6 +921,7 @@ public class MainActivity extends AppCompatActivity {
                     Host host = hosts.get(index);
                     hName = host.name; hHost = host.host; hPort = host.port; hUser = host.user;
                     hStartup = host.startup; hAuthType = host.authType; hKeyId = host.keyId; hPassword = host.password;
+                    hHostId = host.id; hPasswordUnavailable = host.passwordUnavailable;
                     pendingHost = true;
                     openRequestedSession();
                 }).setNeutralButton("管理主机", (d, w) -> startActivity(new Intent(this, HostListActivity.class)
@@ -899,6 +950,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override protected void onDestroy() {
+        dismissHostKeyPrompt();
         if (credentialDialog != null) credentialDialog.dismiss();
         if (service != null) service.removeListener(sessionListener);
         if (bound) unbindService(connection);

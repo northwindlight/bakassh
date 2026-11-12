@@ -23,6 +23,18 @@ public final class ZoomInstrumentation extends Instrumentation {
     @Override public void onCreate(Bundle args) { arguments = args; super.onCreate(args); start(); }
 
     @Override public void onStart() {
+        if (arguments != null && "security".equals(arguments.getString("mode"))) {
+            Bundle result = new Bundle();
+            try {
+                SecurityStorageRegression.verify(getTargetContext());
+                result.putString("stream", "PASS Android Keystore, encrypted-password migration/recovery and host-key persistence\n");
+                finish(Activity.RESULT_OK, result);
+            } catch (Throwable error) {
+                result.putString("stream", android.util.Log.getStackTraceString(error));
+                finish(Activity.RESULT_CANCELED, result);
+            }
+            return;
+        }
         if (arguments != null && "local-replay".equals(arguments.getString("mode"))) {
             new LocalReplayBenchmark(this).run(arguments);
             return;
@@ -185,7 +197,8 @@ public final class ZoomInstrumentation extends Instrumentation {
             Host host = new Host("test", "127.0.0.1", 22, "root", "", "publickey", imported.id, "");
             check(imported.id.equals(Host.fromJson(host.toJson()).keyId), "host key binding roundtrip");
             Host passwordHost = new Host("test", "127.0.0.1", 22, "root", "", "password", "default", " password ");
-            check(" password ".equals(Host.fromJson(passwordHost.toJson()).password), "host password roundtrip");
+            check(!passwordHost.toJson().has("password") && !passwordHost.toJson().toString().contains(" password "),
+                    "host metadata must not serialize plaintext passwords");
             check(KeyManager.deleteKey(context, generated.id), "delete generated key");
             check(KeyManager.deleteKey(context, imported.id), "allow deleting last identity");
             check(KeyManager.getDefaultKey(context) == null, "empty list has no default");

@@ -50,6 +50,7 @@ public class HostListActivity extends AppCompatActivity {
         @Override public void onSessionData(TerminalSession session) { }
     };
     private SessionService observedService;
+    private boolean hostsReadable = true;
 
     private View importRoot;
     private byte[] importBytes;
@@ -63,7 +64,8 @@ public class HostListActivity extends AppCompatActivity {
         DynamicColors.applyToActivityIfAvailable(this);
         setContentView(R.layout.activity_host_list);
 
-        hosts = HostStore.load(this);
+        try { hosts = HostStore.load(this); }
+        catch (IllegalStateException error) { hosts = new ArrayList<>(); hostsReadable = false; }
 
         list = findViewById(R.id.list_hosts);
         View header = getLayoutInflater().inflate(R.layout.header_host_list, list, false);
@@ -118,6 +120,13 @@ public class HostListActivity extends AppCompatActivity {
 
         MainActivity.out(this, "HOSTLIST shown, hosts=" + hosts.size()
                 + " cols=" + HostStore.getTargetCols(this, 150));
+        if (!hostsReadable) showHostStorageError();
+    }
+
+    private void showHostStorageError() {
+        new MaterialAlertDialogBuilder(this).setTitle("暂时无法读取主机配置")
+                .setMessage("读取或加密迁移未完成，原数据已保留。请重试后再编辑主机。")
+                .setPositiveButton("重试", (d, w) -> recreate()).setNegativeButton("关闭", null).show();
     }
 
     private void updateListState() {
@@ -141,7 +150,7 @@ public class HostListActivity extends AppCompatActivity {
         it.putExtra("startup", h.startup);
         it.putExtra("auth_type", h.authType);
         it.putExtra("key_id", h.keyId);
-        it.putExtra("password", h.password);
+        it.putExtra("host_id", h.id);
         MainActivity.out(this, "CONNECT " + h.user + "@" + h.host + ":" + h.port + " [" + h.authType + "]");
         startActivity(it);
     }
@@ -196,7 +205,7 @@ public class HostListActivity extends AppCompatActivity {
     private void showHostActionMenu(View anchor, int pos) {
         Host h = hosts.get(pos);
         androidx.appcompat.widget.PopupMenu menu = new androidx.appcompat.widget.PopupMenu(this, anchor);
-        String[] actions = {"连接", "编辑", "复制 SSH 命令", "删除"};
+        String[] actions = {"连接", "编辑", "复制 SSH 命令", "删除", "主机公钥 / 指纹"};
         for (int i = 0; i < actions.length; i++) menu.getMenu().add(0, i, i, actions[i]);
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
@@ -204,6 +213,7 @@ public class HostListActivity extends AppCompatActivity {
                 case 1: editDialog(pos); break;
                 case 2: copySshCommand(h); break;
                 case 3: confirmDelete(pos); break;
+                case 4: HostKeyDialogs.manage(this, h); break;
             }
             return true;
         });
@@ -225,8 +235,10 @@ public class HostListActivity extends AppCompatActivity {
                 .setTitle("删除主机")
                 .setMessage("确认删除主机 \"" + h.title() + "\"？此操作无法撤销。")
                 .setPositiveButton("删除", (d, w) -> {
-                    hosts.remove(pos);
-                    HostStore.save(this, hosts);
+                    List<Host> updated = new ArrayList<>(hosts);
+                    updated.remove(pos);
+                    if (!HostStore.save(this, updated)) return;
+                    hosts = updated;
                     adapter.notifyDataSetChanged();
                     updateListState();
                     Toast.makeText(this, "已删除主机", Toast.LENGTH_SHORT).show();
@@ -237,6 +249,7 @@ public class HostListActivity extends AppCompatActivity {
 
     /** 新建与编辑主机。 */
     private void editDialog(int pos) {
+        if (!hostsReadable) { showHostStorageError(); return; }
         Host h = pos >= 0 ? hosts.get(pos) : new Host("", "", 22, "", "", "publickey", "default", "");
         View root = LayoutInflater.from(this).inflate(R.layout.dialog_edit_host, null);
         Dialog dialog = newPage(root);
@@ -261,6 +274,9 @@ public class HostListActivity extends AppCompatActivity {
         etUser.setText(h.user);
         etStartup.setText(h.startup);
         etPassword.setText(h.password);
+        etPassword.setSaveEnabled(false);
+        if (h.passwordUnavailable) ((TextInputLayout) layoutPassword).setHelperText(
+                "原密码无法解密。重新输入可替换，留空保存将清除原密码；原主机配置仍保留。");
 
         final String[] currentAuth = new String[]{h.authType != null ? h.authType : "publickey"};
         final String[] selectedKeyId = new String[]{h.keyId != null ? h.keyId : "default"};
@@ -326,6 +342,7 @@ public class HostListActivity extends AppCompatActivity {
             }
 
             Host n = new Host();
+            n.id = h.id;
             n.name = etName.getText() != null ? etName.getText().toString().trim() : "";
             n.host = host;
             try {
@@ -351,13 +368,10 @@ public class HostListActivity extends AppCompatActivity {
             n.keyId = selectedKeyId[0];
             n.password = etPassword.getText() != null ? etPassword.getText().toString() : "";
 
-            if (pos >= 0) {
-                hosts.set(pos, n);
-            } else {
-                hosts.add(n);
-            }
-
-            HostStore.save(this, hosts);
+            List<Host> updated = new ArrayList<>(hosts);
+            if (pos >= 0) updated.set(pos, n); else updated.add(n);
+            if (!HostStore.save(this, updated)) return;
+            hosts = updated;
             adapter.notifyDataSetChanged();
             updateListState();
             dialog.dismiss();
@@ -706,11 +720,14 @@ public class HostListActivity extends AppCompatActivity {
     }
 
     private void deleteKeyDialog(KeyItem k, Runnable onRefresh) {
+        if (!hostsReadable) { showHostStorageError(); return; }
         List<KeyItem> keys = KeyManager.getKeys(this);
-        List<Host> inUse = HostStore.getHostsUsingKey(this, k.id);
-        if (k.isDefault && !KeyItem.DEFAULT_ID.equals(k.id)) {
-            inUse.addAll(HostStore.getHostsUsingKey(this, KeyItem.DEFAULT_ID));
-        }
+        List<Host> inUse;
+        try {
+            inUse = HostStore.getHostsUsingKey(this, k.id);
+            if (k.isDefault && !KeyItem.DEFAULT_ID.equals(k.id))
+                inUse.addAll(HostStore.getHostsUsingKey(this, KeyItem.DEFAULT_ID));
+        } catch (IllegalStateException error) { hostsReadable = false; showHostStorageError(); return; }
         String msg = "确认删除密钥 \"" + k.name + "\"？";
         if (!inUse.isEmpty()) {
             msg += "\n\n有 " + inUse.size() + " 台主机使用此密钥。"
@@ -731,7 +748,7 @@ public class HostListActivity extends AppCompatActivity {
                             }
                         }
                         if (hostChanged) {
-                            HostStore.save(this, hosts);
+                            if (!HostStore.save(this, hosts)) { onRefresh.run(); return; }
                         }
                         Toast.makeText(this, "已删除密钥", Toast.LENGTH_SHORT).show();
                         onRefresh.run();

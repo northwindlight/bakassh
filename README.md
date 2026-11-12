@@ -54,6 +54,8 @@ ConnectBot 1.11.0 因本次 tmux 场景无法正常滚动，未形成有效帧�
 ## 功能
 
 - SSH 连接（JSch），公钥与密码双认证，支持 ed25519 主机密钥
+- 连接前确认服务器 SHA-256 指纹；保存的主机公钥变化时阻止连接，支持查看 / 复制公钥及移除旧记录后重新确认
+- 保存密码使用 Android Keystore + AES-GCM 保护；自动迁移旧明文配置，解密失败保留记录并要求重新输入
 - 密钥与账户管理：多密钥生成（RSA/ECDSA）、私钥导入（OpenSSH/PEM）、公钥导出与主机独立认证绑定
 - 终端仿真基于 libvterm（JNI）
 - 位图字体渲染 + 行位图缓存 + 脏行追踪，按终端滚动区域复用缓存
@@ -75,10 +77,10 @@ ConnectBot 1.11.0 因本次 tmux 场景无法正常滚动，未形成有效帧�
 - 前台服务持有 SSH 和终端；返回主页、重建界面保留连接，断线后保留最后画面
 - 后台保活设置：常驻通知、可选 CPU / Wi-Fi 休眠锁、电池优化与厂商后台设置入口；SSH 每 30 秒发送保活探测
 
-**0.4.4 开发版** 修复 UTF-8 字符跨接收包时可能乱码的问题，并准备固定回放 / 软件绘制基准。
-53 项主机回归和 15 组固定回放通过；性能工具与测量边界见 [基准说明](benchmarks/README.md)。
-Debug / Release / AndroidTest 构建与 lintRelease 通过。
-本轮未连接 ADB 设备，新增 Android 手势 / 画面回归仅编译，尚未执行。
+**0.4.5 候选版** 补齐主机身份校验、公钥管理和保存密码保护；详见 [主机信任与密码保护](docs/主机信任与密码保护-0.4.5.md)。
+57 项主机回归、21 项 loopback SSH 检查和 9 项存储回归通过；Android Keystore 与持久化测试已编译，等待 ADB 验收。
+0.4.4 的 UTF-8 分包修复和固定回放工具继续保留；测量边界见 [基准说明](benchmarks/README.md)。
+本轮未连接 ADB 设备，Android 手势 / 画面 / 后台及新增安全交互尚未执行真机测试。
 构建与离线回归不能证明厂商系统上的长期抗杀效果；强行停止 / 进程被杀后需重新连接。
 方向键长按行为与验收边界见 [方向键长按连发](docs/方向键长按连发-0.4.3.md)。
 会话侧栏、快捷键与点击兼容见 [0.4.1 说明](docs/会话侧栏与快捷键-0.4.1.md)。
@@ -118,6 +120,8 @@ app/src/main/java/dev/northwind/bakassh/
 ├── TerminalSelection.java  连续文本选择与复制快照
 ├── NativeTerm.java         libvterm 的 JNI 声明
 ├── SshTransport.java       JSch 传输
+├── HostKeyTrust.java / KnownHostsStore.java / HostKeyDialogs.java
+├── KeystoreSecrets.java / SecretBox.java   保存密码的加密保护
 ├── ExtraKeysEditor.java    图形化快捷键编辑与预览
 ├── KeyLayout.java / ExtraKeys.java / TerminalKeys.java
 ├── HostStore.java / Host.java

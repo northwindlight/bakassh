@@ -7,7 +7,8 @@ import threading
 
 import paramiko
 
-host_key, client_key, port_file = sys.argv[1:]
+host_key, client_key, port_file, audit_file = sys.argv[1:]
+audit_lock = threading.Lock()
 authorized = paramiko.RSAKey(data=base64.b64decode(pathlib.Path(client_key).read_text().split()[1]))
 
 
@@ -15,12 +16,24 @@ class TerminalServer(paramiko.ServerInterface):
     def __init__(self):
         self.shell = threading.Event()
         self.size = (80, 24)
+        self.username = ""
+
+    def audit(self, username, method):
+        self.username = username
+        with audit_lock:
+            with open(audit_file, "a") as output:
+                output.write(f"{username} {method}\n")
 
     def check_auth_publickey(self, username, key):
+        self.audit(username, "publickey")
         return paramiko.AUTH_SUCCESSFUL if key == authorized else paramiko.AUTH_FAILED
 
+    def check_auth_password(self, username, password):
+        self.audit(username, "password")
+        return paramiko.AUTH_SUCCESSFUL if password == " password " else paramiko.AUTH_FAILED
+
     def get_allowed_auths(self, username):
-        return "publickey"
+        return "publickey,password"
 
     def check_channel_request(self, kind, chanid):
         return paramiko.OPEN_SUCCEEDED if kind == "session" else paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
@@ -42,11 +55,21 @@ def serve(connection):
     with paramiko.Transport(connection) as transport:
         transport.add_server_key(paramiko.RSAKey.from_private_key_file(host_key))
         server = TerminalServer()
-        transport.start_server(server=server)
+        try:
+            transport.start_server(server=server)
+        except (EOFError, paramiko.SSHException):
+            return  # Unknown/rejected host keys disconnect before authentication.
         channel = transport.accept(5)
-        assert channel is not None and server.shell.wait(5)
+        if channel is None:
+            return
+        assert server.shell.wait(5)
         with channel:
             channel.settimeout(5)
+            if server.username.startswith("trust-"):
+                channel.sendall(b"TRUST_READY\r\n")
+                while channel.recv(1024):
+                    pass
+                return
             channel.sendall(b"\x1b[>0q")
             reply = bytearray()
             while not reply.endswith(b"\x1b\\"):

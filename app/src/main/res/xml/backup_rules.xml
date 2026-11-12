@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <!-- Device-bound credentials, private keys and trust records do not transfer. -->
+    <exclude domain="sharedpref" path="sshterm.xml" />
+    <exclude domain="sharedpref" path="host_keys.xml" />
+    <exclude domain="file" path="." />
+</full-backup-content>

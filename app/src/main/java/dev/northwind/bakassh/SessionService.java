@@ -97,7 +97,8 @@ public final class SessionService extends Service implements TerminalSession.Lis
                 host.user + "@" + host.host + ":" + host.port, cols, rows, zoomColumns, this);
         sessions.put(session.id, session);
         changed();
-        session.connect(host.host, host.port, host.user, host.authType, keyPath, passphrase, password, host.startup);
+        session.connect(host.host, host.port, host.user, host.authType, keyPath, passphrase, password, host.startup,
+                new KnownHostsStore(this));
         return session;
     }
 

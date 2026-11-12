@@ -32,6 +32,7 @@ public class SshTransport {
     private volatile ChannelShell channel;
     private volatile OutputStream out;
     private Thread reader;
+    private volatile Thread connectingThread;
     private volatile boolean running;
     private volatile boolean closed;
     private volatile long rxBytes;
@@ -51,13 +52,22 @@ public class SshTransport {
     public String connect(String host, int port, String user, String authType,
                           String keyPath, String keyPassphrase, String password,
                           int cols, int rows, Listener listener) throws Exception {
+        return connect(host, port, user, authType, keyPath, keyPassphrase, password, cols, rows, listener, null);
+    }
+
+    String connect(String host, int port, String user, String authType,
+                   String keyPath, String keyPassphrase, String password,
+                   int cols, int rows, Listener listener, HostKeyTrust trust) throws Exception {
         synchronized (this) {
             if (closed) throw new IOException("connection cancelled");
+            if (trust == null) throw new IOException("尚未配置主机指纹校验，已取消连接");
             this.cols = cols;
             this.rows = rows;
         }
 
         JSch jsch = new JSch();
+        HostKeyTrust.Repository repository = trust.repository(host, port);
+        jsch.setHostKeyRepository(repository);
         boolean isPubkey = !"password".equalsIgnoreCase(authType);
 
         if (isPubkey && keyPath != null && !keyPath.isEmpty()) {
@@ -71,10 +81,11 @@ public class SshTransport {
         Session connectedSession = jsch.getSession(user, host, port);
         synchronized (this) {
             if (closed) throw new IOException("connection cancelled");
+            connectingThread = Thread.currentThread();
             session = connectedSession;
         }
         try {
-            connectedSession.setConfig("StrictHostKeyChecking", "no");
+            connectedSession.setConfig("StrictHostKeyChecking", "yes");
             connectedSession.setServerAliveInterval(30000);
             connectedSession.setServerAliveCountMax(3);
             if (isPubkey) {
@@ -87,7 +98,7 @@ public class SshTransport {
                     @Override public String getPassword() { return password; }
                     @Override public boolean promptPassword(String message) { return true; }
                     @Override public boolean promptPassphrase(String message) { return true; }
-                    @Override public boolean promptYesNo(String message) { return true; }
+                    @Override public boolean promptYesNo(String message) { return false; }
                     @Override public void showMessage(String message) {}
                 });
             }
@@ -145,7 +156,10 @@ public class SshTransport {
         } catch (Exception e) {
             connectedSession.disconnect();
             disconnect();
+            if (repository.failure != null) throw repository.failure;
             throw e;
+        } finally {
+            connectingThread = null;
         }
     }
 
@@ -187,6 +201,8 @@ public class SshTransport {
             out = null;
         }
         try {
+            Thread connecting = connectingThread;
+            if (connecting != null && connecting != Thread.currentThread()) connecting.interrupt();
             if (oldChannel != null) oldChannel.disconnect();
         } catch (Throwable ignored) {
         }
