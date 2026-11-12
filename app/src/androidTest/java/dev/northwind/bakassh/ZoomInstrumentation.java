@@ -23,6 +23,10 @@ public final class ZoomInstrumentation extends Instrumentation {
     @Override public void onCreate(Bundle args) { arguments = args; super.onCreate(args); start(); }
 
     @Override public void onStart() {
+        if (arguments != null && "local-replay".equals(arguments.getString("mode"))) {
+            new LocalReplayBenchmark(this).run(arguments);
+            return;
+        }
         if (arguments != null && "matched-grid".equals(arguments.getString("mode"))) {
             new MatchedGridBenchmark(this).run(arguments);
             return;

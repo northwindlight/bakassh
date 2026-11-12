@@ -213,6 +213,46 @@ public final class NativeRegression {
         try { test.run(); System.out.println("PASS " + name); }
         catch (Throwable t) { System.out.println("FAIL " + name + ": " + t); failures++; }
     }
+    private static void utf8PacketBoundaries() {
+        String[] samples = {"ab中文🙂z", "\033(0lqk\033(B\r\nab中文🙂z"};
+        for (String sample : samples) {
+            byte[] bytes = sample.getBytes(StandardCharsets.UTF_8);
+            long reference = NativeTerm.create(40, 4);
+            int[][] expected = new int[4][];
+            try {
+                feed(reference, sample);
+                for (int r = 0; r < 4; r++) expected[r] = row(reference, r, 40);
+                int r = sample.charAt(0) == '\033' ? 1 : 0;
+                if (expected[r][0] != 'a' || expected[r][10] != '中' || expected[r][20] != '文' || expected[r][30] != 0x1f642)
+                    throw new AssertionError("reference UTF-8 cells are incorrect");
+                if (r == 1 && (expected[0][0] != 0x250c || expected[0][5] != 0x2500 || expected[0][10] != 0x2510))
+                    throw new AssertionError("DEC line drawing charset lost");
+            } finally { NativeTerm.destroy(reference); }
+            for (int split = 1; split <= bytes.length; split++) {
+                long h = NativeTerm.create(40, 4);
+                try {
+                    // Every two-packet split, plus byte-at-a-time delivery.
+                    if (split == bytes.length) {
+                        for (byte value : bytes) NativeTerm.pushBytes(h, new byte[]{value}, 1);
+                    } else {
+                        byte[] first = Arrays.copyOfRange(bytes, 0, split), last = Arrays.copyOfRange(bytes, split, bytes.length);
+                        NativeTerm.pushBytes(h, first, first.length); NativeTerm.pushBytes(h, last, last.length);
+                    }
+                    for (int r = 0; r < 4; r++) if (!Arrays.equals(expected[r], row(h, r, 40)))
+                        throw new AssertionError("UTF-8 cells depend on SSH packet split " + split + " row " + r);
+                } finally { NativeTerm.destroy(h); }
+            }
+        }
+    }
+    private static void utf8Reset() {
+        long h = NativeTerm.create(40, 4);
+        try {
+            NativeTerm.pushBytes(h, new byte[]{(byte) 0xe4}, 1);
+            feed(h, "\033cplain");
+            int[] cells = row(h, 0, 40);
+            if (cells[0] != 'p' || cells[5] != 'l') throw new AssertionError("reset retained an incomplete UTF-8 codepoint");
+        } finally { NativeTerm.destroy(h); }
+    }
     private static int failures;
     public static void main(String[] args) {
         run("dirty row follows scrolling", () -> scrolling(1, 256));
@@ -227,6 +267,8 @@ public final class NativeRegression {
         run("ASCII overwrite of CJK lead keeps single-cell width", NativeRegression::overwriteWideLeft);
         run("ASCII overwrite of CJK tail clears the other half", NativeRegression::overwriteWideRight);
         run("CJK overlap stays coherent across 200 scroll frames", NativeRegression::overwriteWideOverlapDuringScroll);
+        run("UTF-8 CJK/emoji survives every packet split and DEC charset changes", NativeRegression::utf8PacketBoundaries);
+        run("terminal reset discards incomplete UTF-8 decoder state", NativeRegression::utf8Reset);
         if (failures != 0) throw new AssertionError(failures + " regression(s)");
     }
 }

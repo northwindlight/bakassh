@@ -315,6 +315,12 @@ static int on_text(const char bytes[], size_t len, void *user)
     state->vt->mode.utf8   ? &state->encoding_utf8 :
                              &state->encoding[state->gr_set];
 
+  /* ASCII-led input can select G0's UTF-8 decoder, while a following packet
+   * starting with a continuation byte selects encoding_utf8. They must share
+   * the pending codepoint, or valid SSH packet boundaries produce U+FFFD. */
+  if(state->vt->mode.utf8 && encoding->enc == state->encoding_utf8.enc)
+    encoding = &state->encoding_utf8;
+
   (*encoding->enc->decode)(encoding->enc, encoding->data,
       codepoints, &npoints, state->gsingle_set ? 1 : maxpoints,
       bytes, &eaten, len);
@@ -2143,6 +2149,9 @@ void vterm_state_reset(VTermState *state, int hard)
   VTermEncoding *default_enc = state->vt->mode.utf8 ?
       vterm_lookup_encoding(ENC_UTF8,      'u') :
       vterm_lookup_encoding(ENC_SINGLE_94, 'B');
+
+  if(state->encoding_utf8.enc->init)
+    (*state->encoding_utf8.enc->init)(state->encoding_utf8.enc, state->encoding_utf8.data);
 
   for(int i = 0; i < 4; i++) {
     state->encoding[i].enc = default_enc;

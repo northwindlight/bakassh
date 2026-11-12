@@ -43,8 +43,8 @@ final class MatchedGridBenchmark {
             instrumentation.runOnMainSync(() -> {
                 try {
                     float cellHeight=(float)field(view,"cellH");
-                    LinearLayout.LayoutParams params=(LinearLayout.LayoutParams)view.getLayoutParams();
-                    params.weight=0;
+                    android.view.ViewGroup.LayoutParams params=view.getLayoutParams();
+                    if(params instanceof LinearLayout.LayoutParams) ((LinearLayout.LayoutParams)params).weight=0;
                     params.height=(int)Math.ceil(cellHeight*rows);
                     view.setLayoutParams(params);
                 } catch(Throwable t) { failure[0]=t; }

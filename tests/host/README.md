@@ -19,8 +19,13 @@ XTVERSION 即时回包，以及连续文本选择、反向拖选、中文双宽�
 无手指悬停事件、独立模式复位 / 查询、硬复位和 Tab / Shift+Tab / 修饰方向键，共 13 项。
 `KeyLayoutRegression` 另有 5 项，检查默认 Tab 迁移、保留旧自定义、草稿隔离、字面符号、
 跨行排序及无损失败边界。另含字形拼缝几何回归，以及 `KeyRepeatRegression` 的 6 项方向键连发回归，
-主机回归合计 51 项。连发测试使用可控时钟检查首次延迟、重复间隔、抬手 / 取消、快速重新按下、
+主机回归合计 53 项，包含 UTF-8 中文 / emoji 的每个切包边界、逐字节输入、DEC 字符集切换与解码器复位。
+连发测试使用可控时钟检查首次延迟、重复间隔、抬手 / 取消、快速重新按下、
 回调期间停止 / 替换和真实 JNI 的四方向 application cursor 编码。
+
+固定回放另运行 `bash tests/host/replay.sh`：五种合成负载 × 三种网格，共 15 项，
+核对整包 / 切包语义与最终画面单元格，输出输入及结果 SHA-256。
+它不统计 Android 帧率；软件 Canvas 与真机呈现测量的区别见 [基准说明](../../benchmarks/README.md)。
 
 SSH 回归需要 Python 3 + Paramiko、ssh-keygen 和项目使用的 JSch JAR：
 
