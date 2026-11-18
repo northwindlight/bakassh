@@ -1,0 +1,73 @@
+PASS dirty row follows scrolling
+PASS move consumer capacity
+PASS move producer overflow
+PASS ANSI palette is One Half Dark
+PASS partial output reads
+PASS XTVERSION reply without a keypress
+PASS TUI fixed header/footer and scroll margins
+PASS 1000 mixed TUI display frames
+PASS query response burst over 4 KiB
+PASS ASCII overwrite of CJK lead keeps single-cell width
+PASS ASCII overwrite of CJK tail clears the other half
+PASS CJK overlap stays coherent across 200 scroll frames
+PASS UTF-8 CJK/emoji survives every packet split and DEC charset changes
+PASS terminal reset discards incomplete UTF-8 decoder state
+PASS continuous multiline selection
+PASS reversed selection endpoints
+PASS wide character selection without padding cells
+PASS selection snapshot survives remote output and source mutation
+PASS selection spans scrollback rows above the screen
+PASS scrollView clamps at both ends of the scrollback
+PASS scrollView never forwards to the remote application
+PASS fractional live font size before release, without a release snap
+PASS touch samples coalesce into one display-frame layout
+PASS bounded zoom reverses immediately and ignores invalid samples
+PASS pointer-pair restart preserves zoom; cancellation restores original size
+PASS exact integer columns and physical limits over 1143 layouts
+PASS latest resize wins before/during IO without lost wakeups
+PASS 300 live resize/font frames through the real JNI terminal
+PASS shell scrollback and anchored output
+PASS bounded history and eviction/clear
+PASS mouse click/wheel and alternate-screen routing
+PASS legacy mouse press/release
+PASS alternate screen isolation and history click suppression
+PASS resize restores history and anchor
+PASS styled CJK history and immutable selection
+PASS viewport/cache invalidation
+PASS negotiated bracketed paste
+PASS independent session history
+PASS Claude Code full mouse bundle without touch hover
+PASS independent mouse mode reset and hard reset
+PASS Tab, Shift+Tab and application/modified cursor keys
+PASS glyph bitmaps overlap by >1px over 1905 layouts; legacy geometry left 30 gaps at 150 columns
+PASS block elements: legacy seams reproduced (6 px), 762 layouts seamless, row edges shared, 32 shapes
+PASS 0.4.x defaults migrate to Esc/Tab/Alt/↑/键盘 · Ctrl/Shift/←/↓/→
+PASS independent draft/snapshot and literal comma/pipe keys
+PASS graphical left/right and cross-row sorting
+PASS drag across final key of row and minimum layout protection
+PASS capacity and invalid-input failures preserve draft
+PASS direction hold sends once immediately and repeats at the configured delay
+PASS short tap and release/cancel never send an extra key
+PASS rapid restart rejects old queued callbacks
+PASS cancellation during key delivery stops scheduling
+PASS replacing a press during delivery keeps one repeat chain
+PASS all four directions repeat with real JNI application cursor encoding
+PASS AES-GCM preserves password bytes and uses a fresh randomized IV
+PASS modified IV/ciphertext/tag, foreign host context and foreign key cannot decrypt
+PASS truncated and unsupported secret envelopes fail closed
+PASS decryption never generates a replacement for a missing device key
+{"check":"PASS","scenario":"scroll","columns":80,"rows":24,"frames":12,"input_sha256":"f4e525c81cf9f90fe0897d1f66eebf19bb23dc1c0afd9bf0ecfcfb2b507658cd","final_cells_sha256":"ab1aa5136a1ea4d2f1a05562960727d762c49988c380dd16161199019c3e89a3"}
+{"check":"PASS","scenario":"rewrite","columns":80,"rows":24,"frames":12,"input_sha256":"3c893456853794ffa280ac32a3f5e3ca1fec7f59fd000880557f06fb4ab57626","final_cells_sha256":"40348cff5d70005f4dc886337804a1196091a7d822e940ec4d1fb2407fb0806d"}
+{"check":"PASS","scenario":"unchanged","columns":80,"rows":24,"frames":12,"input_sha256":"ff2cbb9686c8f10f95aa91506cb4829cf7b7e02256ea6d07e2e115456c90f750","final_cells_sha256":"907e406e45cd029a9cd830ea4fd5f9a0154ea89096307176fd222aac51154ddd"}
+{"check":"PASS","scenario":"region","columns":80,"rows":24,"frames":12,"input_sha256":"26bddf25197949910100f596f0bb90ed7dff7801921e49c501ce0ad6e25d7034","final_cells_sha256":"9e5801a563afcef184cdb0baa0ea9a6591d8cd4d2c9d4aa7748dfab31f27c0f1"}
+{"check":"PASS","scenario":"styles","columns":80,"rows":24,"frames":12,"input_sha256":"c212170d14a624690fbd67fb8edda64afdfb1adfb276c63425ff886792948743","final_cells_sha256":"72c2cfbdb4916cb5ecce42803ddba5ef5ee4c20771abb7533d173e58dcd9dd8c"}
+{"check":"PASS","scenario":"scroll","columns":154,"rows":134,"frames":12,"input_sha256":"f4bf99c4f2e60921a106ecbe7cfc1d606d5af92ea161928459f786f487080ab9","final_cells_sha256":"878560252b16cda2755f2822238e747f5245d99764ab6e6122afc70c48cf1587"}
+{"check":"PASS","scenario":"rewrite","columns":154,"rows":134,"frames":12,"input_sha256":"7ca18b46a57f369417c0aed5793b9d7c97473bdafb931a368a413e0e401514b4","final_cells_sha256":"166acf91e6c51ecd7a6e460dcb3c463ba1d6257298c7a32501f951154798af39"}
+{"check":"PASS","scenario":"unchanged","columns":154,"rows":134,"frames":12,"input_sha256":"81c93241b929aef1089e3f29d5659eecc7a08c85c987a8ec5fc34421b148a468","final_cells_sha256":"3ac622fd7f6b5f62b363c534381dc42686df0e49e6d3ad096cfcce8f17006e64"}
+{"check":"PASS","scenario":"region","columns":154,"rows":134,"frames":12,"input_sha256":"f80a0d9ddd5979c1f351d352b27a3854ec37a631ae21fd8c79282b8f20fbb7d8","final_cells_sha256":"793cff69c6fc01cf299515d16a54550f969a247c7ac648f87fbe3a75c0259557"}
+{"check":"PASS","scenario":"styles","columns":154,"rows":134,"frames":12,"input_sha256":"70fd3c558f764fbba155d84b6f78404800158ced27aabeaa0337a36e0f55c7c4","final_cells_sha256":"b58e2cd41b2ff3860f4106fa26a111c2eed750dd30f80f342ad341d4dd5c8f52"}
+{"check":"PASS","scenario":"scroll","columns":335,"rows":307,"frames":12,"input_sha256":"506297f590ae2b7ffc186adebe8004341d7c2acdd6b80a9f9af59b4fbcf2854d","final_cells_sha256":"dd6962fec4015f228abdfe83b2c7de31c069c5739b0f44db020e2aa79d1f189a"}
+{"check":"PASS","scenario":"rewrite","columns":335,"rows":307,"frames":12,"input_sha256":"4d69eb9818b916277872b1343981c46e9f642b43e94379d045f4150ce95413e7","final_cells_sha256":"1fd74a840292a844921deb94b36ac33f6ed67bbeb2482f38461d84a0c00b51c2"}
+{"check":"PASS","scenario":"unchanged","columns":335,"rows":307,"frames":12,"input_sha256":"df7dd3044cbacec930f4e13dad120a4b9930d611f480f6c99f1c8fb69b630583","final_cells_sha256":"db0d3fe29d42e2864c7590208113fb626e6637ba543b723addf3a2db911ef5ab"}
+{"check":"PASS","scenario":"region","columns":335,"rows":307,"frames":12,"input_sha256":"6ae453ef53802c96c5382b04cfc9f7696aedea9f3077f332a9327a82e01575af","final_cells_sha256":"9a27be60efad48633b3717c03459a22db7bd3ae5724b9f4639e08dcd252d236f"}
+{"check":"PASS","scenario":"styles","columns":335,"rows":307,"frames":12,"input_sha256":"62d001f16faf1b3fa3d1f310bccc0f3cf83b1f12086ab70c1dd1644aef2896ec","final_cells_sha256":"e5923cfefbdc8e44411035833466a7907b481591469a634f2ea86bad2422ef9f"}

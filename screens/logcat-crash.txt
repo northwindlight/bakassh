@@ -1,0 +1,53 @@
+--------- beginning of crash
+11-18 19:42:51.546  1674  2253 F libc    : Fatal signal 4 (SIGILL), code 2 (ILL_ILLOPN), fault addr 0x7f7b616f6573 in tid 2253 (BG Thread #2), pid 1674 (earchbox:search)
+11-18 19:42:56.264  3038  3038 F DEBUG   : *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***
+11-18 19:42:56.264  3038  3038 F DEBUG   : Build fingerprint: 'google/sdk_gphone64_x86_64/emu64xa:14/UE1A.230829.050/12077443:userdebug/dev-keys'
+11-18 19:42:56.264  3038  3038 F DEBUG   : Revision: '0'
+11-18 19:42:56.264  3038  3038 F DEBUG   : ABI: 'x86_64'
+11-18 19:42:56.264  3038  3038 F DEBUG   : Timestamp: 2026-11-18 19:42:52.405429225+0000
+11-18 19:42:56.264  3038  3038 F DEBUG   : Process uptime: 11s
+11-18 19:42:56.264  3038  3038 F DEBUG   : Cmdline: com.google.android.googlequicksearchbox:search
+11-18 19:42:56.264  3038  3038 F DEBUG   : pid: 1674, tid: 2253, name: BG Thread #2  >>> com.google.android.googlequicksearchbox:search <<<
+11-18 19:42:56.264  3038  3038 F DEBUG   : uid: 10131
+11-18 19:42:56.264  3038  3038 F DEBUG   : signal 4 (SIGILL), code 2 (ILL_ILLOPN), fault addr 0x00007f7b616f6573
+11-18 19:42:56.264  3038  3038 F DEBUG   :     rax 0000000000000000  rbx 0000000000000003  rcx b6d89bcdc805071c  rdx 0000000000000000
+11-18 19:42:56.264  3038  3038 F DEBUG   :     r8  ffffffffffffffff  r9  00007ffeed3680a0  r10 0000000000004928  r11 0000000000000217
+11-18 19:42:56.264  3038  3038 F DEBUG   :     r12 00007f7b4c3424aa  r13 00007f7b55a35344  r14 00007f7c64a62910  r15 0000000000000000
+11-18 19:42:56.264  3038  3038 F DEBUG   :     rdi 00007f7b66187f20  rsi 0000000000000000
+11-18 19:42:56.264  3038  3038 F DEBUG   :     rbp 00007f7b55a35230  rsp 00007f7b55a35080  rip 00007f7b616f6573
+11-18 19:42:56.264  3038  3038 F DEBUG   : 34 total frames
+11-18 19:42:56.264  3038  3038 F DEBUG   : backtrace:
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #00 pc 00000000028a2573  /data/app/~~vKRttAjrON4RKtj8A45xcA==/com.google.android.trichromelibrary_567263637-kHlaCSX8MUhf2bTG5yDwQQ==/TrichromeLibrary.apk!libmonochrome_64.so (offset 0x89b000) (BuildId: 0808498ff97b3353fd7cdb68725c85232b4ce202)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #01 pc 00000000028a0377  /data/app/~~vKRttAjrON4RKtj8A45xcA==/com.google.android.trichromelibrary_567263637-kHlaCSX8MUhf2bTG5yDwQQ==/TrichromeLibrary.apk!libmonochrome_64.so (offset 0x89b000) (Java_J_N_M81WqFvs+87) (BuildId: 0808498ff97b3353fd7cdb68725c85232b4ce202)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #02 pc 0000000000391a4b  /apex/com.android.art/lib64/libart.so (art_quick_generic_jni_trampoline+219) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #03 pc 000000000036ec95  /apex/com.android.art/lib64/libart.so (nterp_helper+165) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #04 pc 00000000001824aa  /data/app/~~skHnEnTnzU2yJ4jFNk_qnQ==/com.google.android.webview-wV9zI2ouDtxLft85UFUSMA==/WebViewGoogle.apk (gP.d+210)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #05 pc 000000000036fa88  /apex/com.android.art/lib64/libart.so (nterp_helper+3736) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #06 pc 000000000018239e  /data/app/~~skHnEnTnzU2yJ4jFNk_qnQ==/com.google.android.webview-wV9zI2ouDtxLft85UFUSMA==/WebViewGoogle.apk (gP.b+38)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #07 pc 000000000036fa88  /apex/com.android.art/lib64/libart.so (nterp_helper+3736) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #08 pc 00000000000f05ee  /data/app/~~skHnEnTnzU2yJ4jFNk_qnQ==/com.google.android.webview-wV9zI2ouDtxLft85UFUSMA==/WebViewGoogle.apk (ta.<init>+18)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #09 pc 000000000036fa88  /apex/com.android.art/lib64/libart.so (nterp_helper+3736) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #10 pc 000000000026df8a  /data/app/~~skHnEnTnzU2yJ4jFNk_qnQ==/com.google.android.webview-wV9zI2ouDtxLft85UFUSMA==/WebViewGoogle.apk (com.android.webview.chromium.WebViewChromiumFactoryProvider.getCookieManager+26)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #11 pc 00000000007acc5a  /system/framework/x86_64/boot-framework.oat (android.webkit.CookieManager.getInstance+74) (BuildId: e4c2202f7e80276bcdbfa046249d896342205aa9)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #12 pc 000000000036ec95  /apex/com.android.art/lib64/libart.so (nterp_helper+165) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #13 pc 0000000000437b1a  /product/priv-app/Velvet/Velvet.apk (com.google.android.libraries.web.webview.i.a.a.a.invokeSuspend+10)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #14 pc 000000000036fa88  /apex/com.android.art/lib64/libart.so (nterp_helper+3736) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #15 pc 00000000000da95e  /product/priv-app/Velvet/Velvet.apk (i.c.b.a.a.resumeWith+26)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #16 pc 00000000003707e5  /apex/com.android.art/lib64/libart.so (nterp_helper+7157) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #17 pc 0000000000147c9c  /product/priv-app/Velvet/Velvet.apk (kotlinx.coroutines.bk.run+216)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #18 pc 00000000003707e5  /apex/com.android.art/lib64/libart.so (nterp_helper+7157) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.264  3038  3038 F DEBUG   :       #19 pc 0000000000504188  /product/priv-app/Velvet/Velvet.apk (com.google.apps.tiktok.coroutines.f.run+4)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #20 pc 00000000003707e5  /apex/com.android.art/lib64/libart.so (nterp_helper+7157) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #21 pc 00000000003bcef0  /product/priv-app/Velvet/Velvet.apk (com.google.android.libraries.i.ae.run+4)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #22 pc 00000000002f2a29  /system/framework/x86_64/boot.oat (java.util.concurrent.ThreadPoolExecutor.runWorker+857) (BuildId: c78b6b6270062f2e659e76e5f8dac6d757f47ca6)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #23 pc 00000000002ef4f4  /system/framework/x86_64/boot.oat (java.util.concurrent.ThreadPoolExecutor$Worker.run+68) (BuildId: c78b6b6270062f2e659e76e5f8dac6d757f47ca6)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #24 pc 000000000037084a  /apex/com.android.art/lib64/libart.so (nterp_helper+7258) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #25 pc 00000000003c058a  /product/priv-app/Velvet/Velvet.apk (com.google.android.libraries.i.k.run+14)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #26 pc 00000000003707e5  /apex/com.android.art/lib64/libart.so (nterp_helper+7157) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #27 pc 00000000003c0a5e  /product/priv-app/Velvet/Velvet.apk (com.google.android.libraries.i.p.run+46)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #28 pc 0000000000175324  /system/framework/x86_64/boot.oat (java.lang.Thread.run+84) (BuildId: c78b6b6270062f2e659e76e5f8dac6d757f47ca6)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #29 pc 00000000003784c4  /apex/com.android.art/lib64/libart.so (art_quick_invoke_stub+756) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #30 pc 00000000003c535c  /apex/com.android.art/lib64/libart.so (art::ArtMethod::Invoke(art::Thread*, unsigned int*, unsigned int, art::JValue*, char const*)+204) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #31 pc 0000000000853176  /apex/com.android.art/lib64/libart.so (art::Thread::CreateCallback(void*)+1510) (BuildId: b6dc79e02101ea00827a35a55ab6597a)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #32 pc 00000000000cd06a  /apex/com.android.runtime/lib64/bionic/libc.so (__pthread_start(void*)+58) (BuildId: fa337969c798946280caa45e2d71a2e7)
+11-18 19:42:56.265  3038  3038 F DEBUG   :       #33 pc 0000000000062d88  /apex/com.android.runtime/lib64/bionic/libc.so (__start_thread+56) (BuildId: fa337969c798946280caa45e2d71a2e7)

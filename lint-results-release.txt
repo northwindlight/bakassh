@@ -1,0 +1,513 @@
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/KnownHostsStore.java:30: Warning: Consider using apply() instead; commit writes its data to persistent storage immediately, whereas apply will handle it in the background [ApplySharedPref]
+                preferences.edit().remove(endpoint).commit();
+                                                    ~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/KnownHostsStore.java:44: Warning: Consider using apply() instead; commit writes its data to persistent storage immediately, whereas apply will handle it in the background [ApplySharedPref]
+                preferences.edit().putString(endpoint, expected).commit();
+                                                                 ~~~~~~~~
+
+   Explanation for issues of type "ApplySharedPref":
+   Consider using apply() instead of commit on shared preferences. Whereas
+   commit blocks and writes its data to persistent storage immediately, apply
+   will handle it in the background.
+
+/home/runner/work/bakassh/bakassh/app/build.gradle:21: Warning: Not targeting the latest versions of Android; compatibility modes apply. Consider testing and updating this version. Consult the android.os.Build.VERSION_CODES javadoc for details. [OldTargetApi]
+        targetSdk 34
+        ~~~~~~~~~~~~
+
+   Explanation for issues of type "OldTargetApi":
+   When your application or sdk runs on a version of Android that is more
+   recent than your targetSdkVersion specifies that it has been tested with,
+   various compatibility modes kick in. This ensures that your application
+   continues to work, but it may look out of place. For example, if the
+   targetSdkVersion is less than 14, your app may get an option button in the
+   UI.
+
+   To fix this issue, set the targetSdkVersion to the highest available value.
+   Then test your app to make sure everything works correctly. You may want to
+   consult the compatibility notes to see what changes apply to each version
+   you are adding support for:
+   https://developer.android.com/reference/android/os/Build.VERSION_CODES.html
+   as well as follow this guide:
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.
+   html
+
+   https://developer.android.com/distribute/best-practices/develop/target-sdk.html
+
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/BackgroundSettings.java:40: Warning: Use of REQUEST_IGNORE_BATTERY_OPTIMIZATIONS violates the Play Store Content Policy regarding acceptable use cases, as described in https://developer.android.com/training/monitoring-device-state/doze-standby.html [BatteryLife]
+                                if (!exempt) open(activity, new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                                                                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "BatteryLife":
+   This issue flags code that either
+   * negatively affects battery life, or
+   * uses APIs that have recently changed behavior to prevent background tasks
+   from consuming memory and battery excessively.
+
+   Generally, you should be using WorkManager instead.
+
+   For more details on how to update your code, please see
+   https://developer.android.com/topic/performance/background-optimization
+
+
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:297: Warning: Avoid passing null as the view root (needed to resolve layout parameters on the inflated layout's root element) [InflateParams]
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_edit_host, null);
+                                                                                 ~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:425: Warning: Avoid passing null as the view root (needed to resolve layout parameters on the inflated layout's root element) [InflateParams]
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_key_manager, null);
+                                                                                   ~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:518: Warning: Avoid passing null as the view root (needed to resolve layout parameters on the inflated layout's root element) [InflateParams]
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_key_detail, null);
+                                                                                  ~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:543: Warning: Avoid passing null as the view root (needed to resolve layout parameters on the inflated layout's root element) [InflateParams]
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_generate_key, null);
+                                                                                    ~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:610: Warning: Avoid passing null as the view root (needed to resolve layout parameters on the inflated layout's root element) [InflateParams]
+        View root = getLayoutInflater().inflate(R.layout.dialog_import_key, null);
+                                                                            ~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:811: Warning: Avoid passing null as the view root (needed to resolve layout parameters on the inflated layout's root element) [InflateParams]
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_settings, null);
+                                                                                ~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:852: Warning: Avoid passing null as the view root (needed to resolve layout parameters on the inflated layout's root element) [InflateParams]
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_about, null);
+                                                                             ~~~~
+
+   Explanation for issues of type "InflateParams":
+   When inflating a layout, avoid passing in null as the parent view, since
+   otherwise any layout parameters on the root of the inflated layout will be
+   ignored.
+
+   https://www.bignerdranch.com/blog/understanding-androids-layoutinflater-inflate/
+
+/home/runner/work/bakassh/bakassh/app/build.gradle:7: Warning: A newer version of compileSdkVersion than 34 is available: 36 [GradleDependency]
+    compileSdk 34
+    ~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/build.gradle:84: Warning: A newer version of androidx.annotation:annotation than 1.8.2 is available: 1.11.0 [GradleDependency]
+    implementation 'androidx.annotation:annotation:1.8.2'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/build.gradle:90: Warning: A newer version of androidx.appcompat:appcompat than 1.7.0 is available: 1.8.0 [GradleDependency]
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/build.gradle:92: Warning: A newer version of com.google.android.material:material than 1.12.0 is available: 1.14.0 [GradleDependency]
+    implementation 'com.google.android.material:material:1.12.0'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "GradleDependency":
+   This detector looks for usages of libraries where the version you are using
+   is not the current stable release. Using older versions is fine, and there
+   are cases where you deliberately want to stick with an older version.
+   However, you may simply not be aware that a more recent version is
+   available, and that is what this lint check helps find.
+
+/home/runner/work/bakassh/bakassh/app/build.gradle:78: Warning: A newer version of com.github.mwiede:jsch than 0.2.26 is available: 2.28.8 [NewerVersionAvailable]
+    implementation 'com.github.mwiede:jsch:0.2.26'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/build.gradle:82: Warning: A newer version of org.bouncycastle:bcprov-jdk18on than 1.79 is available: 1.87 [NewerVersionAvailable]
+    implementation 'org.bouncycastle:bcprov-jdk18on:1.79'
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "NewerVersionAvailable":
+   This detector checks with a central repository to see if there are newer
+   versions available for the dependencies used by this project. This is
+   similar to the GradleDependency check, which checks for newer versions
+   available in the Android SDK tools and libraries, but this works with any
+   MavenCentral dependency, and connects to the library every time, which
+   makes it more flexible but also much slower.
+
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:477: Warning: Use TextViewCompat.setCompoundDrawableTintList() [UseCompatTextViewDrawableApis from androidx.appcompat]
+        noKeys.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(
+        ^
+
+   Explanation for issues of type "UseCompatTextViewDrawableApis":
+   Use Compat loading of compound text view drawables
+
+   Vendor: Android Open Source Project
+   Identifier: androidx.appcompat
+   Feedback: https://issuetracker.google.com/issues/new?component=460343
+
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/activity_terminal.xml:53: Warning: Use app:drawableStartCompat instead of android:drawableStart [UseCompatTextViewDrawableXml from androidx.appcompat]
+                    android:drawableStart="@drawable/bg_status_dot"
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/item_host_card.xml:71: Warning: Use app:drawableStartCompat instead of android:drawableStart [UseCompatTextViewDrawableXml from androidx.appcompat]
+                    android:drawableStart="@drawable/bg_status_dot"
+                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UseCompatTextViewDrawableXml":
+   TextView uses android: compound drawable attributes instead of app: ones
+
+   Vendor: Android Open Source Project
+   Identifier: androidx.appcompat
+   Feedback: https://issuetracker.google.com/issues/new?component=460343
+
+/home/runner/work/bakassh/bakassh/app/build.gradle:25: Warning: Missing x86_64 ABI support for ChromeOS [ChromeOsAbiSupport]
+            abiFilters 'arm64-v8a'
+                       ~~~~~~~~~~~
+
+   Explanation for issues of type "ChromeOsAbiSupport":
+   To properly support ChromeOS, your Android application should have an x86
+   and/or x86_64 binary as part of the build configuration. To fix the issue,
+   ensure your files are properly optimized for ARM; the binary translator
+   will then ensure compatibility with x86. Alternatively, add an abiSplit for
+   x86 within your build.gradle file and create the required x86
+   dependencies.
+
+   https://developer.android.com/ndk/guides/abis
+
+/home/runner/work/bakassh/bakassh/app/src/main/java/org/connectbot/util/HostDatabase.java:209: Warning: Unnecessary; SDK_INT is always >= 24 [ObsoleteSdkInt]
+  if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "ObsoleteSdkInt":
+   This check flags version checks that are not necessary, because the
+   minSdkVersion (or surrounding known API level) is already at least as high
+   as the version checked for.
+
+   Similarly, it also looks for resources in -vNN folders, such as values-v14
+   where the version qualifier is less than or equal to the minSdkVersion,
+   where the contents should be merged into the best folder.
+
+/home/runner/work/bakassh/bakassh/app/src/main/java/org/connectbot/util/PubkeyDatabase.java:68: Warning: Do not place Android context classes in static fields (static reference to PubkeyDatabase which has field context pointing to Context); this is a memory leak [StaticFieldLeak]
+ private static PubkeyDatabase sInstance;
+         ~~~~~~
+
+   Explanation for issues of type "StaticFieldLeak":
+   A static field will leak contexts.
+
+   Non-static inner classes have an implicit reference to their outer class.
+   If that outer class is for example a Fragment or Activity, then this
+   reference means that the long-running handler/loader/task will hold a
+   reference to the activity which prevents it from getting garbage
+   collected.
+
+   Similarly, direct field references to activities and fragments from these
+   longer running instances can cause leaks.
+
+   ViewModel classes should never point to Views or non-application Contexts.
+
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_edit_host.xml:78: Warning: Set android:baselineAligned="false" on this element for better performance [DisableBaselineAlignment]
+            <LinearLayout
+             ~~~~~~~~~~~~
+
+   Explanation for issues of type "DisableBaselineAlignment":
+   When a LinearLayout is used to distribute the space proportionally between
+   nested layouts, the baseline alignment property should be turned off to
+   make the layout computation faster.
+
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/activity_host_list.xml:7: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/AppTheme) [Overdraw]
+    android:background="?attr/colorSurface"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/activity_terminal.xml:8: Warning: Possible overdraw: Root element paints background @color/term_background with a theme that also paints a background (inferred theme is @style/TermTheme) [Overdraw]
+    android:background="@color/term_background"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_about.xml:8: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/AppTheme) [Overdraw]
+    android:background="?attr/colorSurface"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_edit_host.xml:8: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/AppTheme) [Overdraw]
+    android:background="?attr/colorSurface"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_extra_keys.xml:8: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/AppTheme) [Overdraw]
+    android:background="?attr/colorSurface"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_generate_key.xml:8: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/AppTheme) [Overdraw]
+    android:background="?attr/colorSurface"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_import_key.xml:8: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/AppTheme) [Overdraw]
+    android:background="?attr/colorSurface"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_key_detail.xml:8: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/AppTheme) [Overdraw]
+    android:background="?attr/colorSurface"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_key_manager.xml:8: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/AppTheme) [Overdraw]
+    android:background="?attr/colorSurface"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_settings.xml:8: Warning: Possible overdraw: Root element paints background ?attr/colorSurface with a theme that also paints a background (inferred theme is @style/AppTheme) [Overdraw]
+    android:background="?attr/colorSurface"
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "Overdraw":
+   If you set a background drawable on a root view, then you should use a
+   custom theme where the theme background is null. Otherwise, the theme
+   background will be painted first, only to have your custom background
+   completely cover it; this is called "overdraw".
+
+   NOTE: This detector relies on figuring out which layouts are associated
+   with which activities based on scanning the Java code, and it's currently
+   doing that using an inexact pattern matching algorithm. Therefore, it can
+   incorrectly conclude which activity the layout is associated with and then
+   wrongly complain that a background-theme is hidden.
+
+   If you want your custom background on multiple pages, then you should
+   consider making a custom theme with your custom background and just using
+   that theme instead of a root element background.
+
+   Of course it's possible that your custom drawable is translucent and you
+   want it to be mixed with the background. However, you will get better
+   performance if you pre-mix the background with your drawable and use that
+   resulting image or color as a custom theme background instead.
+
+/home/runner/work/bakassh/bakassh/app/src/main/res/values/colors.xml:28: Warning: The resource R.color.md_theme_background appears to be unused [UnusedResources]
+    <color name="md_theme_background">#FDFBFF</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/values/colors.xml:63: Warning: The resource R.color.terminal_extra_key_bg appears to be unused [UnusedResources]
+    <color name="terminal_extra_key_bg">#252930</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/values/colors.xml:64: Warning: The resource R.color.terminal_extra_key_active_bg appears to be unused [UnusedResources]
+    <color name="terminal_extra_key_active_bg">#004A77</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/values/colors.xml:65: Warning: The resource R.color.terminal_extra_key_active_text appears to be unused [UnusedResources]
+    <color name="terminal_extra_key_active_text">#C2E7FF</color>
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/values/colors.xml:66: Warning: The resource R.color.status_bar_bg appears to be unused [UnusedResources]
+    <color name="status_bar_bg">#1A1D22</color>
+           ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/drawable/ic_content_copy.xml:1: Warning: The resource R.drawable.ic_content_copy appears to be unused [UnusedResources]
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+^
+/home/runner/work/bakassh/bakassh/app/src/main/res/drawable/ic_delete.xml:1: Warning: The resource R.drawable.ic_delete appears to be unused [UnusedResources]
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+^
+/home/runner/work/bakassh/bakassh/app/src/main/res/drawable/ic_server.xml:1: Warning: The resource R.drawable.ic_server appears to be unused [UnusedResources]
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+^
+/home/runner/work/bakassh/bakassh/app/src/main/res/values/strings.xml:32: Warning: The resource R.string.settings_tools appears to be unused [UnusedResources]
+    <string name="settings_tools">终端工具</string>
+            ~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/values/strings.xml:100: Warning: The resource R.string.about_licenses_help appears to be unused [UnusedResources]
+    <string name="about_licenses_help">libvterm、ConnectBot、JSch 等</string>
+            ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/values/themes.xml:95: Warning: The resource R.style.ShapeAppearance_Pixel_SegmentStart appears to be unused [UnusedResources]
+    <style name="ShapeAppearance.Pixel.SegmentStart" parent="ShapeAppearance.Material3.Corner.None">
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/values/themes.xml:103: Warning: The resource R.style.ShapeAppearance_Pixel_SegmentEnd appears to be unused [UnusedResources]
+    <style name="ShapeAppearance.Pixel.SegmentEnd" parent="ShapeAppearance.Material3.Corner.None">
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "UnusedResources":
+   Unused resources make applications larger and slow down builds.
+
+
+   The unused resource check can ignore tests. If you want to include
+   resources that are only referenced from tests, consider packaging them in a
+   test source set instead.
+
+   You can include test sources in the unused resource check by setting the
+   system property lint.unused-resources.include-tests =true, and to exclude
+   them (usually for performance reasons), use
+   lint.unused-resources.exclude-tests =true.
+   ,
+
+   Available options:
+
+   **skip-libraries** (default is true):
+   Whether the unused resource check should skip reporting unused resources in libraries.
+
+   Many libraries will declare resources that are part of the library surface; other modules depending on the library will also reference the resources. To avoid reporting all these resources as unused (in the context of a library), the unused resource check normally skips reporting unused resources in libraries. Instead, run the unused resource check on the consuming app module (along with `checkDependencies=true`).
+
+   However, there are cases where you want to check that all the resources declared in a library are used; in that case, you can disable the skip option.
+
+   To configure this option, use a `lint.xml` file with an <option> like this:
+
+   ```xml
+   <lint>
+       <issue id="UnusedResources">
+           <option name="skip-libraries" value="true" />
+       </issue>
+   </lint>
+   ```
+
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/MainActivity.java:344: Warning: Prefer "SHOW_AS_ACTION_IF_ROOM" instead of "SHOW_AS_ACTION_ALWAYS" [AlwaysShowAction]
+                menu.add(0, android.R.id.copy, 0, "复制").setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS);
+                                                                                              ~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/MainActivity.java:345: Warning: Prefer "SHOW_AS_ACTION_IF_ROOM" instead of "SHOW_AS_ACTION_ALWAYS" [AlwaysShowAction]
+                menu.add(0, android.R.id.selectAll, 1, "全选").setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS);
+                                                                                                   ~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/MainActivity.java:346: Warning: Prefer "SHOW_AS_ACTION_IF_ROOM" instead of "SHOW_AS_ACTION_ALWAYS" [AlwaysShowAction]
+                menu.add(0, android.R.id.paste, 2, "粘贴").setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS);
+                                                                                               ~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "AlwaysShowAction":
+   Using showAsAction="always" in menu XML, or MenuItem.SHOW_AS_ACTION_ALWAYS
+   in Java code is usually a deviation from the user interface style guide.Use
+   ifRoom or the corresponding MenuItem.SHOW_AS_ACTION_IF_ROOM instead.
+
+   If always is used sparingly there are usually no problems and behavior is
+   roughly equivalent to ifRoom but with preference over other ifRoom items.
+   Using it more than twice in the same menu is a bad idea.
+
+   This check looks for menu XML files that contain more than two always
+   actions, or some always actions and no ifRoom actions. In Java code, it
+   looks for projects that contain references to
+   MenuItem.SHOW_AS_ACTION_ALWAYS and no references to
+   MenuItem.SHOW_AS_ACTION_IF_ROOM.
+
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/activity_terminal.xml:130: Warning: 'clickable' attribute found, please also add 'focusable' [KeyboardInaccessibleWidget]
+                    android:clickable="true"
+                    ~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "KeyboardInaccessibleWidget":
+   A widget that is declared to be clickable but not declared to be focusable
+   is not accessible via the keyboard. Please add the focusable attribute as
+   well.
+
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/BackgroundSettings.java:30: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        help.setText("常驻后台已自动生效：只要还有活动会话，bakaSSH 就作为前台服务持有 CPU / Wi-Fi "
+                     ^
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/BackgroundSettings.java:30: Warning: String literal in setText can not be translated. Use Android resources instead. [SetTextI18n]
+        help.setText("常驻后台已自动生效：只要还有活动会话，bakaSSH 就作为前台服务持有 CPU / Wi-Fi "
+                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/ExtraKeysEditor.java:127: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            title.setText("第 " + (r + 1) + " 行");
+                          ~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/ExtraKeysEditor.java:127: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            title.setText("第 " + (r + 1) + " 行");
+                                  ~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/ExtraKeysEditor.java:176: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        ((TextView) root.findViewById(R.id.extra_keys_selection)).setText("正在编辑：第 " + (selectedRow + 1) +
+                                                                          ^
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/ExtraKeysEditor.java:176: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        ((TextView) root.findViewById(R.id.extra_keys_selection)).setText("正在编辑：第 " + (selectedRow + 1) +
+                                                                                       ~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:115: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+                tvEndpoint.setText(h.user + "@" + h.host + (h.port != 22 ? ":" + h.port : ""));
+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:176: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            subtitleView.setText(hosts.size() + " 台设备，随时连接");
+                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:449: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+                tvSubtitle.setText(k.type + " · " + (k.fingerprint.length() > 22 ? k.fingerprint.substring(0, 22) + "…" : k.fingerprint));
+                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:525: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        tvName.setText(k.name + " 公钥");
+                       ~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:526: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        tvInfo.setText("算法: " + k.type + "\n指纹: " + k.fingerprint);
+                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:560: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+                        tvType.setText("算法类型：" + types[which]);
+                                       ~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/HostListActivity.java:715: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+                    status.setText(finalFilename + " · " + info.type
+                                   ^
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/MainActivity.java:212: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        tvTermCols.setText(HostStore.getZoomColumns(this, 150) + "列");
+                           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/MainActivity.java:681: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            tvTermCols.setText(view.getCols() + "列");
+                               ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/MainActivity.java:932: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        tvTermCols.setText(view.getCols() + "列");
+                           ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/MainActivity.java:1023: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        if (offset > 0) followOutputButton.setText("↓ " + getString(R.string.follow_output) + " · " + offset + " 行");
+                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/SessionDrawer.java:162: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+        title.setText("会话 · " + sessions.size());
+                      ~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/java/dev/northwind/bakassh/SessionSwitcher.java:66: Warning: Do not concatenate text displayed with setText. Use resource string with placeholders. [SetTextI18n]
+            heading.setText("会话 · " + sessions.size());
+                            ~~~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "SetTextI18n":
+   When calling TextView#setText
+   * Never call Number#toString() to format numbers; it will not handle
+   fraction separators and locale-specific digits properly. Consider using
+   String#format with proper format specifications (%d or %f) instead.
+   * Do not pass a string literal (e.g. "Hello") to display text. Hardcoded
+   text can not be properly translated to other languages. Consider using
+   Android resource strings instead.
+   * Do not build messages by concatenating text chunks. Such messages can not
+   be properly translated.
+
+   https://developer.android.com/guide/topics/resources/localization.html
+
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/activity_terminal.xml:258: Warning: Hardcoded string "关闭会话侧栏", should use @string resource [HardcodedText]
+                android:contentDescription="关闭会话侧栏"
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/activity_terminal.xml:278: Warning: Hardcoded string "新建连接", should use @string resource [HardcodedText]
+            android:text="新建连接"
+            ~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/activity_terminal.xml:285: Warning: Hardcoded string "编辑快捷键", should use @string resource [HardcodedText]
+            android:text="编辑快捷键" />
+            ~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_about.xml:120: Warning: Hardcoded string "github.com/northwindlight", should use @string resource [HardcodedText]
+                        android:text="github.com/northwindlight"
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_about.xml:168: Warning: Hardcoded string "github.com/northwindlight/bakassh", should use @string resource [HardcodedText]
+                        android:text="github.com/northwindlight/bakassh"
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_about.xml:216: Warning: Hardcoded string "…/bakassh/releases · APK 下载", should use @string resource [HardcodedText]
+                        android:text="…/bakassh/releases · APK 下载"
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_about.xml:264: Warning: Hardcoded string "libvterm · ConnectBot · JSch", should use @string resource [HardcodedText]
+                        android:text="libvterm · ConnectBot · JSch"
+                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_extra_keys.xml:59: Warning: Hardcoded string "点按布局中的按键，再从下方选择替换；长按拖动可以排序。", should use @string resource [HardcodedText]
+                android:text="点按布局中的按键，再从下方选择替换；长按拖动可以排序。"
+                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_extra_keys.xml:72: Warning: Hardcoded string "添加一行", should use @string resource [HardcodedText]
+                android:text="添加一行" />
+                ~~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_extra_keys.xml:96: Warning: Hardcoded string "自定义文字或符号", should use @string resource [HardcodedText]
+                android:text="自定义文字或符号" />
+                ~~~~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "HardcodedText":
+   Hardcoding text attributes directly in layout files is bad for several
+   reasons:
+
+   * When creating configuration variations (for example for landscape or
+   portrait) you have to repeat the actual text (and keep it up to date when
+   making changes)
+
+   * The application cannot be translated to other languages by just adding
+   new translations for existing string resources.
+
+   There are quickfixes to automatically extract this hardcoded string into a
+   resource lookup.
+
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/activity_terminal.xml:202: Warning: When you define paddingEnd you should probably also define paddingStart for right-to-left symmetry [RtlSymmetry]
+                            android:paddingEnd="8dp"
+                            ~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_about.xml:15: Warning: When you define paddingEnd you should probably also define paddingStart for right-to-left symmetry [RtlSymmetry]
+        android:paddingEnd="12dp">
+        ~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_edit_host.xml:15: Warning: When you define paddingEnd you should probably also define paddingStart for right-to-left symmetry [RtlSymmetry]
+        android:paddingEnd="12dp">
+        ~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_extra_keys.xml:15: Warning: When you define paddingEnd you should probably also define paddingStart for right-to-left symmetry [RtlSymmetry]
+        android:paddingEnd="12dp">
+        ~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_generate_key.xml:15: Warning: When you define paddingEnd you should probably also define paddingStart for right-to-left symmetry [RtlSymmetry]
+        android:paddingEnd="12dp">
+        ~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_import_key.xml:15: Warning: When you define paddingEnd you should probably also define paddingStart for right-to-left symmetry [RtlSymmetry]
+        android:paddingEnd="12dp">
+        ~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_key_detail.xml:15: Warning: When you define paddingEnd you should probably also define paddingStart for right-to-left symmetry [RtlSymmetry]
+        android:paddingEnd="12dp">
+        ~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_key_manager.xml:15: Warning: When you define paddingEnd you should probably also define paddingStart for right-to-left symmetry [RtlSymmetry]
+        android:paddingEnd="12dp">
+        ~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/dialog_settings.xml:15: Warning: When you define paddingEnd you should probably also define paddingStart for right-to-left symmetry [RtlSymmetry]
+        android:paddingEnd="12dp">
+        ~~~~~~~~~~~~~~~~~~
+/home/runner/work/bakassh/bakassh/app/src/main/res/layout/header_host_list.xml:209: Warning: When you define paddingStart you should probably also define paddingEnd for right-to-left symmetry [RtlSymmetry]
+        android:paddingStart="24dp"
+        ~~~~~~~~~~~~~~~~~~~~
+
+   Explanation for issues of type "RtlSymmetry":
+   If you specify padding or margin on the left side of a layout, you should
+   probably also specify padding on the right side (and vice versa) for
+   right-to-left layout symmetry.
+
+/home/runner/work/bakassh/bakassh/app/src/main/AndroidManifest.xml: Warning: The project references RTL attributes, but does not explicitly enable or disable RTL support with android:supportsRtl in the manifest [RtlEnabled]
+
+   Explanation for issues of type "RtlEnabled":
+   To enable right-to-left support, when running on API 17 and higher, you
+   must set the android:supportsRtl attribute in the manifest <application>
+   element.
+
+   If you have started adding RTL attributes, but have not yet finished the
+   migration, you can set the attribute to false to satisfy this lint check.
+
+0 errors, 90 warnings
