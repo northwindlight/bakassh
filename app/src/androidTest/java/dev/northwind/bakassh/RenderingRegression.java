@@ -56,18 +56,23 @@ final class RenderingRegression {
                     frame.getPixel((int) (cellW * 1.5f), sampleY) != 0xffffffff, "ASCII replacement inherited CJK cursor width");
 
             Method glyph = TerminalView.class.getDeclaredMethod("glyphFor", int.class, int.class, int.class, int.class);
+            Method clearGlyphs = TerminalView.class.getDeclaredMethod("clearGlyphCache");
+            clearGlyphs.setAccessible(true);
             glyph.setAccessible(true);
             Paint paint = (Paint) field(view, "textPaint");
             for (int cp : new int[]{'i', 'W', 'f', 0xe9, 0x2192, 0x4e2d}) {
                 for (int style = 0; style < 4; style++) {
                     int width = cp == 0x4e2d ? 2 : 1;
-                    Bitmap expected = (Bitmap) glyph.invoke(view, cp, width, style, 0xaabbcc);
+                    Bitmap cached = (Bitmap) glyph.invoke(view, cp, width, style, 0xaabbcc);
+                    Bitmap expected = cached.copy(cached.getConfig(), false); // 清缓存会回收原位图
                     // Simulate state left by live zoom, a CJK cursor, or another style.
                     paint.setTextSize(100);
                     paint.setTextScaleX(3);
                     paint.setTextSkewX(.5f);
                     paint.setFakeBoldText(true);
-                    Bitmap actual = (Bitmap) glyph.invoke(view, cp, width, style, 0x112233);
+                    // 同色重绘：清缓存强制重新栅格化。换颜色会让 Skia 按亮度调整文字 gamma，覆盖率本来就不同。
+                    clearGlyphs.invoke(view);
+                    Bitmap actual = (Bitmap) glyph.invoke(view, cp, width, style, 0xaabbcc);
                     check(paint.getTextScaleX() <= 1f, "glyph stretched beyond natural width");
                     check(Math.abs(paint.getTextSize() - (float) field(view, "fontPx")) < .001f, "stale zoom font size");
                     for (int y = 0; y < actual.getHeight(); y++) {

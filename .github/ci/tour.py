@@ -53,7 +53,7 @@ def center(node):
     return (x1 + x2) // 2, (y1 + y2) // 2
 
 
-def find(rid=None, text=None, contains=None, timeout=20):
+def find(rid=None, text=None, contains=None, timeout=20, scroll=False):
     deadline = time.time() + timeout
     while time.time() < deadline:
         for node in nodes():
@@ -64,12 +64,14 @@ def find(rid=None, text=None, contains=None, timeout=20):
             if contains and contains not in (node.get("text") or ""):
                 continue
             return node
+        if scroll:
+            sh("input swipe 540 1700 540 1000 300")
         time.sleep(1)
     raise RuntimeError(f"找不到控件 rid={rid} text={text} contains={contains}")
 
 
-def tap(rid=None, text=None, contains=None, timeout=20):
-    x, y = center(find(rid, text, contains, timeout))
+def tap(rid=None, text=None, contains=None, timeout=20, scroll=False):
+    x, y = center(find(rid, text, contains, timeout, scroll))
     sh(f"input tap {x} {y}")
     time.sleep(0.8)
 
@@ -80,12 +82,25 @@ def type_text(value):
     time.sleep(0.3)
 
 
+def ime_shown():
+    out = sh("dumpsys input_method", check=False) or b""
+    return b"mInputShown=true" in out
+
+
+def hide_ime():
+    # 只在软键盘显示时按返回：键盘收起时返回键会关闭编辑页。
+    if ime_shown():
+        sh("input keyevent KEYCODE_BACK")
+        time.sleep(0.8)
+
+
 def fill(rid, value, clear=0):
-    tap(rid)
+    tap(rid, scroll=True)
     if clear:
         sh("input keyevent KEYCODE_MOVE_END")
         sh("input keyevent " + " ".join(["KEYCODE_DEL"] * clear))
     type_text(value)
+    hide_ime()
 
 
 def back():
@@ -127,7 +142,7 @@ def add_host(name, address, port, user, password=None, startup=None, capture=Non
         fill("et_host_port", str(port), clear=4)
     fill("et_host_user", user)
     if password is not None:
-        tap("btn_toggle_password")
+        tap("btn_toggle_password", scroll=True)
         fill("et_host_password", password)
     if startup:
         fill("et_host_startup", startup)

@@ -14,6 +14,9 @@ final class KnownHostsStore implements HostKeyTrust.Store {
         synchronized (KnownHostsStore.class) {
             String encoded = preferences.getString(endpoint, null);
             if (encoded == null) return null;
+            // android.util.Base64 会跳过非字母表字符而不报错；先严格校验，损坏记录不能被当成另一把公钥。
+            if (!encoded.matches("[A-Za-z0-9+/]+={0,2}") || encoded.length() % 4 != 0)
+                throw new IOException("保存的主机指纹损坏，请在主机菜单中核实处理");
             try { return Base64.decode(encoded, Base64.NO_WRAP); }
             catch (IllegalArgumentException error) { throw new IOException("保存的主机指纹损坏，请在主机菜单中核实处理"); }
         }

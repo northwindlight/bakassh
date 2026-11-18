@@ -12,8 +12,6 @@ demo clock -e hhmm 0930
 demo battery -e level 100 -e plugged false
 demo network -e wifi show -e level 4 -e mobile hide
 demo notifications -e visible false
-# 不显示软键盘：截图只看应用界面，文字用 input text 直接注入。
-for ime in $(adb shell ime list -s); do adb shell ime disable "$ime" >/dev/null || true; done
 adb install -r -g "$app_apk"
 status=0
 python3 .github/ci/tour.py "$out" || status=1
