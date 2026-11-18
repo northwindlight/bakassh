@@ -44,6 +44,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: ${{ env.GRADLE_VERSION }}
+          # 功能分支也写依赖缓存，避免每次重新从 Maven Central 下载而遇到 429 限流。
+          cache-read-only: false
 
       - name: 签名 keystore
         env:
