@@ -25,7 +25,8 @@ for mode in default security; do
     args=()
     [[ $mode != default ]] && args=(-e mode "$mode")
     timeout 600 adb shell am instrument -w "${args[@]}" "$runner" > "$out/instrument-$mode.txt" 2>&1
-    if grep -q 'INSTRUMENTATION_CODE: -1' "$out/instrument-$mode.txt"; then echo "instrument $mode: PASS"
+    # 自定义 Instrumentation 在 -w 模式下只输出 stream 文本：成功以 PASS 开头，失败为异常栈。
+    if grep -q '^PASS ' "$out/instrument-$mode.txt"; then echo "instrument $mode: PASS"
     else echo "instrument $mode: FAIL"; status=1; fi
 done
 adb logcat -d -b crash > "$out/logcat-crash.txt" 2>&1 || true
