@@ -54,6 +54,7 @@ jobs:
           if [ -n "$KEYSTORE" ]; then
             mkdir -p ~/.android
             printf '%s' "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
+            echo "KEYSTORE_ARG=-PdebugKeystore=$HOME/.android/debug.keystore" >> "$GITHUB_ENV"
             echo "使用仓库 secret 中的签名 keystore"
           else
             echo "::warning::未配置 DEBUG_KEYSTORE_BASE64，本次 APK 使用 CI 临时签名，不能覆盖安装已有版本"
@@ -68,7 +69,9 @@ jobs:
       - name: 构建
         run: |
           set -o pipefail
-          gradle --no-daemon --stacktrace :app:assembleRelease :app:lintRelease 2>&1 | tee ci-out/build-release.txt
+          gradle --no-daemon --stacktrace $KEYSTORE_ARG :app:assembleRelease :app:lintRelease 2>&1 | tee ci-out/build-release.txt
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | tee ci-out/release-cert.txt
           gradle --no-daemon -PemulatorAbi :app:assembleDebug :app:assembleDebugAndroidTest 2>&1 | tee ci-out/build-debug.txt
           cp app/build/reports/lint-results-release.txt ci-out/ 2>/dev/null || true
 
