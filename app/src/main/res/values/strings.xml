@@ -78,6 +78,8 @@
     <string name="keys_heading">你的连接身份</string>
     <string name="keys_description">在主机配置中选择密钥，或设置默认密钥。</string>
     <string name="sessions_running">%1$d 个会话正在运行</string>
+    <string name="sessions_ended">%1$d 个会话已断开</string>
+    <string name="sessions_ended_suffix">" · %1$d 个已断开"</string>
     <string name="sessions_running_action">点按返回终端</string>
     <string name="host_sessions_running">%1$d 个会话运行中</string>
     <string name="settings_terminal">终端</string>

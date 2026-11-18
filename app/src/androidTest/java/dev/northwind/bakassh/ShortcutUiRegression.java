@@ -45,7 +45,9 @@ final class ShortcutUiRegression {
             measure(drawer, width, height);
             int before = terminal.getHeight();
             int toolbar = drawer.findViewById(R.id.layout_terminal_toolbar).getHeight();
-            check(before == height - toolbar, "permanent session chrome reduced terminal height");
+            // 扩展按键栏本身属于终端下方的固定区域（含上下留白），只排除额外的常驻会话栏。
+            int keys = drawer.findViewById(R.id.layout_extra_keys_box).getHeight();
+            check(before == height - toolbar - keys, "permanent session chrome reduced terminal height");
             drawer.openDrawer(androidx.core.view.GravityCompat.START, false);
             measure(drawer, width, height);
             check(terminal.getHeight() == before, "opening session drawer resized terminal");

@@ -208,8 +208,13 @@ public class HostListActivity extends AppCompatActivity {
     private void updateActiveSessions() {
         SessionService service = SessionService.current();
         int count = service == null ? 0 : service.sessions().size();
+        int running = 0;
+        if (service != null) for (TerminalSession session : service.sessions()) if (session.isActive()) running++;
         activeSessions.setVisibility(count == 0 ? View.GONE : View.VISIBLE);
-        activeSessionsLabel.setText(getString(R.string.sessions_running, count));
+        // 已结束的会话仍保留最后画面，但不能算作“正在运行”。
+        String label = running > 0 ? getString(R.string.sessions_running, running) : getString(R.string.sessions_ended, count);
+        if (running > 0 && running < count) label += getString(R.string.sessions_ended_suffix, count - running);
+        activeSessionsLabel.setText(label);
         adapter.notifyDataSetChanged();
     }
 

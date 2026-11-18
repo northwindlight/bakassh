@@ -211,12 +211,14 @@ def modifier():
 
 
 def drawer():
+    hide_ime()
     tap("btn_term_sessions")
     shot("14-drawer")
-    back()
+    tap("btn_close_session_drawer")
 
 
 def disconnect():
+    hide_ime()
     subprocess.run(["sudo", "pkill", "-KILL", "-u", "demo"], check=False)
     find(rid="btn_session_state_reconnect", timeout=40)
     shot("15-disconnected")
@@ -224,7 +226,8 @@ def disconnect():
 
 def reconnect():
     tap("btn_session_state_reconnect")
-    time.sleep(6)
+    find(contains="已连接", timeout=40)
+    hide_ime()
     shot("16-reconnected")
 
 

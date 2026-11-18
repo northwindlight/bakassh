@@ -213,7 +213,7 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="github.com/northwindlight/bakassh/releases"
+                        android:text="…/bakassh/releases · APK 下载"
                         android:textSize="13sp"
                         android:fontFamily="monospace"
                         android:maxLines="1"
