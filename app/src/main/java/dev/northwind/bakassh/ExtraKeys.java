@@ -58,6 +58,15 @@ public class ExtraKeys {
             case "RIGHT": return "→";
             case "ENTER": return "↵";
             case "TAB": return "Tab";
+            // 键名统一首字母大写，与 Tab 一致（键值本身仍是大写，布局与配置不受影响）
+            case "ESC": return "Esc";
+            case "CTRL": return "Ctrl";
+            case "ALT": return "Alt";
+            case "SHIFT": return "Shift";
+            case "HOME": return "Home";
+            case "END": return "End";
+            case "DEL": return "Del";
+            case "INS": return "Ins";
             case "PGUP": return "PgUp";
             case "PGDN": return "PgDn";
             case "BKSP": return "⌫";

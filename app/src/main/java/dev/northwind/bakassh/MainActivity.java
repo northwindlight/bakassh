@@ -922,7 +922,11 @@ public class MainActivity extends AppCompatActivity {
     private void updateSessionTitle() {
         if (session == null) return;
         tvTermTitle.setText(session.title);
-        tvTermStatus.setText(session.detail() + " · " + session.endpoint);
+        // 状态点已表示连接状态：连接正常时只显示地址，默认 22 端口省略，避免地址被截成“n…site:22”。
+        String endpoint = session.endpoint.endsWith(":22")
+                ? session.endpoint.substring(0, session.endpoint.length() - 3) : session.endpoint;
+        tvTermStatus.setText(session.state() == TerminalSession.State.CONNECTED
+                ? endpoint : session.detail() + " · " + endpoint);
         android.graphics.drawable.Drawable dot = tvTermStatus.getCompoundDrawablesRelative()[0];
         if (dot != null) dot.mutate().setTint(SessionDrawer.stateColor(session));
         tvTermCols.setText(view.getCols() + "列");

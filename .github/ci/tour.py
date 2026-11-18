@@ -182,7 +182,7 @@ def editor_validation():
 
 def hosts():
     add_host("Homelab", "10.0.2.2", 2222, "demo", password="demo",
-             startup="ls -la --color=always /etc | head -n 30", capture="03-editor-filled")
+             startup="cat blocks.txt; ls -la --color=always /etc | head -n 20", capture="03-editor-filled")
     add_host("nas", "192.168.1.20", 22, "admin")
     add_host("build-box", "build.example.org", 2200, "ci")
     shot("04-home-hosts")
@@ -191,10 +191,12 @@ def hosts():
 def settings_and_about():
     tap("chip_settings")
     shot("05-settings")
-    tap("settings_about")
+    # 60 列：格子约 18px，方块拼缝在截图里足够明显
+    fill("et_settings_cols", "60", clear=4)
+    tap("settings_about", scroll=True)
     shot("06-about")
     back()
-    back()
+    tap("btn_save_settings")
 
 
 def keys():
@@ -220,9 +222,9 @@ def terminal():
 
 
 def modifier():
-    tap(text="CTRL")
+    tap(text="Ctrl")
     shot("13-terminal-ctrl")
-    tap(text="CTRL")
+    tap(text="Ctrl")
 
 
 def drawer():
@@ -241,7 +243,13 @@ def disconnect():
 
 def reconnect():
     tap("btn_session_state_reconnect")
-    find(contains="已连接", timeout=40)
+    # 连接成功后状态卡片消失（连接中 / 失败时都会显示）。
+    for _ in range(40):
+        try:
+            find(rid="card_session_state", timeout=1)
+            time.sleep(1)
+        except RuntimeError:
+            break
     hide_ime()
     shot("16-reconnected")
 

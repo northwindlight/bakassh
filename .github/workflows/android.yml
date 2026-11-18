@@ -98,6 +98,8 @@ jobs:
           sudo useradd -m -s /bin/bash demo
           echo 'demo:demo' | sudo chpasswd
           echo "PS1='\[\e[1;32m\]demo@homelab\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '" | sudo tee -a /home/demo/.bashrc > /dev/null
+          # 方块元素样张：截图里检查整数边界拼接是否无缝（Claude Code logo 同款字符）
+          python3 -c "print('\x1b[38;2;215;119;87m ▐▛███▜▌\n▝▜█████▛▘\n  ▘▘ ▝▝\x1b[0m\n▁▂▃▄▅▆▇█▉▊▋▌▍▎▏ ░▒▓ ▀▄▐▌▖▗▘▙▚▛▜▝▞▟')" | sudo tee /home/demo/blocks.txt > /dev/null
           sudo mkdir -p /run/sshd
           sudo /usr/sbin/sshd -p 2222 -o PasswordAuthentication=yes -o KbdInteractiveAuthentication=yes
 
