@@ -19,7 +19,7 @@
             android:background="@color/term_background"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
+            android:paddingStart="4dp"
             android:paddingEnd="4dp">
             <ImageButton
                 android:id="@+id/btn_term_sessions"
@@ -50,10 +50,13 @@
                     android:id="@+id/tv_term_status"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:drawableStart="@drawable/bg_status_dot"
+                    android:drawablePadding="5dp"
                     android:ellipsize="middle"
+                    android:gravity="center_vertical"
                     android:singleLine="true"
                     android:textColor="?attr/colorOnSurfaceVariant"
-                    android:textSize="10sp" />
+                    android:textSize="11sp" />
             </LinearLayout>
             <TextView
                 android:id="@+id/tv_term_cols"
@@ -101,16 +104,120 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:scrollbars="vertical" />
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_follow_output"
-                style="@style/Widget.Material3.Button.TonalButton"
-                android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:layout_gravity="bottom|end"
-                android:layout_margin="12dp"
-                android:text="回到底部"
-                android:textSize="12sp"
-                android:visibility="gone" />
+            <!-- 覆盖在终端底部，不占终端行列：回到底部按钮与连接状态卡片。 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom"
+                android:orientation="vertical">
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_follow_output"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="48dp"
+                    android:layout_gravity="end"
+                    android:layout_margin="12dp"
+                    android:text="@string/follow_output"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/card_session_state"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:clickable="true"
+                    android:focusable="false"
+                    android:visibility="gone"
+                    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh"
+                    app:cardCornerRadius="20dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="?attr/colorOutlineVariant"
+                    app:strokeWidth="1dp">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingStart="16dp"
+                        android:paddingTop="14dp"
+                        android:paddingEnd="4dp"
+                        android:paddingBottom="8dp">
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:gravity="center_vertical">
+                            <com.google.android.material.progressindicator.CircularProgressIndicator
+                                android:id="@+id/progress_session_state"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:indeterminate="true"
+                                app:indicatorSize="20dp"
+                                app:trackThickness="2dp" />
+                            <ImageView
+                                android:id="@+id/icon_session_state"
+                                android:layout_width="20dp"
+                                android:layout_height="20dp"
+                                android:src="@drawable/ic_error"
+                                android:contentDescription="@null"
+                                android:visibility="gone" />
+                            <LinearLayout
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:layout_marginStart="14dp"
+                                android:orientation="vertical">
+                                <TextView
+                                    android:id="@+id/tv_session_state_title"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:textColor="?attr/colorOnSurface"
+                                    android:textSize="15sp" />
+                                <TextView
+                                    android:id="@+id/tv_session_state_detail"
+                                    android:layout_width="match_parent"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginTop="2dp"
+                                    android:ellipsize="end"
+                                    android:fontFamily="monospace"
+                                    android:maxLines="3"
+                                    android:textColor="?attr/colorOnSurfaceVariant"
+                                    android:textSize="12sp" />
+                            </LinearLayout>
+                            <ImageButton
+                                android:id="@+id/btn_session_state_hide"
+                                android:layout_width="40dp"
+                                android:layout_height="40dp"
+                                android:background="?attr/selectableItemBackgroundBorderless"
+                                android:contentDescription="@string/hide_banner"
+                                android:padding="10dp"
+                                android:src="@drawable/ic_close"
+                                app:tint="?attr/colorOnSurfaceVariant" />
+                        </LinearLayout>
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:paddingEnd="8dp"
+                            android:gravity="end">
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_session_state_close"
+                                style="@style/Widget.Material3.Button.TextButton"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/close_session" />
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btn_session_state_reconnect"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="@string/reconnect"
+                                app:icon="@drawable/ic_refresh" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+            </LinearLayout>
         </FrameLayout>
         <LinearLayout
             android:id="@+id/layout_extra_keys_box"

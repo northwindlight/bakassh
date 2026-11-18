@@ -77,4 +77,33 @@
     <string name="optional">可选</string>
     <string name="keys_heading">你的连接身份</string>
     <string name="keys_description">在主机配置中选择密钥，或设置默认密钥。</string>
+    <string name="sessions_running">%1$d 个会话正在运行</string>
+    <string name="sessions_running_action">点按返回终端</string>
+    <string name="host_sessions_running">%1$d 个会话运行中</string>
+    <string name="settings_terminal">终端</string>
+    <string name="background_settings_help">前台服务、休眠锁与电池优化</string>
+    <string name="extra_keys_help">点选替换、拖动排序</string>
+    <string name="settings_about">关于</string>
+    <string name="about_title">关于 bakaSSH</string>
+    <string name="about_tagline">Android 上的 SSH 终端，代码由 AI 编写。</string>
+    <string name="about_version">版本 %1$s</string>
+    <string name="about_links">链接</string>
+    <string name="about_author">作者</string>
+    <string name="about_author_url" translatable="false">https://github.com/northwindlight</string>
+    <string name="about_source">源代码</string>
+    <string name="about_source_url" translatable="false">https://github.com/northwindlight/bakassh</string>
+    <string name="about_releases">版本发布</string>
+    <string name="about_releases_url" translatable="false">https://github.com/northwindlight/bakassh/releases</string>
+    <string name="about_licenses">开源组件与许可</string>
+    <string name="about_licenses_help">libvterm、ConnectBot、JSch 等</string>
+    <string name="about_licenses_url" translatable="false">https://github.com/northwindlight/bakassh/blob/master/NOTICE-third-party.md</string>
+    <string name="link_copied">无法打开浏览器，已复制链接</string>
+    <string name="reconnect">重新连接</string>
+    <string name="close_session">关闭会话</string>
+    <string name="cancel_connection">取消连接</string>
+    <string name="hide_banner">收起提示</string>
+    <string name="state_connecting">正在连接</string>
+    <string name="state_failed">连接失败</string>
+    <string name="state_kept_screen">%1$s · 已保留最后画面</string>
+    <string name="follow_output">回到底部</string>
 </resources>

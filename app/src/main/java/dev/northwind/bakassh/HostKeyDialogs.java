@@ -10,8 +10,8 @@ final class HostKeyDialogs {
         HostKeyTrust.Challenge key = request.challenge;
         AlertDialog dialog = new MaterialAlertDialogBuilder(activity)
                 .setTitle("首次连接：确认主机指纹")
-                .setMessage(key.endpoint + "\n" + key.algorithm + "\n\n" + key.fingerprint +
-                        "\n\n请与服务器提供的指纹核对。确认后保存，后续连接必须匹配。")
+                .setMessage(text(key.endpoint + "\n" + key.algorithm + "\n\n", key.fingerprint,
+                        "\n\n请与服务器提供的指纹核对。确认后保存，后续连接必须匹配。"))
                 .setPositiveButton("信任并连接", (d, w) -> request.answer(true))
                 .setNegativeButton("取消连接", (d, w) -> request.answer(false))
                 .setOnCancelListener(d -> request.answer(false)).show();
@@ -21,9 +21,9 @@ final class HostKeyDialogs {
 
     static AlertDialog changed(Activity activity, HostKeyTrust.Changed change) {
         AlertDialog dialog = new MaterialAlertDialogBuilder(activity).setTitle("主机指纹已变化，连接已阻止")
-                .setMessage(change.received.endpoint + "\n\n已保存：\n" + change.previous +
-                        "\n\n本次收到（" + change.received.algorithm + "）：\n" + change.received.fingerprint +
-                        "\n\n请先核实服务器身份。如确认更换了主机密钥，可从主机菜单的“主机指纹”移除旧记录，再重新连接。")
+                .setMessage(text(change.received.endpoint + "\n\n已保存：\n", change.previous,
+                        "\n\n本次收到（" + change.received.algorithm + "）：\n", change.received.fingerprint,
+                        "\n\n请先核实服务器身份。如确认更换了主机密钥，可从主机菜单的“主机指纹”移除旧记录，再重新连接。"))
                 .setPositiveButton("知道了", null)
                 .setNeutralButton("管理已保存公钥", (d, w) -> manage(activity, change.received.endpoint)).show();
         selectable(dialog);
@@ -75,6 +75,22 @@ final class HostKeyDialogs {
             selectable(dialog);
         } catch (Exception error) { failed(activity); }
     }
+    /** 交替拼接说明文字和等宽显示的指纹（奇数位为指纹），方便逐段核对。 */
+    private static CharSequence text(String... parts) {
+        android.text.SpannableStringBuilder result = new android.text.SpannableStringBuilder();
+        for (int i = 0; i < parts.length; i++) {
+            int start = result.length();
+            result.append(parts[i]);
+            if (i % 2 == 1) {
+                result.setSpan(new android.text.style.TypefaceSpan("monospace"), start, result.length(),
+                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                result.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), start, result.length(),
+                        android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        return result;
+    }
+
     private static void failed(Activity activity) {
         Toast.makeText(activity, "无法读取或修改主机指纹，记录未被自动替换", Toast.LENGTH_LONG).show();
     }

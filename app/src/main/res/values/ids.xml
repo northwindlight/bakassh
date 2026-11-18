@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- View tag：输入框已挂上清除错误的监听。 -->
+    <item name="tag_error_watcher" type="id" />
+</resources>

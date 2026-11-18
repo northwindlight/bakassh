@@ -25,12 +25,71 @@
         android:paddingStart="24dp"
         android:paddingEnd="24dp"
         android:layout_marginTop="8dp" />
+    <!-- 有会话时最先看到返回入口；没有会话时整块隐藏。 -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/card_active_sessions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginTop="24dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:visibility="gone"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp"
+        app:cardBackgroundColor="?attr/colorPrimaryContainer">
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="72dp"
+            android:gravity="center_vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp">
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_sessions"
+                app:tint="?attr/colorOnPrimaryContainer"
+                android:contentDescription="@null" />
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="16dp"
+                android:orientation="vertical">
+                <TextView
+                    android:id="@+id/tv_active_sessions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="16sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="?attr/colorOnPrimaryContainer" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sessions_running_action"
+                    android:textSize="13sp"
+                    android:layout_marginTop="2dp"
+                    android:textColor="?attr/colorOnPrimaryContainer" />
+            </LinearLayout>
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_arrow_forward"
+                app:tint="?attr/colorOnPrimaryContainer"
+                android:contentDescription="@null" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginStart="16dp"
         android:layout_marginEnd="16dp"
-        android:layout_marginTop="28dp">
+        android:layout_marginTop="16dp">
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/chip_manage_keys"
             android:layout_width="0dp"
@@ -39,36 +98,50 @@
             android:layout_margin="4dp"
             android:clickable="true"
             android:focusable="true"
-            app:cardCornerRadius="24dp"
+            app:cardCornerRadius="20dp"
             app:cardElevation="0dp"
             app:strokeWidth="0dp"
             app:cardBackgroundColor="?attr/colorSecondaryContainer">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="120dp"
-                android:orientation="vertical"
-                android:padding="20dp">
+                android:minHeight="72dp"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp">
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@drawable/ic_key"
                     app:tint="?attr/colorOnSecondaryContainer"
                     android:contentDescription="@null" />
-                <TextView
-                    android:layout_width="match_parent"
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/keys_title"
-                    android:textSize="18sp"
-                    android:textColor="?attr/colorOnSecondaryContainer"
-                    android:layout_marginTop="12dp" />
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/home_keys_description"
-                    android:textSize="12sp"
-                    android:textColor="?attr/colorOnSecondaryContainer"
-                    android:layout_marginTop="4dp" />
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/keys_title"
+                        android:textSize="16sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:textColor="?attr/colorOnSecondaryContainer" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_keys_description"
+                        android:textSize="12sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:textColor="?attr/colorOnSecondaryContainer"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <com.google.android.material.card.MaterialCardView
@@ -79,56 +152,59 @@
             android:layout_margin="4dp"
             android:clickable="true"
             android:focusable="true"
-            app:cardCornerRadius="24dp"
+            app:cardCornerRadius="20dp"
             app:cardElevation="0dp"
             app:strokeWidth="0dp"
-            app:cardBackgroundColor="?attr/colorSecondaryContainer">
+            app:cardBackgroundColor="?attr/colorTertiaryContainer">
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="120dp"
-                android:orientation="vertical"
-                android:padding="20dp">
+                android:minHeight="72dp"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp">
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
                     android:src="@drawable/ic_keyboard"
-                    app:tint="?attr/colorOnSecondaryContainer"
+                    app:tint="?attr/colorOnTertiaryContainer"
                     android:contentDescription="@null" />
-                <TextView
-                    android:layout_width="match_parent"
+                <LinearLayout
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/extra_keys_title"
-                    android:textSize="18sp"
-                    android:textColor="?attr/colorOnSecondaryContainer"
-                    android:layout_marginTop="12dp" />
-                <TextView
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/home_extra_keys_description"
-                    android:textSize="12sp"
-                    android:textColor="?attr/colorOnSecondaryContainer"
-                    android:layout_marginTop="4dp" />
+                    android:layout_weight="1"
+                    android:layout_marginStart="12dp"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/extra_keys_title"
+                        android:textSize="16sp"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:textColor="?attr/colorOnTertiaryContainer" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_extra_keys_description"
+                        android:textSize="12sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:textColor="?attr/colorOnTertiaryContainer"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_active_sessions"
-        style="@style/Widget.Material3.Button.TonalButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:minHeight="56dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginTop="16dp"
-        android:text="@string/sessions"
-        app:icon="@drawable/ic_sessions"
-        android:visibility="gone" />
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="@string/hosts_saved"
         android:textSize="14sp"
+        android:fontFamily="sans-serif-medium"
         android:textColor="?attr/colorPrimary"
         android:paddingStart="24dp"
         android:paddingTop="28dp"
@@ -142,10 +218,12 @@
         android:padding="32dp"
         android:visibility="gone">
         <ImageView
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+            android:layout_width="88dp"
+            android:layout_height="88dp"
+            android:background="@drawable/bg_avatar_host"
+            android:padding="24dp"
             android:src="@drawable/ic_terminal"
-            app:tint="?attr/colorOnSurfaceVariant"
+            app:tint="?attr/colorOnSecondaryContainer"
             android:contentDescription="@null" />
         <TextView
             android:layout_width="match_parent"

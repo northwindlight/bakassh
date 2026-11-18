@@ -29,6 +29,8 @@ public final class SessionService extends Service implements TerminalSession.Lis
     private static final int NOTIFICATION_ID = 1;
     private static SessionService instance;
     private final LinkedHashMap<String, TerminalSession> sessions = new LinkedHashMap<>();
+    /** 每个会话的连接参数（不含密码），用于重新连接和主机列表的运行标记。 */
+    private final java.util.HashMap<String, Host> origins = new java.util.HashMap<>();
     private final ArrayList<Listener> listeners = new ArrayList<>();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final LocalBinder binder = new LocalBinder();
@@ -80,6 +82,7 @@ public final class SessionService extends Service implements TerminalSession.Lis
         if (intent != null && CLOSE_ALL.equals(intent.getAction())) {
             for (TerminalSession session : sessions()) session.close();
             sessions.clear();
+            origins.clear();
             changed();
         }
         // TCP connections cannot survive process death. Do not create a misleading empty restart.
@@ -96,6 +99,7 @@ public final class SessionService extends Service implements TerminalSession.Lis
         TerminalSession session = new TerminalSession(UUID.randomUUID().toString(), host.title(),
                 host.user + "@" + host.host + ":" + host.port, cols, rows, zoomColumns, this);
         sessions.put(session.id, session);
+        origins.put(session.id, host);
         changed();
         session.connect(host.host, host.port, host.user, host.authType, keyPath, passphrase, password, host.startup,
                 new KnownHostsStore(this));
@@ -104,7 +108,37 @@ public final class SessionService extends Service implements TerminalSession.Lis
 
     void close(String id) {
         TerminalSession session = sessions.remove(id);
+        origins.remove(id);
         if (session != null) session.close();
+        changed();
+    }
+
+    Host origin(String id) { return origins.get(id); }
+
+    /** 某台已保存主机上仍在连接或已连接的会话数。 */
+    int activeCount(String hostId) {
+        if (hostId == null) return 0;
+        int count = 0;
+        for (TerminalSession session : sessions.values()) {
+            Host origin = origins.get(session.id);
+            if (origin != null && hostId.equals(origin.id) && session.isActive()) count++;
+        }
+        return count;
+    }
+
+    /** 重新连接：新会话接替旧会话在列表中的位置和名称，旧会话随后关闭。 */
+    void replace(String oldId, TerminalSession next) {
+        TerminalSession old = sessions.get(oldId);
+        if (old == null || sessions.get(next.id) != next) return;
+        next.title = old.title;
+        java.util.List<TerminalSession> order = new ArrayList<>(sessions.values());
+        sessions.clear();
+        for (TerminalSession item : order) {
+            if (item == old) sessions.put(next.id, next);
+            else if (item != next) sessions.put(item.id, item);
+        }
+        origins.remove(oldId);
+        old.close();
         changed();
     }
 
@@ -200,6 +234,7 @@ public final class SessionService extends Service implements TerminalSession.Lis
     @Override public void onDestroy() {
         for (TerminalSession session : sessions()) session.close();
         sessions.clear();
+        origins.clear();
         releaseLocks();
         listeners.clear();
         main.removeCallbacksAndMessages(null);

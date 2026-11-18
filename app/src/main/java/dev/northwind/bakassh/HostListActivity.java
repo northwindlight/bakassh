@@ -44,7 +44,8 @@ public class HostListActivity extends AppCompatActivity {
     private ListView list;
     private View emptyStateView;
     private TextView subtitleView;
-    private MaterialButton activeSessions;
+    private View activeSessions;
+    private TextView activeSessionsLabel;
     private final SessionService.Listener sessionListener = new SessionService.Listener() {
         @Override public void onSessionsChanged() { updateActiveSessions(); }
         @Override public void onSessionData(TerminalSession session) { }
@@ -59,9 +60,9 @@ public class HostListActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        // 只给主机列表启用壁纸取色；终端界面固定深色，不参与 DynamicColors。
+        // 与 DynamicColors.applyToActivitiesIfAvailable 相同的时机：在 Activity 创建视图前叠加壁纸配色。
         DynamicColors.applyToActivityIfAvailable(this);
+        super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_host_list);
 
         try { hosts = HostStore.load(this); }
@@ -72,11 +73,21 @@ public class HostListActivity extends AppCompatActivity {
         list.addHeaderView(header, null, false);
         emptyStateView = header.findViewById(R.id.layout_empty_state);
         subtitleView = header.findViewById(R.id.tv_host_subtitle);
-        activeSessions = header.findViewById(R.id.btn_active_sessions);
+        activeSessions = header.findViewById(R.id.card_active_sessions);
+        activeSessionsLabel = header.findViewById(R.id.tv_active_sessions);
         activeSessions.setOnClickListener(v -> showActiveSessions());
 
         ExtendedFloatingActionButton fabAdd = findViewById(R.id.fab_add_host);
         fabAdd.setOnClickListener(v -> editDialog(-1));
+        // 向下滚动时收起成圆形按钮，回到顶部再展开，不挡住最后一张卡片的菜单。
+        list.setOnScrollListener(new android.widget.AbsListView.OnScrollListener() {
+            @Override public void onScrollStateChanged(android.widget.AbsListView view, int state) { }
+            @Override public void onScroll(android.widget.AbsListView view, int first, int visible, int total) {
+                boolean top = first == 0 && (view.getChildCount() == 0 || view.getChildAt(0).getTop() >= -dp(24));
+                if (top && !fabAdd.isExtended()) fabAdd.extend();
+                else if (!top && fabAdd.isExtended()) fabAdd.shrink();
+            }
+        });
 
         header.findViewById(R.id.chip_manage_keys).setOnClickListener(v -> manageKeysDialog());
         header.findViewById(R.id.chip_extra_keys).setOnClickListener(v -> extraKeysDialog());
@@ -97,10 +108,20 @@ public class HostListActivity extends AppCompatActivity {
                 Host h = hosts.get(i);
                 TextView tvTitle = row.findViewById(R.id.tv_host_title);
                 TextView tvEndpoint = row.findViewById(R.id.tv_host_endpoint);
+                TextView tvSessions = row.findViewById(R.id.tv_host_sessions);
                 ImageButton btnMore = row.findViewById(R.id.btn_host_more);
 
                 tvTitle.setText(h.title());
-                tvEndpoint.setText(h.user + "@" + h.host + ":" + h.port);
+                tvEndpoint.setText(h.user + "@" + h.host + (h.port != 22 ? ":" + h.port : ""));
+                bindAvatar(row.findViewById(R.id.tv_host_avatar), h);
+                SessionService service = SessionService.current();
+                int running = service == null ? 0 : service.activeCount(h.id);
+                tvSessions.setVisibility(running > 0 ? View.VISIBLE : View.GONE);
+                if (running > 0) {
+                    tvSessions.setText(getString(R.string.host_sessions_running, running));
+                    android.graphics.drawable.Drawable dot = tvSessions.getCompoundDrawablesRelative()[0];
+                    if (dot != null) dot.mutate().setTint(SessionDrawer.CONNECTED);
+                }
 
                 btnMore.setOnClickListener(v -> showHostActionMenu(btnMore, i));
                 // ListView 的 OnItemClick 会被 clickable 的卡片吃掉，这里显式绑定。
@@ -121,6 +142,22 @@ public class HostListActivity extends AppCompatActivity {
         MainActivity.out(this, "HOSTLIST shown, hosts=" + hosts.size()
                 + " cols=" + HostStore.getTargetCols(this, 150));
         if (!hostsReadable) showHostStorageError();
+    }
+
+    private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
+
+    /** 首字头像：按主机 ID 在三种容器色之间轮换，壁纸取色时一起变化。 */
+    private void bindAvatar(TextView avatar, Host h) {
+        String title = h.title().trim();
+        int first = title.isEmpty() ? '?' : title.codePointAt(0);
+        avatar.setText(new String(Character.toChars(Character.toUpperCase(first))));
+        int[][] palette = {
+                {com.google.android.material.R.attr.colorPrimaryContainer, com.google.android.material.R.attr.colorOnPrimaryContainer},
+                {com.google.android.material.R.attr.colorSecondaryContainer, com.google.android.material.R.attr.colorOnSecondaryContainer},
+                {com.google.android.material.R.attr.colorTertiaryContainer, com.google.android.material.R.attr.colorOnTertiaryContainer}};
+        int[] pair = palette[Math.floorMod(h.id == null ? 0 : h.id.hashCode(), palette.length)];
+        avatar.setBackgroundTintList(android.content.res.ColorStateList.valueOf(SessionDrawer.color(this, pair[0])));
+        avatar.setTextColor(SessionDrawer.color(this, pair[1]));
     }
 
     private void showHostStorageError() {
@@ -172,7 +209,8 @@ public class HostListActivity extends AppCompatActivity {
         SessionService service = SessionService.current();
         int count = service == null ? 0 : service.sessions().size();
         activeSessions.setVisibility(count == 0 ? View.GONE : View.VISIBLE);
-        activeSessions.setText("返回会话 · " + count);
+        activeSessionsLabel.setText(getString(R.string.sessions_running, count));
+        adapter.notifyDataSetChanged();
     }
 
     private void showActiveSessions() {
@@ -336,8 +374,7 @@ public class HostListActivity extends AppCompatActivity {
         root.findViewById(R.id.btn_save_host).setOnClickListener(v -> {
             String host = etIp.getText() != null ? etIp.getText().toString().trim() : "";
             if (host.isEmpty()) {
-                etIp.setError("请输入主机名或 IP 地址");
-                etIp.requestFocus();
+                EditorDialog.fieldError(etIp, "请输入主机名或 IP 地址");
                 return;
             }
 
@@ -348,18 +385,15 @@ public class HostListActivity extends AppCompatActivity {
             try {
                 n.port = Integer.parseInt(etPort.getText() != null ? etPort.getText().toString().trim() : "22");
             } catch (NumberFormatException t) {
-                etPort.setError("请输入 1–65535 之间的端口");
-                etPort.requestFocus();
+                EditorDialog.fieldError(etPort, "1–65535");
                 return;
             }
             if (n.port < 1 || n.port > 65535) {
-                etPort.setError("请输入 1–65535 之间的端口");
-                etPort.requestFocus();
+                EditorDialog.fieldError(etPort, "1–65535");
                 return;
             }
             if (etUser.getText() == null || etUser.getText().toString().trim().isEmpty()) {
-                etUser.setError("请输入用户名");
-                etUser.requestFocus();
+                EditorDialog.fieldError(etUser, "请输入用户名");
                 return;
             }
             n.user = etUser.getText() != null ? etUser.getText().toString().trim() : "";
@@ -407,8 +441,10 @@ public class HostListActivity extends AppCompatActivity {
                 ImageButton btnMore = row.findViewById(R.id.btn_key_more);
 
                 tvName.setText(k.name);
-                tvSubtitle.setText(k.type + " · " + (k.fingerprint.length() > 22 ? k.fingerprint.substring(0, 22) + "..." : k.fingerprint));
+                tvSubtitle.setText(k.type + " · " + (k.fingerprint.length() > 22 ? k.fingerprint.substring(0, 22) + "…" : k.fingerprint));
                 tvBadge.setVisibility(k.isDefault ? View.VISIBLE : View.GONE);
+                row.findViewById(R.id.tv_key_encrypted_badge).setVisibility(k.encrypted ? View.VISIBLE : View.GONE);
+                row.findViewById(R.id.layout_key_badges).setVisibility(k.isDefault || k.encrypted ? View.VISIBLE : View.GONE);
 
                 Runnable showActions = () -> keyActionMenu(btnMore, k, () -> {
                     keyList.clear();
@@ -426,9 +462,16 @@ public class HostListActivity extends AppCompatActivity {
 
         lv.setAdapter(keyAdapter);
         TextView noKeys = new TextView(this);
-        noKeys.setText("还没有密钥，生成一个或导入已有私钥。");
+        noKeys.setText("还没有密钥\n生成一个，或导入已有的私钥文件。");
         noKeys.setGravity(android.view.Gravity.CENTER);
-        noKeys.setPadding(24, 48, 24, 48);
+        noKeys.setTextSize(15);
+        noKeys.setLineSpacing(dp(4), 1f);
+        noKeys.setTextColor(SessionDrawer.color(this, com.google.android.material.R.attr.colorOnSurfaceVariant));
+        noKeys.setCompoundDrawablesRelativeWithIntrinsicBounds(0, R.drawable.ic_key, 0, 0);
+        noKeys.setCompoundDrawablePadding(dp(16));
+        noKeys.setCompoundDrawableTintList(android.content.res.ColorStateList.valueOf(
+                SessionDrawer.color(this, com.google.android.material.R.attr.colorOnSurfaceVariant)));
+        noKeys.setPadding(dp(24), dp(48), dp(24), dp(48));
         ((ViewGroup) lv.getParent()).addView(noKeys);
         lv.setEmptyView(noKeys);
 
@@ -591,7 +634,7 @@ public class HostListActivity extends AppCompatActivity {
                     : content.getText().toString().getBytes(StandardCharsets.UTF_8);
             if (data.length == 0) { error.setText("请选择私钥文件，或粘贴私钥文本。"); return; }
             String nickname = name.getText().toString().trim();
-            if (nickname.isEmpty()) { name.setError("请输入密钥名称"); name.requestFocus(); return; }
+            if (nickname.isEmpty()) { EditorDialog.fieldError(name, "请输入密钥名称"); return; }
             String password = pass.getText().toString();
             error.setText("");
             confirm.setEnabled(false);
@@ -772,14 +815,19 @@ public class HostListActivity extends AppCompatActivity {
         root.findViewById(R.id.btn_cancel_settings).setOnClickListener(v -> dialog.cancel());
         root.findViewById(R.id.settings_extra_keys).setOnClickListener(v -> extraKeysDialog());
         root.findViewById(R.id.settings_background).setOnClickListener(v -> BackgroundSettings.show(this));
+        root.findViewById(R.id.settings_about).setOnClickListener(v -> aboutDialog());
+        ((TextView) root.findViewById(R.id.tv_settings_version)).setText(getString(R.string.about_version, versionName()));
+        SessionService service = SessionService.current();
+        ((TextView) root.findViewById(R.id.tv_settings_background)).setText(service != null && service.foregroundActive()
+                ? "前台服务运行中 · " + service.sessions().size() + " 个会话" : getString(R.string.background_settings_help));
         root.findViewById(R.id.btn_save_settings).setOnClickListener(v -> {
             int inset, cols;
             try { inset = Integer.parseInt(etInset.getText().toString().trim()); }
             catch (Exception e) { inset = -1; }
             try { cols = Integer.parseInt(etCols.getText().toString().trim()); }
             catch (Exception e) { cols = -1; }
-            if (inset < 0 || inset > 48) { etInset.setError("请输入 0–48"); return; }
-            if (cols < 10 || cols > 500) { etCols.setError("请输入 10–500"); return; }
+            if (inset < 0 || inset > 48) { EditorDialog.fieldError(etInset, "请输入 0–48"); return; }
+            if (cols < 10 || cols > 500) { EditorDialog.fieldError(etCols, "请输入 10–500"); return; }
             HostStore.setEdgeInset(this, inset);
             HostStore.setTargetCols(this, cols);
             dialog.dismiss();
@@ -787,6 +835,34 @@ public class HostListActivity extends AppCompatActivity {
         });
 
         showPage(dialog);
+    }
+
+    private String versionName() {
+        try { return getPackageManager().getPackageInfo(getPackageName(), 0).versionName; }
+        catch (Exception e) { return "?"; }
+    }
+
+    /** 关于：版本、作者与项目链接。 */
+    private void aboutDialog() {
+        View root = LayoutInflater.from(this).inflate(R.layout.dialog_about, null);
+        Dialog dialog = newPage(root);
+        ((TextView) root.findViewById(R.id.tv_about_version)).setText(getString(R.string.about_version, versionName()));
+        root.findViewById(R.id.btn_close_about).setOnClickListener(v -> dialog.cancel());
+        root.findViewById(R.id.about_author).setOnClickListener(v -> openLink(getString(R.string.about_author_url)));
+        root.findViewById(R.id.about_source).setOnClickListener(v -> openLink(getString(R.string.about_source_url)));
+        root.findViewById(R.id.about_releases).setOnClickListener(v -> openLink(getString(R.string.about_releases_url)));
+        root.findViewById(R.id.about_licenses).setOnClickListener(v -> openLink(getString(R.string.about_licenses_url)));
+        showPage(dialog);
+    }
+
+    private void openLink(String url) {
+        try {
+            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+        } catch (android.content.ActivityNotFoundException e) {
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("bakaSSH", url));
+            Toast.makeText(this, R.string.link_copied, Toast.LENGTH_SHORT).show();
+        }
     }
 
     /** Shared graphical shortcut editor. */

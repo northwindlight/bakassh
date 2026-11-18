@@ -51,6 +51,28 @@ final class EditorDialog extends Dialog {
 
     @Override public void onBackPressed() { cancel(); }
 
+    /** 在输入框所属的 TextInputLayout 下方显示错误，修改内容后自动清除。 */
+    static void fieldError(EditText field, String message) {
+        android.view.ViewParent parent = field.getParent();
+        while (parent != null && !(parent instanceof com.google.android.material.textfield.TextInputLayout))
+            parent = parent.getParent();
+        if (parent == null) { field.setError(message); field.requestFocus(); return; }
+        com.google.android.material.textfield.TextInputLayout layout =
+                (com.google.android.material.textfield.TextInputLayout) parent;
+        layout.setError(message);
+        field.requestFocus();
+        if (field.getTag(R.id.tag_error_watcher) == null) {
+            field.setTag(R.id.tag_error_watcher, Boolean.TRUE);
+            field.addTextChangedListener(new android.text.TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    if (layout.getError() != null) layout.setError(null);
+                }
+                @Override public void afterTextChanged(android.text.Editable s) { }
+            });
+        }
+    }
+
     private String currentState() { return state == null ? snapshot(content) : state.get(); }
 
     private static String snapshot(View view) {

@@ -74,38 +74,47 @@
                     android:inputType="text"
                     android:textSize="16sp" />
             </com.google.android.material.textfield.TextInputLayout>
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Baka.TextField"
+            <!-- 地址与端口同一行：端口通常保持 22，不必单独占一整行。 -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:hint="@string/host_address">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_host_ip"
-                    android:layout_width="match_parent"
+                android:layout_marginBottom="16dp">
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_host_ip"
+                    style="@style/Widget.Baka.TextField"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:inputType="textUri"
-                    android:textSize="16sp" />
-            </com.google.android.material.textfield.TextInputLayout>
-            <com.google.android.material.textfield.TextInputLayout
-                style="@style/Widget.Baka.TextField"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="16dp"
-                android:hint="@string/host_port">
-                <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/et_host_port"
-                    android:layout_width="match_parent"
+                    android:layout_weight="1"
+                    android:hint="@string/host_address">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_host_ip"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="textUri"
+                        android:textSize="16sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/layout_host_port"
+                    style="@style/Widget.Baka.TextField"
+                    android:layout_width="104dp"
                     android:layout_height="wrap_content"
-                    android:inputType="number"
-                    android:textSize="16sp"
-                    android:text="@string/default_ssh_port"
-                    android:maxLength="5" />
-            </com.google.android.material.textfield.TextInputLayout>
+                    android:layout_marginStart="12dp"
+                    android:hint="@string/host_port">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/et_host_port"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:inputType="number"
+                        android:textSize="16sp"
+                        android:text="@string/default_ssh_port"
+                        android:maxLength="5" />
+                </com.google.android.material.textfield.TextInputLayout>
+            </LinearLayout>
             <com.google.android.material.textfield.TextInputLayout
                 style="@style/Widget.Baka.TextField"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:id="@+id/layout_host_user"
                 android:layout_marginBottom="16dp"
                 android:hint="@string/host_username">
                 <com.google.android.material.textfield.TextInputEditText
@@ -219,8 +228,9 @@
                     android:id="@+id/et_host_startup"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:inputType="textMultiLine"
-                    android:textSize="16sp" />
+                    android:inputType="textMultiLine|textNoSuggestions"
+                    android:fontFamily="monospace"
+                    android:textSize="15sp" />
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
