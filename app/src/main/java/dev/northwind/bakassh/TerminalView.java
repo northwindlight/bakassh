@@ -50,7 +50,8 @@ public class TerminalView extends View {
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bgPaint = new Paint();
     private final Paint cursorPaint = new Paint();
-    private final Paint rowBgPaint = new Paint();
+    /** 背景段与方块元素只画整数边界的实心矩形；Android 10+ 的 new Paint() 默认开抗锯齿，必须显式关闭。 */
+    private final Paint rowBgPaint = solidPaint();
 
     private int defaultFg = 0xFFD0D0D0, defaultBg = 0xFF101014;
 
@@ -339,7 +340,7 @@ public class TerminalView extends View {
     private final char[] cpBuf = new char[2];
     private final Paint decoPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     /** 方块元素直接画整数边界矩形，不开抗锯齿。 */
-    private final Paint blockPaint = new Paint();
+    private final Paint blockPaint = solidPaint();
     private final float[] blockRects = new float[4 * BlockElements.STRIDE];
 
     /** 单元格宽 / 字体自然步进；=1 表示完全不用横向缩放。 */
@@ -993,7 +994,8 @@ public class TerminalView extends View {
                     int bg = rowBuf[col * 5 + 2], end = col + 1;
                     while (end < n && rowBuf[end * 5 + 2] == bg) end++;
                     rowBgPaint.setColor(bg | 0xff000000);
-                    canvas.drawRect(col * cellW, y, end * cellW, y + cellH, rowBgPaint);
+                    canvas.drawRect(BlockElements.edge(0f, col, 1, 0f, cellW), BlockElements.edge(0f, row, 1, 0f, cellH),
+                            BlockElements.edge(0f, end, 1, 0f, cellW), BlockElements.edge(0f, row, 1, 8f, cellH), rowBgPaint);
                     col = end;
                 }
                 for (int col = 0; col < n; ) {
@@ -1209,20 +1211,28 @@ public class TerminalView extends View {
             try { MainActivity.out((android.app.Activity) getContext(), sb.toString()); } catch (Throwable ignored) {}
         }
 
-        // 先用最左格子的背景刷底（M1a 简化；后续可改成按段刷背景色）
-        c.drawColor(rowBuf[2] | 0xFF000000);
+        /*
+         * 两遍：先刷整行背景（同色连续格合并成一段），再统一画前景。
+         * 逐格「背景、前景」交替时，下一格的背景会盖住上一格前景的最后一列像素，
+         * 在小数格宽下就是方块元素之间的一条暗缝。
+         */
+        int rowBg = rowBuf[2];
+        c.drawColor(rowBg | 0xFF000000);
+        for (int col = 0; col < n; ) {
+            int bg = rowBuf[col * 5 + 2], end = col + 1;
+            while (end < n && rowBuf[end * 5 + 2] == bg) end++;
+            if (bg != rowBg) paintSegmentBg(c, col, end, bg);
+            col = end;
+        }
 
         int col = 0;
         while (col < n) {
             int base = col * 5;
             int fg = rowBuf[base + 1];
-            int bg = rowBuf[base + 2];
             int attrs = rowBuf[base + 3];
             int width = rowBuf[base + 4];
             if (width <= 0) { col++; continue; }   // 全宽字符的尾随占位格，跳过
             int cp = sanitizeCp(rowBuf[base]);
-
-            paintSegmentBg(c, col, col + width, bg);
 
             // 方块元素按整数格子边界画矩形；其余字符用位图字体，位置只由列号决定
             if (BlockElements.handles(cp)) {
@@ -1259,9 +1269,17 @@ public class TerminalView extends View {
         return cp;
     }
 
+    /** 背景段：左右边界与方块元素同一取整规则，高度铺满行位图，相邻段与相邻行都不留缝。 */
     private void paintSegmentBg(Canvas c, int col0, int col1, int bg) {
         rowBgPaint.setColor(bg | 0xFF000000);
-        c.drawRect(col0 * cellW, 0f, col1 * cellW, cellH, rowBgPaint);
+        c.drawRect(BlockElements.edge(0f, col0, 1, 0f, cellW), 0f,
+                BlockElements.edge(0f, col1, 1, 0f, cellW), rowBitmapH, rowBgPaint);
+    }
+
+    private static Paint solidPaint() {
+        Paint paint = new Paint();
+        paint.setAntiAlias(false);
+        return paint;
     }
 
     /** 样式只在变化时才设：改 Paint 属性会触发 Skia 内部重算，逐段设很贵。 */
