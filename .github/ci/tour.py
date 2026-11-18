@@ -53,10 +53,25 @@ def center(node):
     return (x1 + x2) // 2, (y1 + y2) // 2
 
 
+def dismiss_system_dialogs(found):
+    """模拟器偶发“某应用无响应”弹窗（例如 Pixel Launcher），点“等待”后继续。"""
+    for node in found:
+        if node.get("resource-id") == "android:id/aerr_wait":
+            x, y = center(node)
+            sh(f"input tap {x} {y}")
+            log("  已关闭系统无响应弹窗")
+            time.sleep(1)
+            return True
+    return False
+
+
 def find(rid=None, text=None, contains=None, timeout=20, scroll=False):
     deadline = time.time() + timeout
     while time.time() < deadline:
-        for node in nodes():
+        found = nodes()
+        if dismiss_system_dialogs(found):
+            continue
+        for node in found:
             if rid and node.get("resource-id") != f"{PKG}:id/{rid}":
                 continue
             if text and node.get("text") != text and node.get("content-desc") != text:

@@ -77,6 +77,12 @@ final class RepeatKeyButton extends MaterialButton {
         super.setEnabled(enabled);
     }
 
+    /** onVisibilityChanged 只在已附着窗口时分发；直接隐藏按键也要停止连发。 */
+    @Override public void setVisibility(int visibility) {
+        if (visibility != VISIBLE) stopRepeating();
+        super.setVisibility(visibility);
+    }
+
     @Override public void onWindowFocusChanged(boolean hasWindowFocus) {
         if (!hasWindowFocus) stopRepeating();
         super.onWindowFocusChanged(hasWindowFocus);

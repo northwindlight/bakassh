@@ -12,6 +12,8 @@ demo clock -e hhmm 0930
 demo battery -e level 100 -e plugged false
 demo network -e wifi show -e level 4 -e mobile hide
 demo notifications -e visible false
+# 后台应用无响应时不弹窗，避免遮住被测界面。
+adb shell settings put secure anr_show_background 0 || true
 adb install -r -g "$app_apk"
 status=0
 python3 .github/ci/tour.py "$out" || status=1
