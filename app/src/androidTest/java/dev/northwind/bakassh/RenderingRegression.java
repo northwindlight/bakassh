@@ -24,7 +24,46 @@ final class RenderingRegression {
         byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
         NativeTerm.receive(handle, bytes, bytes.length, reply -> { });
     }
+    /**
+     * 方块元素拼缝：小数格宽下，一整行 █（其中部分格子带不同背景色）必须逐像素都是前景色。
+     * 0.4.6 真机截图里 Claude Code 的像素 logo 有 1px 暗缝；原制表线检查只要求「不是背景色」，
+     * 半覆盖的暗像素也能通过，所以这里要求严格相等。
+     */
+    private static void verifyBlockSeams(Context context) throws Exception {
+        TerminalView view = new TerminalView(context);
+        view.setPreferredColumns(37);
+        view.measure(View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(600, View.MeasureSpec.EXACTLY));
+        view.layout(0, 0, 800, 600);
+        long handle = NativeTerm.create(view.getCols(), view.getRows());
+        Bitmap frame = Bitmap.createBitmap(800, 600, Bitmap.Config.ARGB_8888);
+        try {
+            float cellW = (float) field(view, "cellW"), cellH = (float) field(view, "cellH");
+            check(Math.abs(cellW - Math.round(cellW)) > .05f, "block seam check needs a fractional cell width: " + cellW);
+            view.attachSession(handle);
+            StringBuilder blocks = new StringBuilder("\033[2J\033[H\033[?25l\033[38;2;215;119;87m");
+            int cells = Math.min(24, view.getCols());
+            for (int i = 0; i < cells; i++) blocks.append(i % 3 == 0 ? "\033[48;2;40;44;52m█\033[49m" : "█");
+            feed(handle, blocks.toString());
+            view.draw(new Canvas(frame));
+            int end = BlockElements.edge(0f, cells, 1, 0f, cellW);
+            for (int y : new int[]{1, (int) (cellH / 2), (int) cellH - 1}) {
+                for (int x = 0; x < end; x++) {
+                    int pixel = frame.getPixel(x, y);
+                    check(pixel == 0xffd77757, "block seam at x=" + x + " y=" + y + ": " + Integer.toHexString(pixel)
+                            + " (cellW=" + cellW + ")");
+                }
+            }
+        } finally {
+            view.attachSession(0);
+            view.destroy();
+            NativeTerm.destroy(handle);
+            frame.recycle();
+        }
+    }
+
     static void verify(Context context) throws Exception {
+        verifyBlockSeams(context);
         TerminalView view = new TerminalView(context);
         view.setPreferredColumns(40);
         view.measure(View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY),
@@ -56,18 +95,23 @@ final class RenderingRegression {
                     frame.getPixel((int) (cellW * 1.5f), sampleY) != 0xffffffff, "ASCII replacement inherited CJK cursor width");
 
             Method glyph = TerminalView.class.getDeclaredMethod("glyphFor", int.class, int.class, int.class, int.class);
+            Method clearGlyphs = TerminalView.class.getDeclaredMethod("clearGlyphCache");
+            clearGlyphs.setAccessible(true);
             glyph.setAccessible(true);
             Paint paint = (Paint) field(view, "textPaint");
             for (int cp : new int[]{'i', 'W', 'f', 0xe9, 0x2192, 0x4e2d}) {
                 for (int style = 0; style < 4; style++) {
                     int width = cp == 0x4e2d ? 2 : 1;
-                    Bitmap expected = (Bitmap) glyph.invoke(view, cp, width, style, 0xaabbcc);
+                    Bitmap cached = (Bitmap) glyph.invoke(view, cp, width, style, 0xaabbcc);
+                    Bitmap expected = cached.copy(cached.getConfig(), false); // 清缓存会回收原位图
                     // Simulate state left by live zoom, a CJK cursor, or another style.
                     paint.setTextSize(100);
                     paint.setTextScaleX(3);
                     paint.setTextSkewX(.5f);
                     paint.setFakeBoldText(true);
-                    Bitmap actual = (Bitmap) glyph.invoke(view, cp, width, style, 0x112233);
+                    // 同色重绘：清缓存强制重新栅格化。换颜色会让 Skia 按亮度调整文字 gamma，覆盖率本来就不同。
+                    clearGlyphs.invoke(view);
+                    Bitmap actual = (Bitmap) glyph.invoke(view, cp, width, style, 0xaabbcc);
                     check(paint.getTextScaleX() <= 1f, "glyph stretched beyond natural width");
                     check(Math.abs(paint.getTextSize() - (float) field(view, "fontPx")) < .001f, "stale zoom font size");
                     for (int y = 0; y < actual.getHeight(); y++) {

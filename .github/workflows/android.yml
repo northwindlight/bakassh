@@ -1,0 +1,195 @@
+# 构建、回归、模拟器截图与预发布。
+#
+# - 每次推送分支：构建 release / debug，运行主机回归、lint，在 API 34 模拟器里走一遍主要界面截图，
+#   并运行仓库自带的 Android 回归；日志和截图强制推送到 ci-results 分支，方便不登录也能查看。
+# - 推送 v* 标签：额外用 DEBUG_KEYSTORE_BASE64 签名，核对签名证书与上一版发布包一致后发布 prerelease。
+name: Android
+
+on:
+  push:
+    branches-ignore: [ci-results]
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NDK_VERSION: 29.0.14206865
+  GRADLE_VERSION: 8.14.3
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Android SDK 与 NDK
+        run: |
+          sdkmanager="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$sdkmanager" --licenses > /dev/null || true
+          "$sdkmanager" "platforms;android-34" "build-tools;34.0.0" "ndk;$NDK_VERSION" > /dev/null
+          # 树莓派构建用系统 aapt2；CI 使用 Maven 上的官方 aapt2。
+          sed -i '/aapt2FromMavenOverride/d' gradle.properties
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: ${{ env.GRADLE_VERSION }}
+          # 功能分支也写依赖缓存，避免每次重新从 Maven Central 下载而遇到 429 限流。
+          cache-read-only: false
+
+      - name: 签名 keystore
+        env:
+          KEYSTORE: ${{ secrets.DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE" ]; then
+            mkdir -p ~/.android
+            printf '%s' "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
+            echo "KEYSTORE_ARG=-PdebugKeystore=$HOME/.android/debug.keystore" >> "$GITHUB_ENV"
+            echo "使用仓库 secret 中的签名 keystore"
+          else
+            echo "::warning::未配置 DEBUG_KEYSTORE_BASE64，本次 APK 使用 CI 临时签名，不能覆盖安装已有版本"
+          fi
+
+      - name: 主机回归
+        run: |
+          mkdir -p ci-out
+          set -o pipefail
+          { bash tests/host/run.sh && bash tests/host/replay.sh; } 2>&1 | tee ci-out/host-tests.txt
+
+      - name: 构建
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace $KEYSTORE_ARG :app:assembleRelease :app:lintRelease 2>&1 | tee ci-out/build-release.txt
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$apksigner" verify --print-certs app/build/outputs/apk/release/app-release.apk | tee ci-out/release-cert.txt
+          gradle --no-daemon -PemulatorAbi :app:assembleDebug :app:assembleDebugAndroidTest 2>&1 | tee ci-out/build-debug.txt
+          cp app/build/reports/lint-results-release.txt ci-out/ 2>/dev/null || true
+
+      - name: 构建失败摘要
+        if: failure()
+        run: |
+          for f in ci-out/*.txt; do
+            [ -f "$f" ] || continue
+            msg=$(grep -E 'error:|ERROR|FAILED|What went wrong|AssertionError|FAIL' -A3 "$f" | head -c 3500 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+            [ -n "$msg" ] && echo "::error title=$(basename "$f")::$msg"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apk
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+
+      - name: 准备 SSH 演示账户
+        run: |
+          sudo apt-get install -y -qq openssh-server > /dev/null
+          sudo useradd -m -s /bin/bash demo
+          echo 'demo:demo' | sudo chpasswd
+          echo "PS1='\[\e[1;32m\]demo@homelab\[\e[0m\]:\[\e[1;34m\]\w\[\e[0m\]\$ '" | sudo tee -a /home/demo/.bashrc > /dev/null
+          # 方块元素样张：截图里检查整数边界拼接是否无缝（Claude Code logo 同款字符）
+          python3 -c "print('\x1b[38;2;215;119;87m ▐▛███▜▌\n▝▜█████▛▘\n  ▘▘ ▝▝\x1b[0m\n▁▂▃▄▅▆▇█▉▊▋▌▍▎▏ ░▒▓ ▀▄▐▌▖▗▘▙▚▛▜▝▞▟')" | sudo tee /home/demo/blocks.txt > /dev/null
+          sudo mkdir -p /run/sshd
+          sudo /usr/sbin/sshd -p 2222 -o PasswordAuthentication=yes -o KbdInteractiveAuthentication=yes
+
+      - name: 启用 KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: 模拟器截图与 Android 回归
+        id: emulator
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: bash .github/ci/emulator.sh ci-out/screens app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+
+      - name: 推送日志与截图到 ci-results
+        if: always()
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          [ -d ci-out ] || exit 0
+          cd ci-out
+          {
+            echo "# CI 结果"
+            echo
+            echo "- 提交：$GITHUB_SHA（$GITHUB_REF_NAME）"
+            echo "- 运行：$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "- 模拟器步骤：${{ steps.emulator.outcome }}"
+          } > README.md
+          git init -q -b ci-results
+          git add -A
+          git -c user.name=github-actions -c user.email=41898282+github-actions[bot]@users.noreply.github.com \
+            commit -qm "CI 结果：${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:$TOKEN@github.com/$GITHUB_REPOSITORY.git" ci-results
+
+      - name: 模拟器步骤结果
+        if: steps.emulator.outcome == 'failure'
+        run: |
+          echo "::error::模拟器截图或 Android 回归失败，详见 ci-results 分支"
+          exit 1
+
+  prerelease:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk
+          path: apk
+
+      - name: 核对签名与上一版一致
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          cert() { "$apksigner" verify --print-certs "$1" | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}'; }
+          new=$(cert apk/release/app-release.apk)
+          previous=$(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=20" \
+            --jq '[.[] | select(.tag_name != env.TAG) | .assets[] | select(.name | endswith(".apk")) | .browser_download_url][0]')
+          curl -fsSL "$previous" -o previous.apk
+          old=$(cert previous.apk)
+          echo "新包证书：$new"
+          echo "上一版（$previous）证书：$old"
+          if [ -z "$new" ] || [ "$new" != "$old" ]; then
+            echo "::error::签名证书与上一版发布包不一致，拒绝发布（无法覆盖安装）"
+            exit 1
+          fi
+
+      - name: 发布 prerelease
+        run: |
+          version=${TAG#v}
+          apk="bakaSSH-$version-arm64-v8a.apk"
+          cp apk/release/app-release.apk "$apk"
+          git archive --format=zip --prefix="bakaSSH-$version/" -o "bakaSSH-$version-source.zip" HEAD
+          sha256sum "$apk" "bakaSSH-$version-source.zip" > SHA256SUMS
+          notes="docs/发布说明/$TAG.md"
+          title=$(head -n1 "$notes" | sed 's/^# *//')
+          tail -n +2 "$notes" > notes.md
+          gh release create "$TAG" "$apk" "bakaSSH-$version-source.zip" SHA256SUMS \
+            --prerelease --title "$title" --notes-file notes.md --verify-tag

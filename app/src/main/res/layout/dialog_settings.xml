@@ -91,18 +91,24 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/settings_tools"
+                android:text="@string/settings_apply_help"
+                android:textSize="13sp"
+                android:textColor="?attr/colorOnSurfaceVariant" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/settings_terminal"
                 android:textSize="14sp"
                 android:textColor="?attr/colorPrimary"
-                android:paddingTop="28dp"
-                android:paddingBottom="16dp"
+                android:paddingTop="20dp"
+                android:paddingBottom="12dp"
                 android:fontFamily="sans-serif-medium" />
             <LinearLayout
                 android:id="@+id/settings_extra_keys"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="64dp"
-                android:layout_marginBottom="16dp"
+                android:minHeight="72dp"
+                android:layout_marginBottom="8dp"
                 android:background="@drawable/bg_setting_row"
                 android:foreground="?attr/selectableItemBackground"
                 android:clickable="true"
@@ -115,15 +121,73 @@
                     android:src="@drawable/ic_keyboard"
                     app:tint="?attr/colorPrimary"
                     android:contentDescription="@null" />
-                <TextView
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="@string/extra_keys_title"
-                    android:textSize="16sp"
-                    android:textColor="?attr/colorOnSurface"
-                    android:id="@+id/settings_extra_keys_label"
                     android:layout_weight="1"
-                    android:layout_marginStart="16dp" />
+                    android:layout_marginStart="16dp"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/extra_keys_title"
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface" />
+                    <TextView
+                        
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/extra_keys_help"
+                        android:textSize="13sp"
+                        android:layout_marginTop="2dp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                    android:contentDescription="@null" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/settings_background"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="72dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_setting_row"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_bolt"
+                    app:tint="?attr/colorPrimary"
+                    android:contentDescription="@null" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/background_settings"
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface" />
+                    <TextView
+                        android:id="@+id/tv_settings_background"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/background_settings_help"
+                        android:textSize="13sp"
+                        android:layout_marginTop="2dp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
                 <ImageView
                     android:layout_width="20dp"
                     android:layout_height="20dp"
@@ -134,17 +198,58 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/settings_apply_help"
+                android:text="@string/settings_about"
                 android:textSize="14sp"
-                android:textColor="?attr/colorOnSurfaceVariant" />
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/settings_background"
-                style="@style/Widget.Material3.Button.TonalButton"
+                android:textColor="?attr/colorPrimary"
+                android:paddingTop="20dp"
+                android:paddingBottom="12dp"
+                android:fontFamily="sans-serif-medium" />
+            <LinearLayout
+                android:id="@+id/settings_about"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:minHeight="56dp"
-                android:layout_marginTop="16dp"
-                android:text="@string/background_settings" />
+                android:minHeight="72dp"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/bg_setting_row"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+                <ImageView
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_info"
+                    app:tint="?attr/colorPrimary"
+                    android:contentDescription="@null" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/about_title"
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface" />
+                    <TextView
+                        android:id="@+id/tv_settings_version"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        
+                        android:textSize="13sp"
+                        android:layout_marginTop="2dp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                    android:contentDescription="@null" />
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
 </LinearLayout>

@@ -50,7 +50,8 @@ public class TerminalView extends View {
     private final Paint textPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bgPaint = new Paint();
     private final Paint cursorPaint = new Paint();
-    private final Paint rowBgPaint = new Paint();
+    /** 背景段与方块元素只画整数边界的实心矩形；Android 10+ 的 new Paint() 默认开抗锯齿，必须显式关闭。 */
+    private final Paint rowBgPaint = solidPaint();
 
     private int defaultFg = 0xFFD0D0D0, defaultBg = 0xFF101014;
 
@@ -338,6 +339,9 @@ public class TerminalView extends View {
     private int glyphEvictions;
     private final char[] cpBuf = new char[2];
     private final Paint decoPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    /** 方块元素直接画整数边界矩形，不开抗锯齿。 */
+    private final Paint blockPaint = solidPaint();
+    private final float[] blockRects = new float[4 * BlockElements.STRIDE];
 
     /** 单元格宽 / 字体自然步进；=1 表示完全不用横向缩放。 */
     private float asciiScale = 1f;
@@ -990,7 +994,8 @@ public class TerminalView extends View {
                     int bg = rowBuf[col * 5 + 2], end = col + 1;
                     while (end < n && rowBuf[end * 5 + 2] == bg) end++;
                     rowBgPaint.setColor(bg | 0xff000000);
-                    canvas.drawRect(col * cellW, y, end * cellW, y + cellH, rowBgPaint);
+                    canvas.drawRect(BlockElements.edge(0f, col, 1, 0f, cellW), BlockElements.edge(0f, row, 1, 0f, cellH),
+                            BlockElements.edge(0f, end, 1, 0f, cellW), BlockElements.edge(0f, row, 1, 8f, cellH), rowBgPaint);
                     col = end;
                 }
                 for (int col = 0; col < n; ) {
@@ -998,6 +1003,11 @@ public class TerminalView extends View {
                     if (width <= 0 || rowBuf[base] == -1) { col++; continue; }
                     int cp = sanitizeCp(rowBuf[base]);
                     if (cp == ' ') { col += width; continue; }
+                    if (BlockElements.handles(cp)) {
+                        drawBlock(canvas, cp, col, width, rowBuf[base + 1], row, cellH);
+                        col += width;
+                        continue;
+                    }
                     int fg = rowBuf[base + 1], style = rowBuf[base + 3] & 5;
                     int variant = (width >= 2 ? 2 : 0) | (style & 1);
                     float advance = naturalAdvance(cp, variant);
@@ -1009,6 +1019,7 @@ public class TerminalView extends View {
                         if (rowBuf[p + 4] != width || rowBuf[p + 1] != fg ||
                                 (rowBuf[p + 3] & 5) != style || rowBuf[p] == -1) break;
                         int next = sanitizeCp(rowBuf[p]);
+                        if (BlockElements.handles(next)) break;
                         if (Math.abs(naturalAdvance(next, variant) - advance) > 0.001f) break;
                         chars += Character.toChars(next, liveRun, chars);
                         end += width;
@@ -1200,23 +1211,33 @@ public class TerminalView extends View {
             try { MainActivity.out((android.app.Activity) getContext(), sb.toString()); } catch (Throwable ignored) {}
         }
 
-        // 先用最左格子的背景刷底（M1a 简化；后续可改成按段刷背景色）
-        c.drawColor(rowBuf[2] | 0xFF000000);
+        /*
+         * 两遍：先刷整行背景（同色连续格合并成一段），再统一画前景。
+         * 逐格「背景、前景」交替时，下一格的背景会盖住上一格前景的最后一列像素，
+         * 在小数格宽下就是方块元素之间的一条暗缝。
+         */
+        int rowBg = rowBuf[2];
+        c.drawColor(rowBg | 0xFF000000);
+        for (int col = 0; col < n; ) {
+            int bg = rowBuf[col * 5 + 2], end = col + 1;
+            while (end < n && rowBuf[end * 5 + 2] == bg) end++;
+            if (bg != rowBg) paintSegmentBg(c, col, end, bg);
+            col = end;
+        }
 
         int col = 0;
         while (col < n) {
             int base = col * 5;
             int fg = rowBuf[base + 1];
-            int bg = rowBuf[base + 2];
             int attrs = rowBuf[base + 3];
             int width = rowBuf[base + 4];
             if (width <= 0) { col++; continue; }   // 全宽字符的尾随占位格，跳过
             int cp = sanitizeCp(rowBuf[base]);
 
-            paintSegmentBg(c, col, col + width, bg);
-
-            // 位图字体：非空格格子一次 blit，位置只由列号决定，宽度必然 = width*cellW
-            if (cp != ' ') {
+            // 方块元素按整数格子边界画矩形；其余字符用位图字体，位置只由列号决定
+            if (BlockElements.handles(cp)) {
+                drawBlock(c, cp, col, width, fg, 0, rowBitmapH);
+            } else if (cp != ' ') {
                 // 属性位：bit0 粗体 / bit1 下划线 / bit2 斜体 / bit4 反显(已在 native 换成前景背景) / bit5 删除线
                 int style = (attrs & 1) | ((attrs & 4) >> 1);
                 Bitmap g = glyphFor(cp, width, style, fg);
@@ -1248,9 +1269,17 @@ public class TerminalView extends View {
         return cp;
     }
 
+    /** 背景段：左右边界与方块元素同一取整规则，高度铺满行位图，相邻段与相邻行都不留缝。 */
     private void paintSegmentBg(Canvas c, int col0, int col1, int bg) {
         rowBgPaint.setColor(bg | 0xFF000000);
-        c.drawRect(col0 * cellW, 0f, col1 * cellW, cellH, rowBgPaint);
+        c.drawRect(BlockElements.edge(0f, col0, 1, 0f, cellW), 0f,
+                BlockElements.edge(0f, col1, 1, 0f, cellW), rowBitmapH, rowBgPaint);
+    }
+
+    private static Paint solidPaint() {
+        Paint paint = new Paint();
+        paint.setAntiAlias(false);
+        return paint;
     }
 
     /** 样式只在变化时才设：改 Paint 属性会触发 Skia 内部重算，逐段设很贵。 */
@@ -1292,6 +1321,23 @@ public class TerminalView extends View {
         canvas.drawCircle(cx, cy, radius, handlePaint);
     }
 
+    /**
+     * 画一个方块元素。x 边界取自列号，y 边界取自行号 row 与行高 rowSize（行位图内传 0 与位图高度），
+     * 都经由 BlockElements.edge 取整，相邻格子 / 相邻行共享同一条整数边界。
+     */
+    private void drawBlock(Canvas c, int cp, int col, int width, int color, int row, float rowSize) {
+        int n = BlockElements.rects(cp, blockRects);
+        for (int i = 0; i < n; i++) {
+            int o = i * BlockElements.STRIDE;
+            blockPaint.setColor(color | 0xFF000000);
+            blockPaint.setAlpha(Math.round(255 * blockRects[o + 4]));
+            c.drawRect(BlockElements.edge(0f, col, width, blockRects[o], cellW),
+                    BlockElements.edge(0f, row, 1, blockRects[o + 1], rowSize),
+                    BlockElements.edge(0f, col, width, blockRects[o + 2], cellW),
+                    BlockElements.edge(0f, row, 1, blockRects[o + 3], rowSize), blockPaint);
+        }
+    }
+
     private void drawCursor(Canvas canvas) {
         NativeTerm.getCursor(handle, cursorOut);
         if (cursorOut[2] == 0) return;
@@ -1309,7 +1355,9 @@ public class TerminalView extends View {
         cursorPaint.setStyle(Paint.Style.FILL);
         canvas.drawRect(x, y, x + width * cellW, y + cellH, cursorPaint);
         int cp = sanitizeCp(cellOne[0]);
-        if (cp != ' ') {
+        if (BlockElements.handles(cp)) {
+            drawBlock(canvas, cp, ccol, width, 0xFF101014, r, cellH);
+        } else if (cp != ' ') {
             boolean bold = (cellOne[3] & 1) != 0;
             textPaint.setTypeface(width >= 2 ? (bold ? cjkTfBold : cjkTf) : (bold ? latinTfBold : latinTf));
             textPaint.setTextSize(fontPx);

@@ -62,6 +62,11 @@ public class MainActivity extends AppCompatActivity {
     private androidx.drawerlayout.widget.DrawerLayout drawer;
     private SessionDrawer sessionDrawer;
     private MaterialButton followOutputButton;
+    private View sessionStateCard;
+    /** 用户收起过状态卡片的会话与状态；状态变化后重新显示。 */
+    private String hiddenSessionState;
+    /** 重新连接时被接替的旧会话；新会话创建后关闭它并占据原位置。 */
+    private String replacingSessionId;
     private LinearLayout layoutExtraKeysBox;
     private android.view.ActionMode selectionActionMode;
     private long handle;
@@ -136,6 +141,11 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 终端外围（工具栏、快捷键、侧栏、弹窗）跟随壁纸取深色方案；终端画面本身保持固定深色。
+        com.google.android.material.color.DynamicColors.applyToActivityIfAvailable(this,
+                new com.google.android.material.color.DynamicColorsOptions.Builder()
+                        .setThemeOverlay(com.google.android.material.R.style.ThemeOverlay_Material3_DynamicColors_Dark)
+                        .build());
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_terminal);
@@ -178,6 +188,18 @@ public class MainActivity extends AppCompatActivity {
         tvTermStatus = findViewById(R.id.tv_term_status);
         followOutputButton = findViewById(R.id.btn_follow_output);
         followOutputButton.setOnClickListener(v -> view.followOutput());
+        sessionStateCard = findViewById(R.id.card_session_state);
+        findViewById(R.id.btn_session_state_reconnect).setOnClickListener(v -> reconnect());
+        findViewById(R.id.btn_session_state_close).setOnClickListener(v -> {
+            if (session == null || service == null) return;
+            if (session.isActive()) SessionSwitcher.confirmClose(this, service, session);
+            else service.close(session.id);
+        });
+        findViewById(R.id.btn_session_state_hide).setOnClickListener(v -> {
+            if (session == null) return;
+            hiddenSessionState = session.id + session.state();
+            updateSessionState();
+        });
         view.setScrollListener(this::updateScrollStatus);
         findViewById(R.id.btn_session_add).setOnClickListener(v -> newSession());
         findViewById(R.id.btn_close_session_drawer).setOnClickListener(v -> drawer.closeDrawers());
@@ -195,14 +217,17 @@ public class MainActivity extends AppCompatActivity {
         tvTermTitle.setOnClickListener(v -> showSessions());
         findViewById(R.id.btn_term_exit).setOnClickListener(v -> {
             androidx.appcompat.widget.PopupMenu menu = new androidx.appcompat.widget.PopupMenu(this, v);
-            menu.getMenu().add(0, 1, 0, layoutExtraKeysBox.getVisibility() == View.VISIBLE ? "隐藏扩展按键" : "显示扩展按键");
-            menu.getMenu().add(0, 3, 1, "新建会话");
-            menu.getMenu().add(0, 4, 2, "后台常驻");
-            menu.getMenu().add(0, 5, 3, "重命名 / 管理当前会话");
+            menu.getMenu().add(0, 3, 0, "新建会话");
+            if (session != null && !session.isActive()) menu.getMenu().add(0, 7, 1, getString(R.string.reconnect));
+            menu.getMenu().add(0, 5, 2, "重命名 / 管理当前会话");
+            menu.getMenu().add(0, 1, 3, layoutExtraKeysBox.getVisibility() == View.VISIBLE ? "隐藏扩展按键" : "显示扩展按键");
             menu.getMenu().add(0, 6, 4, "编辑快捷键");
-            menu.getMenu().add(0, 2, 3, "关闭当前会话");
+            menu.getMenu().add(0, 4, 5, "后台常驻");
+            menu.getMenu().add(0, 2, 6, "关闭当前会话");
             menu.setOnMenuItemClickListener(item -> {
-                if (item.getItemId() == 1) {
+                if (item.getItemId() == 7) {
+                    reconnect();
+                } else if (item.getItemId() == 1) {
                     stopKeyRepeats();
                     layoutExtraKeysBox.setVisibility(layoutExtraKeysBox.getVisibility() == View.VISIBLE ? View.GONE : View.VISIBLE);
                     getPreferences(MODE_PRIVATE).edit().putBoolean("extra_keys_visible",
@@ -522,7 +547,7 @@ public class MainActivity extends AppCompatActivity {
         b.setAllCaps(false);
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         b.setSingleLine(true);
-        b.setTextColor(getResources().getColor(R.color.term_on_surface));
+        b.setTextColor(themeColor(com.google.android.material.R.attr.colorOnSurface));
         b.setPadding(0, dp(4), 0, dp(4));
         b.setMinWidth(0);
         b.setMinimumWidth(0);
@@ -532,9 +557,11 @@ public class MainActivity extends AppCompatActivity {
         b.setInsetTop(0);
         b.setInsetBottom(0);
         b.setCornerRadius(dp(12));
-        b.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.terminal_extra_key_bg)));
+        b.setBackgroundTintList(ColorStateList.valueOf(themeColor(com.google.android.material.R.attr.colorSurfaceContainerHighest)));
         return b;
     }
+
+    private int themeColor(int attribute) { return SessionDrawer.color(this, attribute); }
 
     private void onExtraKey(String key) {
         String n = key.toUpperCase(java.util.Locale.ROOT);
@@ -570,17 +597,14 @@ public class MainActivity extends AppCompatActivity {
         if (!sendNamedKey(key, 0)) sendTyped(TerminalKeys.text(key));
     }
 
-    /** 更新粘滞修饰键高亮状态（激活时点亮 Google Blue） */
+    /** 粘滞修饰键高亮：激活时用主色填充，键名和宽度不变。 */
     private void updateModifierButtonState(MaterialButton b, String name, boolean on) {
         if (b == null) return;
-        b.setText(on ? name + "★" : name);
-        if (on) {
-            b.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.terminal_extra_key_active_bg)));
-            b.setTextColor(getResources().getColor(R.color.terminal_extra_key_active_text));
-        } else {
-            b.setBackgroundTintList(ColorStateList.valueOf(getResources().getColor(R.color.terminal_extra_key_bg)));
-            b.setTextColor(getResources().getColor(R.color.term_on_surface));
-        }
+        b.setBackgroundTintList(ColorStateList.valueOf(themeColor(on
+                ? androidx.appcompat.R.attr.colorPrimary
+                : com.google.android.material.R.attr.colorSurfaceContainerHighest)));
+        b.setTextColor(themeColor(on ? com.google.android.material.R.attr.colorOnPrimary
+                : com.google.android.material.R.attr.colorOnSurface));
     }
 
     private void sendTyped(String s) {
@@ -701,6 +725,7 @@ public class MainActivity extends AppCompatActivity {
         if (requestedSessionId == null && intent.hasExtra("host")) {
             if (credentialDialog != null) credentialDialog.dismiss();
             preparingConnection = false;
+            replacingSessionId = null;
             readHost(intent);
             pendingHost = true;
         }
@@ -796,6 +821,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void cancelConnection() {
+        replacingSessionId = null;
         preparingConnection = false;
         pendingHost = false;
         hPassword = "";
@@ -806,11 +832,15 @@ public class MainActivity extends AppCompatActivity {
     private void createSession(String keyPath, String passphrase, String password) {
         if (isFinishing() || isDestroyed() || service == null) return;
         Host host = new Host(hName, hHost, hPort, hUser, hStartup, hAuthType, hKeyId, "");
+        if (hHostId != null) host.id = hHostId;
+        TerminalSession replaced = replacingSessionId == null ? null : service.get(replacingSessionId);
+        replacingSessionId = null;
         try {
             androidx.core.content.ContextCompat.startForegroundService(this, new Intent(this, SessionService.class));
             TerminalSession created = service.create(host, keyPath, passphrase, password,
-                    view.getCols(), view.getRows(), HostStore.getZoomColumns(this, 150));
+                    view.getCols(), view.getRows(), replaced != null ? replaced.zoomColumns : HostStore.getZoomColumns(this, 150));
             attachSession(created);
+            if (replaced != null) service.replace(replaced.id, created);
             if (android.os.Build.VERSION.SDK_INT >= 33 &&
                     checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED &&
                     !getPreferences(MODE_PRIVATE).getBoolean("notification_asked", false)) {
@@ -892,9 +922,69 @@ public class MainActivity extends AppCompatActivity {
     private void updateSessionTitle() {
         if (session == null) return;
         tvTermTitle.setText(session.title);
-        tvTermStatus.setText(session.detail() + " · " + session.endpoint);
+        // 状态点已表示连接状态：连接正常时只显示地址，默认 22 端口省略，避免地址被截成“n…site:22”。
+        String endpoint = session.endpoint.endsWith(":22")
+                ? session.endpoint.substring(0, session.endpoint.length() - 3) : session.endpoint;
+        tvTermStatus.setText(session.state() == TerminalSession.State.CONNECTED
+                ? endpoint : session.detail() + " · " + endpoint);
+        android.graphics.drawable.Drawable dot = tvTermStatus.getCompoundDrawablesRelative()[0];
+        if (dot != null) dot.mutate().setTint(SessionDrawer.stateColor(session));
         tvTermCols.setText(view.getCols() + "列");
         findViewById(R.id.btn_term_sessions).setContentDescription("会话 · " + service.sessions().size());
+        updateSessionState();
+    }
+
+    /** 连接中 / 失败 / 已结束时在终端底部显示状态卡片，不改变终端行列。 */
+    private void updateSessionState() {
+        if (sessionStateCard == null) return;
+        TerminalSession.State state = session == null ? null : session.state();
+        boolean show = state != null && state != TerminalSession.State.CONNECTED
+                && !(session.id + state).equals(hiddenSessionState);
+        sessionStateCard.setVisibility(show ? View.VISIBLE : View.GONE);
+        if (!show) return;
+        boolean connecting = state == TerminalSession.State.CONNECTING;
+        boolean failed = state == TerminalSession.State.FAILED;
+        String detail = session.detail();
+        TextView title = findViewById(R.id.tv_session_state_title);
+        TextView message = findViewById(R.id.tv_session_state_detail);
+        if (connecting) {
+            title.setText(detail.equals("正在连接") ? getString(R.string.state_connecting) + "…" : detail);
+            message.setText(session.endpoint);
+        } else if (failed) {
+            title.setText(R.string.state_failed);
+            message.setText(detail.startsWith("连接失败：") ? detail.substring(5) : detail);
+        } else {
+            title.setText(getString(R.string.state_kept_screen, detail));
+            message.setText(session.endpoint);
+        }
+        findViewById(R.id.progress_session_state).setVisibility(connecting ? View.VISIBLE : View.GONE);
+        android.widget.ImageView icon = findViewById(R.id.icon_session_state);
+        icon.setVisibility(connecting ? View.GONE : View.VISIBLE);
+        icon.setImageTintList(ColorStateList.valueOf(SessionDrawer.stateColor(session)));
+        findViewById(R.id.btn_session_state_reconnect).setVisibility(connecting ? View.GONE : View.VISIBLE);
+        ((MaterialButton) findViewById(R.id.btn_session_state_close))
+                .setText(connecting ? R.string.cancel_connection : R.string.close_session);
+    }
+
+    private void useHost(Host host) {
+        hName = host.name; hHost = host.host; hPort = host.port; hUser = host.user;
+        hStartup = host.startup; hAuthType = host.authType; hKeyId = host.keyId; hPassword = host.password;
+        hHostId = host.id; hPasswordUnavailable = host.passwordUnavailable;
+    }
+
+    /** 用同一主机重新连接当前会话；优先读取已保存主机的最新配置和密码。 */
+    private void reconnect() {
+        if (session == null || service == null || preparingConnection || session.isActive()) return;
+        Host origin = service.origin(session.id);
+        if (origin == null) { newSession(); return; }
+        Host target = origin;
+        try {
+            for (Host saved : HostStore.load(this)) if (saved.id.equals(origin.id)) target = saved;
+        } catch (IllegalStateException error) { toast(error.getMessage()); return; }
+        useHost(target);
+        replacingSessionId = session.id;
+        pendingHost = true;
+        openRequestedSession();
     }
 
     private void showSessions() {
@@ -918,10 +1008,8 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < labels.length; i++) labels[i] = hosts.get(i).title() + "\n" + hosts.get(i).user + "@" + hosts.get(i).host;
         new MaterialAlertDialogBuilder(this).setTitle("新建连接")
                 .setItems(labels, (d, index) -> {
-                    Host host = hosts.get(index);
-                    hName = host.name; hHost = host.host; hPort = host.port; hUser = host.user;
-                    hStartup = host.startup; hAuthType = host.authType; hKeyId = host.keyId; hPassword = host.password;
-                    hHostId = host.id; hPasswordUnavailable = host.passwordUnavailable;
+                    useHost(hosts.get(index));
+                    replacingSessionId = null;
                     pendingHost = true;
                     openRequestedSession();
                 }).setNeutralButton("管理主机", (d, w) -> startActivity(new Intent(this, HostListActivity.class)
@@ -932,7 +1020,7 @@ public class MainActivity extends AppCompatActivity {
     private void updateScrollStatus() {
         int offset = handle == 0 ? 0 : NativeTerm.getScrollOffset(handle);
         followOutputButton.setVisibility(offset == 0 ? View.GONE : View.VISIBLE);
-        if (offset > 0) followOutputButton.setText("↓ 回到底部 · " + offset + " 行");
+        if (offset > 0) followOutputButton.setText("↓ " + getString(R.string.follow_output) + " · " + offset + " 行");
     }
 
     private void updateSessionDrawer() {

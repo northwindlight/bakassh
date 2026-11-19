@@ -1,14 +1,10 @@
 package dev.northwind.bakassh;
 
 import android.content.Context;
-import android.graphics.Color;
-import android.graphics.Typeface;
 import android.text.InputType;
-import android.text.TextUtils;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -35,25 +31,35 @@ final class SessionSwitcher {
         BottomSheetDialog dialog = new BottomSheetDialog(context);
         LinearLayout box = new LinearLayout(context);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(context, 20), dp(context, 20), dp(context, 20), dp(context, 20));
+        box.setPadding(dp(context, 20), dp(context, 8), dp(context, 20), dp(context, 20));
+        View handle = new View(context);
+        handle.setBackgroundResource(R.drawable.bg_drag_handle);
+        LinearLayout.LayoutParams handleLp = new LinearLayout.LayoutParams(dp(context, 36), dp(context, 4));
+        handleLp.gravity = Gravity.CENTER_HORIZONTAL;
+        handleLp.bottomMargin = dp(context, 16);
+        box.addView(handle, handleLp);
         TextView heading = new TextView(context);
         heading.setTextSize(22);
-        heading.setTypeface(null, Typeface.BOLD);
+        heading.setTextColor(SessionDrawer.color(context, com.google.android.material.R.attr.colorOnSurface));
         box.addView(heading);
         TextView hint = new TextView(context);
-        hint.setText("点按切换 · 更多操作可重命名或关闭");
-        hint.setPadding(0, dp(context, 8), 0, dp(context, 12));
+        hint.setText("点按切换，长按或 ⋮ 重命名、关闭");
+        hint.setTextSize(14);
+        hint.setTextColor(SessionDrawer.color(context, com.google.android.material.R.attr.colorOnSurfaceVariant));
+        hint.setPadding(0, dp(context, 4), 0, dp(context, 16));
         box.addView(hint);
         ScrollView scroll = new ScrollView(context);
         LinearLayout list = new LinearLayout(context);
         list.setOrientation(LinearLayout.VERTICAL);
         scroll.addView(list);
-        box.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                Math.min(dp(context, 360), context.getResources().getDisplayMetrics().heightPixels / 2)));
+        box.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0));
         MaterialButton add = new MaterialButton(context);
-        add.setText("＋ 新建连接");
+        add.setText("新建连接");
+        add.setIconResource(R.drawable.ic_add);
         add.setOnClickListener(v -> { dialog.dismiss(); create.run(); });
-        box.addView(add, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 52)));
+        LinearLayout.LayoutParams addLp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(context, 56));
+        addLp.topMargin = dp(context, 12);
+        box.addView(add, addLp);
         Map<String, TextView> labels = new HashMap<>();
         Runnable refresh = () -> {
             List<TerminalSession> sessions = service.sessions();
@@ -62,42 +68,19 @@ final class SessionSwitcher {
             labels.clear();
             for (int i = 0; i < sessions.size(); i++) {
                 TerminalSession session = sessions.get(i);
-                LinearLayout row = new LinearLayout(context);
-                row.setGravity(Gravity.CENTER_VERTICAL);
-                row.setPadding(dp(context, 4), dp(context, 6), 0, dp(context, 6));
-                LinearLayout text = new LinearLayout(context);
-                text.setOrientation(LinearLayout.VERTICAL);
-                text.setPadding(dp(context, 8), dp(context, 8), dp(context, 8), dp(context, 8));
-                TextView title = new TextView(context);
-                title.setText(label(session, i + 1, session.id.equals(current)));
-                title.setTextSize(16);
-                title.setTypeface(null, Typeface.BOLD);
-                title.setSingleLine(true);
-                title.setEllipsize(TextUtils.TruncateAt.END);
-                labels.put(session.id, title);
-                TextView detail = new TextView(context);
-                detail.setText(session.endpoint + "\n" + session.detail());
-                detail.setTextSize(12);
-                text.addView(title);
-                text.addView(detail);
-                text.setOnClickListener(v -> {
-                    if (service.get(session.id) == null) return;
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
+                lp.bottomMargin = dp(context, 6);
+                list.addView(SessionDrawer.card(context, service, session, i + 1, session.id.equals(current), labels, () -> {
                     dialog.dismiss();
                     select.accept(session);
-                });
-                text.setBackgroundResource(android.R.drawable.list_selector_background);
-                row.addView(text, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
-                ImageButton more = new ImageButton(context);
-                more.setImageResource(R.drawable.ic_more_vert);
-                android.util.TypedValue color = new android.util.TypedValue();
-                context.getTheme().resolveAttribute(com.google.android.material.R.attr.colorOnSurface, color, true);
-                more.setColorFilter(color.data);
-                more.setBackgroundColor(Color.TRANSPARENT);
-                more.setContentDescription(session.title + " 的会话操作");
-                more.setOnClickListener(v -> showActions(context, service, session));
-                row.addView(more, new LinearLayout.LayoutParams(dp(context, 48), dp(context, 48)));
-                list.addView(row);
+                }), lp);
             }
+            // 会话少时面板贴合内容，多时最多占半屏并滚动。
+            int rowHeight = dp(context, 82);
+            int maxHeight = Math.min(dp(context, 420), context.getResources().getDisplayMetrics().heightPixels / 2);
+            scroll.getLayoutParams().height = Math.min(maxHeight, Math.max(rowHeight, sessions.size() * rowHeight));
+            scroll.requestLayout();
         };
         SessionService.Listener listener = new SessionService.Listener() {
             public void onSessionsChanged() {
@@ -106,8 +89,7 @@ final class SessionSwitcher {
             }
             public void onSessionData(TerminalSession changed) {
                 TextView label = labels.get(changed.id);
-                if (label != null && changed.unread && !changed.id.equals(current))
-                    label.setText(SessionSwitcher.label(changed, service.sessions().indexOf(changed) + 1, false));
+                if (label != null) SessionDrawer.bindStatus(label, changed, changed.id.equals(current));
             }
         };
         refresh.run();
@@ -125,13 +107,6 @@ final class SessionSwitcher {
         dialog.setContentView(box);
         dialog.show();
         dialog.getBehavior().setState(com.google.android.material.bottomsheet.BottomSheetBehavior.STATE_EXPANDED);
-    }
-
-    static String label(TerminalSession session, int index, boolean current) {
-        String status = session.state() == TerminalSession.State.CONNECTING ? " · 连接中" :
-                session.state() == TerminalSession.State.FAILED ? " · 失败" :
-                session.isActive() ? "" : " · 已结束";
-        return (current ? "● " : session.unread ? "• " : "") + index + " · " + session.title + status;
     }
 
     static void showActions(Context context, SessionService service, TerminalSession session) {
