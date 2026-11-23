@@ -75,6 +75,15 @@ jobs:
           gradle --no-daemon -PemulatorAbi :app:assembleDebug :app:assembleDebugAndroidTest 2>&1 | tee ci-out/build-debug.txt
           cp app/build/reports/lint-results-release.txt ci-out/ 2>/dev/null || true
 
+      - name: SSH 传输与端口转发回归
+        run: |
+          set -o pipefail
+          python3 -m venv "$RUNNER_TEMP/ssh-tests"
+          source "$RUNNER_TEMP/ssh-tests/bin/activate"
+          python3 -m pip install 'paramiko>=3,<5'
+          export JSCH_JAR=$(find "$HOME/.gradle/caches" -name jsch-0.2.26.jar -print -quit)
+          { bash tests/host/transport.sh && bash tests/host/forwarding.sh; } 2>&1 | tee ci-out/ssh-tests.txt
+
       - name: 构建失败摘要
         if: failure()
         run: |

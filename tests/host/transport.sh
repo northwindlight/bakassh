@@ -21,6 +21,7 @@ gcc -std=c11 -shared -fPIC -O2 -Wall -Wno-maybe-uninitialized \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/NativeTerm.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/TerminalKeys.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/SshTransport.java" \
+    "$root_dir/app/src/main/java/dev/northwind/bakassh/SshForwarding.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/HostKeyTrust.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/HostKeyRequest.java" \
     "$root_dir/app/src/main/java/dev/northwind/bakassh/PendingResize.java" \

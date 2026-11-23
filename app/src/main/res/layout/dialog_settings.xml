@@ -149,6 +149,12 @@
                     app:tint="?attr/colorOnSurfaceVariant"
                     android:contentDescription="@null" />
             </LinearLayout>
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/settings_ssh_forwarding"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="SSH 转发 · 图形 / 命令" />
             <LinearLayout
                 android:id="@+id/settings_background"
                 android:layout_width="match_parent"

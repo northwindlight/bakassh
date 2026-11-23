@@ -58,6 +58,14 @@ public class SshTransport {
     String connect(String host, int port, String user, String authType,
                    String keyPath, String keyPassphrase, String password,
                    int cols, int rows, Listener listener, HostKeyTrust trust) throws Exception {
+        return connect(host, port, user, authType, keyPath, keyPassphrase, password,
+                cols, rows, listener, trust, null);
+    }
+
+    String connect(String host, int port, String user, String authType,
+                   String keyPath, String keyPassphrase, String password,
+                   int cols, int rows, Listener listener, HostKeyTrust trust,
+                   SshForwarding.Plan forwarding) throws Exception {
         synchronized (this) {
             if (closed) throw new IOException("connection cancelled");
             if (trust == null) throw new IOException("尚未配置主机指纹校验，已取消连接");
@@ -86,8 +94,8 @@ public class SshTransport {
         }
         try {
             connectedSession.setConfig("StrictHostKeyChecking", "yes");
-            connectedSession.setServerAliveInterval(30000);
-            connectedSession.setServerAliveCountMax(3);
+            connectedSession.setServerAliveInterval(forwarding == null ? 30000 : forwarding.aliveSeconds * 1000);
+            connectedSession.setServerAliveCountMax(forwarding == null ? 3 : forwarding.aliveCount);
             if (isPubkey) {
                 connectedSession.setConfig("PreferredAuthentications", "publickey");
             } else {
@@ -110,6 +118,24 @@ public class SshTransport {
                 HostKey hk = connectedSession.getHostKey();
                 if (hk != null) fp = hk.getFingerPrint(jsch);
             } catch (Throwable ignored) {
+            }
+
+            if (forwarding != null) {
+                SshForwarding.apply(connectedSession, forwarding);
+                synchronized (this) {
+                    if (closed) throw new IOException("connection cancelled");
+                    running = true;
+                }
+                reader = new Thread(() -> {
+                    try {
+                        while (running && connectedSession.isConnected()) Thread.sleep(250);
+                        if (running) listener.onStatus("SSH 转发连接已断开");
+                    } catch (InterruptedException ignored) {
+                    } finally { disconnect(); }
+                }, "ssh-tunnel-monitor");
+                reader.setDaemon(true);
+                reader.start();
+                return "SSH 转发已连接";
             }
 
             ChannelShell connectedChannel = (ChannelShell) connectedSession.openChannel("shell");

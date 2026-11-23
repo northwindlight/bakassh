@@ -248,10 +248,11 @@ public class HostListActivity extends AppCompatActivity {
     private void showHostActionMenu(View anchor, int pos) {
         Host h = hosts.get(pos);
         androidx.appcompat.widget.PopupMenu menu = new androidx.appcompat.widget.PopupMenu(this, anchor);
-        String[] actions = {"连接", "编辑", "复制 SSH 命令", "删除", "主机公钥 / 指纹"};
+        String[] actions = {"连接", "编辑", "复制 SSH 命令", "删除", "主机公钥 / 指纹", "SSH 转发"};
         for (int i = 0; i < actions.length; i++) menu.getMenu().add(0, i, i, actions[i]);
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
+                case 5: startActivity(new Intent(this, SshForwardingActivity.class).putExtra("host_id", h.id)); break;
                 case 0: connect(h); break;
                 case 1: editDialog(pos); break;
                 case 2: copySshCommand(h); break;
@@ -820,6 +821,7 @@ public class HostListActivity extends AppCompatActivity {
         root.findViewById(R.id.btn_cancel_settings).setOnClickListener(v -> dialog.cancel());
         root.findViewById(R.id.settings_extra_keys).setOnClickListener(v -> extraKeysDialog());
         root.findViewById(R.id.settings_background).setOnClickListener(v -> BackgroundSettings.show(this));
+        root.findViewById(R.id.settings_ssh_forwarding).setOnClickListener(v -> startActivity(new Intent(this, SshForwardingActivity.class)));
         root.findViewById(R.id.settings_about).setOnClickListener(v -> aboutDialog());
         ((TextView) root.findViewById(R.id.tv_settings_version)).setText(getString(R.string.about_version, versionName()));
         SessionService service = SessionService.current();
