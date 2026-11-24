@@ -14,7 +14,8 @@ public final class SshTunnelBootReceiver extends BroadcastReceiver {
         if (!p.getBoolean("enabled", false) || !p.getBoolean("boot", false)) return;
         try { ContextCompat.startForegroundService(context, new Intent(context, SshTunnelService.class)); }
         catch (RuntimeException error) {
-            p.edit().putString("status", "系统限制自动启动，请打开 SSH 转发页面恢复").apply();
+            p.edit().putBoolean("enabled", false).putString("state", SshTunnelService.FAILED)
+                    .putString("status", "系统不允许开机自启，请手动启动").apply();
         }
     }
 }

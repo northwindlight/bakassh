@@ -43,7 +43,7 @@ final class SessionSwitcher {
         heading.setTextColor(SessionDrawer.color(context, com.google.android.material.R.attr.colorOnSurface));
         box.addView(heading);
         TextView hint = new TextView(context);
-        hint.setText("点按切换，长按或 ⋮ 重命名、关闭");
+        hint.setText("长按可重命名或关闭");
         hint.setTextSize(14);
         hint.setTextColor(SessionDrawer.color(context, com.google.android.material.R.attr.colorOnSurfaceVariant));
         hint.setPadding(0, dp(context, 4), 0, dp(context, 16));
@@ -121,7 +121,7 @@ final class SessionSwitcher {
         if (service.get(session.id) == null) return;
         if (!session.isActive()) { service.close(session.id); return; }
         new MaterialAlertDialogBuilder(context).setTitle("关闭「" + session.title + "」？")
-                .setMessage("将断开此 SSH 连接。\n" + session.endpoint)
+                .setMessage(session.endpoint + " 的连接会断开。")
                 .setNegativeButton("取消", null)
                 .setPositiveButton("关闭会话", (d, w) -> service.close(session.id)).show();
     }
@@ -144,7 +144,7 @@ final class SessionSwitcher {
                 .setPositiveButton("保存", null).create();
         dialog.setOnShowListener(d -> dialog.getButton(android.content.DialogInterface.BUTTON_POSITIVE).setOnClickListener(v -> {
             String name = edit.getText() == null ? "" : edit.getText().toString().trim();
-            if (name.isEmpty()) { field.setError("请输入会话名称"); return; }
+            if (name.isEmpty()) { field.setError("名称不能为空"); return; }
             service.rename(session.id, name);
             dialog.dismiss();
         }));

@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
         @Override public void onServiceDisconnected(android.content.ComponentName name) {
             service = null;
             detachSession();
-            toast("会话服务已停止，请重新连接");
+            toast("会话已在后台结束，请重新连接");
             finish();
         }
     };
@@ -790,12 +790,12 @@ public class MainActivity extends AppCompatActivity {
         catch (Exception e) { toast("读取密钥失败：" + e.getMessage()); cancelConnection(); return; }
         if (key == null) {
             credentialDialog = new MaterialAlertDialogBuilder(this).setTitle("没有可用的密钥")
-                    .setMessage("请返回主机列表，生成或导入私钥，并在主机配置中选择它。")
+                    .setMessage("在主页「密钥」里生成或导入一个。")
                     .setPositiveButton("返回", (d, w) -> cancelConnection()).setOnCancelListener(d -> cancelConnection()).show();
             return;
         }
         String keyPath = KeyManager.getPrivFile(this, key.id).getAbsolutePath();
-        if (key.encrypted) promptSecret("解锁密钥 · " + key.name, "私钥保护口令", passphrase -> createSession(keyPath, passphrase, null));
+        if (key.encrypted) promptSecret("解锁 " + key.name, "密钥口令", passphrase -> createSession(keyPath, passphrase, null));
         else createSession(keyPath, null, null);
     }
 

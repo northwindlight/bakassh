@@ -18,7 +18,6 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/hosts_subtitle"
         android:textSize="14sp"
         android:textColor="?attr/colorOnSurfaceVariant"
         android:id="@+id/tv_host_subtitle"
@@ -145,7 +144,7 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
         <com.google.android.material.card.MaterialCardView
-            android:id="@+id/chip_extra_keys"
+            android:id="@+id/chip_forwarding"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -168,7 +167,7 @@
                 <ImageView
                     android:layout_width="24dp"
                     android:layout_height="24dp"
-                    android:src="@drawable/ic_keyboard"
+                    android:src="@drawable/ic_swap"
                     app:tint="?attr/colorOnTertiaryContainer"
                     android:contentDescription="@null" />
                 <LinearLayout
@@ -180,16 +179,17 @@
                     <TextView
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/extra_keys_title"
+                        android:text="@string/forwarding_title"
                         android:textSize="16sp"
                         android:fontFamily="sans-serif-medium"
                         android:maxLines="1"
                         android:ellipsize="end"
                         android:textColor="?attr/colorOnTertiaryContainer" />
                     <TextView
+                        android:id="@+id/tv_home_forwarding"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="@string/home_extra_keys_description"
+                        android:text="@string/forwarding_off"
                         android:textSize="12sp"
                         android:maxLines="1"
                         android:ellipsize="end"

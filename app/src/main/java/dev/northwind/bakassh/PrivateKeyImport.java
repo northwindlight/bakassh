@@ -12,27 +12,27 @@ final class PrivateKeyImport {
     static final int MAX_BYTES = 1024 * 1024;
 
     static byte[] read(InputStream in) throws IOException {
-        if (in == null) throw new IOException("文件不可读取，请重新选择。");
+        if (in == null) throw new IOException("读不了这个文件");
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         byte[] buffer = new byte[4096];
         int n;
         while ((n = in.read(buffer)) != -1) {
-            if (out.size() + n > MAX_BYTES) throw new IOException("文件超过 1 MB，请确认选择的是私钥。");
+            if (out.size() + n > MAX_BYTES) throw new IOException("文件超过 1 MB，不像私钥");
             out.write(buffer, 0, n);
         }
-        if (out.size() == 0) throw new IOException("文件为空。");
+        if (out.size() == 0) throw new IOException("文件是空的");
         return out.toByteArray();
     }
 
     static byte[] normalize(String text) {
-        if (text == null || text.trim().isEmpty()) throw new IllegalArgumentException("私钥内容为空。");
+        if (text == null || text.trim().isEmpty()) throw new IllegalArgumentException("私钥是空的");
         text = text.replace("\uFEFF", "").replace("\r\n", "\n").trim();
         if (text.startsWith("ssh-") || text.startsWith("ecdsa-") || text.contains("BEGIN PUBLIC KEY"))
-            throw new IllegalArgumentException("这是公钥文件，请选择没有 .pub 后缀的私钥文件。");
+            throw new IllegalArgumentException("这是公钥，请选不带 .pub 的那个文件");
         if (!text.startsWith("-----BEGIN ") || !text.contains("PRIVATE KEY-----"))
-            throw new IllegalArgumentException("无法识别私钥，请选择 OpenSSH 或 PEM 格式的私钥文件。");
+            throw new IllegalArgumentException("无法识别，需要 OpenSSH 或 PEM 格式的私钥");
         byte[] data = (text + "\n").getBytes(StandardCharsets.UTF_8);
-        if (data.length > MAX_BYTES) throw new IllegalArgumentException("私钥内容超过 1 MB。");
+        if (data.length > MAX_BYTES) throw new IllegalArgumentException("私钥超过 1 MB");
         return data;
     }
 
@@ -70,16 +70,16 @@ final class PrivateKeyImport {
         if (encrypted) {
             if (passphrase == null || passphrase.isEmpty()) {
                 pair.dispose();
-                throw new IllegalArgumentException("此私钥已加密，请输入私钥口令后重试。");
+                throw new IllegalArgumentException("私钥已加密，请填写口令");
             }
             if (!pair.decrypt(passphrase)) {
                 pair.dispose();
-                throw new IllegalArgumentException("口令不正确，或该加密格式不受支持。请检查后重试。");
+                throw new IllegalArgumentException("口令错误，或不支持这种加密格式");
             }
         }
         if (pair.getPublicKeyBlob() == null) {
             pair.dispose();
-            throw new IllegalArgumentException("无法从私钥读取公钥，请检查文件是否完整。");
+            throw new IllegalArgumentException("无法从私钥推出公钥，文件可能不完整");
         }
         return new Loaded(pair, encrypted);
     }

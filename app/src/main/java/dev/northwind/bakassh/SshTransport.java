@@ -68,7 +68,7 @@ public class SshTransport {
                    SshForwarding.Plan forwarding) throws Exception {
         synchronized (this) {
             if (closed) throw new IOException("connection cancelled");
-            if (trust == null) throw new IOException("尚未配置主机指纹校验，已取消连接");
+            if (trust == null) throw new IOException("缺少指纹校验，已取消连接");
             this.cols = cols;
             this.rows = rows;
         }

@@ -164,7 +164,7 @@ public final class KeyManager {
             return new KeyItem(KeyItem.DEFAULT_ID, "默认密钥", kp.getKeyTypeString(), fp,
                     pubStr, kp.isEncrypted(), true, System.currentTimeMillis());
         } catch (Exception e) {
-            throw new IllegalStateException("旧密钥无法读取，请检查原始私钥文件。", e);
+            throw new IllegalStateException("旧密钥读取失败", e);
         } finally {
             if (kp != null) kp.dispose();
         }

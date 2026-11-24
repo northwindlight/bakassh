@@ -20,23 +20,20 @@ final class BackgroundSettings {
         boolean exempt = power.isIgnoringBatteryOptimizations(activity.getPackageName());
         boolean notifications = androidx.core.app.NotificationManagerCompat.from(activity).areNotificationsEnabled();
         String[] actions = {
-                isColorOs() ? "设置后台权限 · ColorOS 耗电管理" : (exempt ? "后台权限：已申请 · 查看系统设置" : "设置后台权限"),
-                notifications ? "通知：已允许 · 打开通知设置" : "允许显示会话通知",
-                isColorOs() ? "系统电池优化设置" : "打开应用信息 / 厂商后台设置"
+                isColorOs() ? "耗电管理（ColorOS）" : (exempt ? "电池优化：已忽略" : "忽略电池优化"),
+                notifications ? "通知：已允许" : "允许通知",
+                isColorOs() ? "电池优化" : "应用信息（厂商后台设置）"
         };
         android.widget.TextView help = new android.widget.TextView(activity);
         int padding = (int) (24 * activity.getResources().getDisplayMetrics().density);
         help.setPadding(padding, padding / 2, padding, padding / 2);
         SessionService service = SessionService.current();
         SshTunnelService tunnel = SshTunnelService.current();
-        help.setText("SSH 会话使用前台服务和 CPU / Wi-Fi 休眠锁。系统仍可能限制后台网络，"
-                + "请在下方打开系统设置，由你允许后台运行。\n\n"
-                + "前台服务：" + ((service != null && service.foregroundActive()) || tunnel != null ? "运行中" : "未运行")
-                + " · 休眠锁：" + ((service != null && service.locksHeld()) || (tunnel != null && tunnel.locksHeld()) ? "已持有" : "未持有")
-                + " · 电池优化：" + (exempt ? "已忽略" : "未忽略")
-                + (isColorOs() ? "\n\nColorOS：进入「耗电管理」，选择「完全允许后台行为」。"
-                + "仅有前台通知或休眠锁仍可能被系统冻结并断开网络。" : "\n\n请允许应用后台运行，并检查厂商的后台限制。")
-                + "强行停止或进程被杀后，原 SSH 连接需要重新建立。");
+        help.setText("系统可能在锁屏后切断后台网络，用下面的入口放行。\n\n"
+                + "后台服务" + ((service != null && service.foregroundActive()) || tunnel != null ? "运行中" : "未运行")
+                + " · 唤醒锁" + ((service != null && service.locksHeld()) || (tunnel != null && tunnel.locksHeld()) ? "已持有" : "未持有")
+                + " · 电池优化" + (exempt ? "已忽略" : "未忽略")
+                + (isColorOs() ? "\n\nColorOS 还需要在「耗电管理」里选「完全允许后台行为」。" : ""));
         new MaterialAlertDialogBuilder(activity).setTitle("后台常驻").setView(help)
                         .setItems(actions, (d, index) -> {
                             if (index == 0) {
@@ -68,7 +65,7 @@ final class BackgroundSettings {
                 "进入「耗电管理」，选择「完全允许后台行为」", Toast.LENGTH_LONG).show();
         if (!open(activity, new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 .setData(Uri.parse("package:" + activity.getPackageName()))))
-            Toast.makeText(activity, "请在系统应用设置中允许 bakaSSH 后台运行", Toast.LENGTH_LONG).show();
+            Toast.makeText(activity, "请在系统设置里允许 bakaSSH 后台运行", Toast.LENGTH_LONG).show();
     }
 
     private static boolean isColorOs() {

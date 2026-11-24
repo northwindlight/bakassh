@@ -1,41 +1,387 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  端口转发页：上方状态卡，中间是服务器、规则（表单或命令两种写法）和后台选项，底部固定一个主按钮。
+  规则卡片由 item_forward_rule.xml 生成，编辑弹窗是 dialog_forward_rule.xml。
+-->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:fitsSystemWindows="true" android:background="?attr/colorSurface">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:fitsSystemWindows="true"
+    android:background="?attr/colorSurface">
+
     <com.google.android.material.appbar.MaterialToolbar
-        android:id="@+id/tunnel_toolbar" android:layout_width="match_parent" android:layout_height="?attr/actionBarSize"
-        app:title="SSH 转发" app:navigationIcon="@drawable/ic_arrow_back" app:navigationIconTint="?attr/colorOnSurface" app:navigationContentDescription="返回" />
-    <androidx.core.widget.NestedScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="24dp">
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="通过 SSH 安全连接转发端口。图形配置与标准命令可以随时切换。" android:textColor="?attr/colorOnSurfaceVariant" android:paddingBottom="16dp" />
-            <com.google.android.material.textfield.TextInputLayout android:id="@+id/tunnel_host_layout" style="@style/Widget.Baka.TextField" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="SSH 主机" app:endIconMode="custom" app:endIconDrawable="@drawable/ic_expand_more" app:endIconContentDescription="选择 SSH 主机">
-                <com.google.android.material.textfield.MaterialAutoCompleteTextView android:id="@+id/tunnel_host" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="none" android:singleLine="true" android:ellipsize="end" android:textSize="16sp" />
-            </com.google.android.material.textfield.TextInputLayout>
-            <com.google.android.material.button.MaterialButtonToggleGroup android:id="@+id/tunnel_modes" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" app:singleSelection="true" app:selectionRequired="true" app:checkedButton="@id/tunnel_graphical">
-                <com.google.android.material.button.MaterialButton android:id="@+id/tunnel_graphical" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="图形配置" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/tunnel_manual" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="手动命令" />
-            </com.google.android.material.button.MaterialButtonToggleGroup>
-            <LinearLayout android:id="@+id/tunnel_graph_group" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
-                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="长按 ↕ 拖动排序，点卡片编辑。" android:textColor="?attr/colorOnSurfaceVariant" android:paddingTop="16dp" android:paddingBottom="8dp" />
-                <LinearLayout android:id="@+id/tunnel_rules" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" />
-                <com.google.android.material.button.MaterialButton android:id="@+id/tunnel_add" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="添加转发规则" />
+        android:id="@+id/tunnel_toolbar"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize"
+        app:title="端口转发"
+        app:navigationIcon="@drawable/ic_arrow_back"
+        app:navigationIconTint="?attr/colorOnSurface"
+        app:navigationContentDescription="返回" />
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/tunnel_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="24dp">
+
+            <!-- 状态 -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/tunnel_status_card"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="0dp"
+                app:cardBackgroundColor="?attr/colorSurfaceContainer">
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:minHeight="88dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:paddingTop="16dp"
+                    android:paddingBottom="16dp">
+                    <ImageView
+                        android:id="@+id/tunnel_status_icon"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:padding="8dp"
+                        android:background="@drawable/bg_rule_badge"
+                        android:src="@drawable/ic_swap"
+                        android:contentDescription="@null" />
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="16dp"
+                        android:orientation="vertical">
+                        <TextView
+                            android:id="@+id/tunnel_status_title"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textSize="20sp"
+                            android:fontFamily="sans-serif-medium"
+                            android:accessibilityLiveRegion="polite" />
+                        <TextView
+                            android:id="@+id/tunnel_status"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="2dp"
+                            android:textSize="14sp"
+                            android:maxLines="3"
+                            android:ellipsize="end" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- 服务器 -->
+            <TextView
+                style="@style/Baka.SectionLabel"
+                android:text="经由服务器" />
+            <LinearLayout
+                android:id="@+id/tunnel_host_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="72dp"
+                android:background="@drawable/bg_setting_row"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp">
+                <TextView
+                    android:id="@+id/tunnel_host_avatar"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_avatar_host"
+                    android:gravity="center"
+                    android:textSize="18sp"
+                    android:fontFamily="sans-serif-medium"
+                    android:textColor="?attr/colorOnSecondaryContainer"
+                    android:importantForAccessibility="no" />
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="16dp"
+                    android:orientation="vertical">
+                    <TextView
+                        android:id="@+id/tunnel_host_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:textSize="16sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:textColor="?attr/colorOnSurface" />
+                    <TextView
+                        android:id="@+id/tunnel_host_address"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textSize="13sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+                <ImageView
+                    android:id="@+id/tunnel_host_chevron"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_expand_more"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                    android:contentDescription="@null" />
             </LinearLayout>
-            <com.google.android.material.textfield.TextInputLayout android:id="@+id/tunnel_command_layout" style="@style/Widget.Baka.TextField" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:hint="标准 SSH 命令" android:visibility="gone" app:helperText="支持 -N、-L、-R、-p、-l、-g 和 SSH 保活选项。身份认证使用已保存主机的密钥或密码。">
-                <com.google.android.material.textfield.TextInputEditText android:id="@+id/tunnel_command" android:layout_width="match_parent" android:layout_height="wrap_content" android:inputType="textMultiLine|textNoSuggestions" android:fontFamily="monospace" android:minLines="4" android:gravity="top" android:saveEnabled="false" />
+
+            <!-- 规则：标题行右侧切换表单 / 命令 -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:paddingTop="16dp"
+                android:paddingBottom="8dp">
+                <TextView
+                    android:id="@+id/tunnel_rules_label"
+                    style="@style/Baka.SectionLabel"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:paddingTop="0dp"
+                    android:paddingBottom="0dp"
+                    android:text="规则" />
+                <com.google.android.material.button.MaterialButtonToggleGroup
+                    android:id="@+id/tunnel_modes"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:singleSelection="true"
+                    app:selectionRequired="true"
+                    app:checkedButton="@id/tunnel_graphical">
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/tunnel_graphical"
+                        style="@style/Baka.SegmentButton"
+                        android:text="表单" />
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/tunnel_manual"
+                        style="@style/Baka.SegmentButton"
+                        android:text="命令" />
+                </com.google.android.material.button.MaterialButtonToggleGroup>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/tunnel_graph_group"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <LinearLayout
+                    android:id="@+id/tunnel_rules"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+                <TextView
+                    android:id="@+id/tunnel_rules_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_setting_row"
+                    android:padding="20dp"
+                    android:gravity="center"
+                    android:text="还没有规则"
+                    android:textSize="14sp"
+                    android:textColor="?attr/colorOnSurfaceVariant"
+                    android:visibility="gone" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/tunnel_add"
+                    style="@style/Widget.Material3.Button.TonalButton.Icon"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="8dp"
+                    android:text="添加规则"
+                    app:icon="@drawable/ic_add"
+                    app:iconGravity="textStart" />
+            </LinearLayout>
+
+            <com.google.android.material.textfield.TextInputLayout
+                android:id="@+id/tunnel_command_layout"
+                style="@style/Widget.Baka.TextField"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                app:helperText="可用 -N -L -R -p -l -g -o；登录用已保存主机的密码或密钥"
+                app:endIconMode="custom"
+                app:endIconDrawable="@drawable/ic_content_copy"
+                app:endIconContentDescription="复制命令">
+                <com.google.android.material.textfield.TextInputEditText
+                    android:id="@+id/tunnel_command"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:inputType="textMultiLine|textNoSuggestions"
+                    android:fontFamily="monospace"
+                    android:textSize="13sp"
+                    android:minLines="5"
+                    android:gravity="top"
+                    android:saveEnabled="false" />
             </com.google.android.material.textfield.TextInputLayout>
-            <TextView android:id="@+id/tunnel_preview" android:layout_width="match_parent" android:layout_height="wrap_content" android:fontFamily="monospace" android:textSize="12sp" android:maxLines="3" android:ellipsize="end" android:textIsSelectable="true" android:textColor="?attr/colorOnSurface" android:paddingTop="16dp" android:paddingBottom="8dp" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/tunnel_copy" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="复制 SSH 命令" />
-            <com.google.android.material.checkbox.MaterialCheckBox android:id="@+id/tunnel_boot" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="开机解锁后恢复已开启的转发" />
-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="临时密码或密钥口令需重新输入。厂商系统请允许自启动和后台运行。" android:textColor="?attr/colorOnSurfaceVariant" android:textSize="12sp" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/tunnel_background" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="设置后台保活" />
+
+            <!-- 表单模式下展示等价命令，方便复制到电脑上用 -->
+            <LinearLayout
+                android:id="@+id/tunnel_preview_block"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_code_block"
+                android:orientation="horizontal"
+                android:paddingStart="16dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp"
+                android:paddingEnd="4dp">
+                <TextView
+                    android:id="@+id/tunnel_preview"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_gravity="center_vertical"
+                    android:fontFamily="monospace"
+                    android:textSize="12sp"
+                    android:lineSpacingExtra="2dp"
+                    android:textIsSelectable="true"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/tunnel_copy"
+                    style="@style/Widget.Material3.Button.IconButton"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="top"
+                    android:contentDescription="复制命令"
+                    app:icon="@drawable/ic_content_copy"
+                    app:iconTint="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
+
+            <!-- 后台 -->
+            <TextView
+                style="@style/Baka.SectionLabel"
+                android:text="后台" />
+            <LinearLayout
+                android:id="@+id/tunnel_boot_row"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="72dp"
+                android:background="@drawable/bg_setting_row"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="开机后自动恢复"
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="密码或口令没保存时无法自动恢复"
+                        android:textSize="13sp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+                <com.google.android.material.materialswitch.MaterialSwitch
+                    android:id="@+id/tunnel_boot"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp" />
+            </LinearLayout>
+            <LinearLayout
+                android:id="@+id/tunnel_background"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minHeight="72dp"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_setting_row"
+                android:foreground="?attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:padding="16dp">
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/background_settings"
+                        android:textSize="16sp"
+                        android:textColor="?attr/colorOnSurface" />
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="@string/background_settings_help"
+                        android:textSize="13sp"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+                </LinearLayout>
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_arrow_forward"
+                    app:tint="?attr/colorOnSurfaceVariant"
+                    android:contentDescription="@null" />
+            </LinearLayout>
         </LinearLayout>
     </androidx.core.widget.NestedScrollView>
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingStart="24dp" android:paddingEnd="24dp" android:paddingBottom="12dp">
-        <TextView android:id="@+id/tunnel_status" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingTop="8dp" android:paddingBottom="8dp" android:maxLines="3" android:accessibilityLiveRegion="polite" android:textColor="?attr/colorOnSurfaceVariant" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
-            <com.google.android.material.button.MaterialButton android:id="@+id/tunnel_start" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="保存并启动转发" />
-            <com.google.android.material.button.MaterialButton android:id="@+id/tunnel_stop" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="停止" />
-        </LinearLayout>
+
+    <!-- 底部操作：未开启时只有「启动」；运行中是「停止」，有未应用的修改时再加「应用修改」。 -->
+    <LinearLayout
+        android:id="@+id/tunnel_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="?attr/colorSurfaceContainerLow"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp">
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tunnel_stop"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="停止"
+            android:visibility="gone" />
+        <Space
+            android:id="@+id/tunnel_button_gap"
+            android:layout_width="12dp"
+            android:layout_height="1dp"
+            android:visibility="gone" />
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/tunnel_start"
+            android:layout_width="0dp"
+            android:layout_height="56dp"
+            android:layout_weight="1"
+            android:text="启动" />
     </LinearLayout>
 </LinearLayout>

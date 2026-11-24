@@ -43,7 +43,7 @@ public class HostStore {
                 }
                 if (migrate) saveChecked(ctx, list, secrets);
             } catch (Exception error) {
-                throw new IllegalStateException("无法读取或加密迁移主机配置，原数据已保留，请重试", error);
+                throw new IllegalStateException("读取主机配置失败，原数据没有改动", error);
             }
         }
         // 首次运行不播种任何主机：不把开发者的私有主机名/会话名塞进别人的设备
@@ -55,7 +55,7 @@ public class HostStore {
             saveChecked(ctx, hosts, new KeystoreSecrets());
             return true;
         } catch (Exception error) {
-            android.widget.Toast.makeText(ctx, "保存失败：无法加密或写入主机配置，请重试", android.widget.Toast.LENGTH_LONG).show();
+            android.widget.Toast.makeText(ctx, "保存失败，请重试", android.widget.Toast.LENGTH_LONG).show();
             return false;
         }
     }

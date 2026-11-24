@@ -20,6 +20,8 @@ import java.util.concurrent.TimeUnit;
 public final class SshTunnelService extends Service {
     static final String STOP = "dev.northwind.bakassh.STOP_SSH_TUNNEL";
     static final String CHANNEL = "ssh-forwarding";
+    /** Values of the "state" preference, read by the forwarding page and the home tile. */
+    static final String IDLE = "idle", CONNECTING = "connecting", CONNECTED = "connected", RETRYING = "retrying", FAILED = "failed";
     private static volatile SshTunnelService instance;
     private final ScheduledExecutorService control = Executors.newSingleThreadScheduledExecutor();
     private volatile SshTransport transport;
@@ -40,7 +42,7 @@ public final class SshTunnelService extends Service {
         super.onCreate();
         instance = this;
         if (Build.VERSION.SDK_INT >= 26) getSystemService(NotificationManager.class).createNotificationChannel(
-                new NotificationChannel(CHANNEL, "SSH 转发", NotificationManager.IMPORTANCE_LOW));
+                new NotificationChannel(CHANNEL, "端口转发", NotificationManager.IMPORTANCE_LOW));
         PowerManager power = (PowerManager) getSystemService(POWER_SERVICE);
         wakeLock = power.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "bakaSSH:ssh-forwarding");
         wakeLock.setReferenceCounted(false);
@@ -48,7 +50,7 @@ public final class SshTunnelService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         if ((intent != null && STOP.equals(intent.getAction())) || !prefs(this).getBoolean("enabled", false)) {
-            prefs(this).edit().putBoolean("enabled", false).putString("status", "转发已停止").apply();
+            prefs(this).edit().putBoolean("enabled", false).putString("state", IDLE).putString("status", "").apply();
             stopSelf();
             return START_NOT_STICKY;
         }
@@ -62,7 +64,7 @@ public final class SshTunnelService extends Service {
         if (waiting != null) waiting.answer(false);
         SshTransport old = transport;
         if (old != null) new Thread(old::disconnect, "ssh-tunnel-replace").start();
-        status("正在建立 SSH 转发…");
+        status(CONNECTING, "");
         control.execute(() -> {
             // Reconfiguration must release the old listening ports before binding them again.
             if (old != null) old.disconnect();
@@ -82,19 +84,19 @@ public final class SshTunnelService extends Service {
             Host host = null;
             for (Host item : HostStore.load(this)) if (item.id.equals(hostId)) { host = item; break; }
             if (host == null || !plan.host.equalsIgnoreCase(host.host) || !plan.user.equals(host.user) || plan.port != host.port)
-                throw new IllegalArgumentException("SSH 主机配置已变化，请重新选择主机并保存转发");
+                throw new IllegalArgumentException("主机配置改过了，请重新选择主机");
             String keyPath = null;
             if (!"password".equals(host.authType)) {
                 KeyItem key = KeyManager.getKey(this, host.keyId);
-                if (key == null) throw new IllegalArgumentException("请先在密钥管理中选择可用的 SSH 密钥");
-                if (key.encrypted && passphrase == null) throw new IllegalArgumentException("请打开转发页面输入密钥口令后恢复连接");
+                if (key == null) throw new IllegalArgumentException("主机没有可用的密钥");
+                if (key.encrypted && passphrase == null) throw new IllegalArgumentException("需要密钥口令，请在转发页重新启动");
                 keyPath = KeyManager.getPrivFile(this, key.id).getAbsolutePath();
             }
             String password = transientPassword != null ? transientPassword : host.password;
             if ("password".equals(host.authType) && password.isEmpty())
-                throw new IllegalArgumentException("请打开转发页面输入 SSH 密码");
+                throw new IllegalArgumentException("需要密码，请在转发页重新启动");
             synchronized (this) { if (!active(activeGeneration)) return; if (!wakeLock.isHeld()) wakeLock.acquire(); }
-            status("正在连接 " + plan.user + "@" + plan.host + "…");
+            status(CONNECTING, plan.user + "@" + plan.host);
             next.connect(host.host, host.port, host.user, host.authType, keyPath, passphrase, password,
                     80, 24, new SshTransport.Listener() {
                         @Override public void onBytes(byte[] bytes, int count) { }
@@ -107,11 +109,11 @@ public final class SshTunnelService extends Service {
                         if (!uiVisible || !active(activeGeneration)) return false;
                         HostKeyRequest request = new HostKeyRequest(challenge);
                         hostKeyRequest = request;
-                        status("等待确认 SSH 主机指纹");
+                        status(CONNECTING, "等待确认主机指纹");
                         try { return request.await(); }
                         finally { if (hostKeyRequest == request) hostKeyRequest = null; }
                     }), plan);
-            if (active(activeGeneration)) status("已连接 · " + plan.rules.size() + " 条 SSH 转发规则");
+            if (active(activeGeneration)) status(CONNECTED, plan.user + "@" + plan.host + " · " + plan.rules.size() + " 条规则");
             else next.disconnect();
         } catch (Exception error) {
             next.disconnect();
@@ -120,7 +122,7 @@ public final class SshTunnelService extends Service {
             if (networkFailure(error)) reconnect(activeGeneration, passphrase, transientPassword, failures);
             else {
                 prefs(this).edit().putBoolean("enabled", false).apply();
-                status("转发未启动：" + error.getMessage());
+                status(FAILED, reason(error));
                 synchronized (this) { if (wakeLock.isHeld()) wakeLock.release(); }
             }
         }
@@ -132,8 +134,18 @@ public final class SshTunnelService extends Service {
         SshTransport old = transport;
         if (old != null) old.disconnect();
         int delay = Math.min(30, 3 + failures * 3);
-        status("连接已断开，" + delay + " 秒后重试");
+        status(RETRYING, delay + " 秒后重连");
         control.schedule(() -> connect(value, passphrase, password, failures + 1), delay, TimeUnit.SECONDS);
+    }
+
+    /** JSch reports these in English; translate the ones a user can act on. */
+    private static String reason(Exception error) {
+        String message = String.valueOf(error.getMessage());
+        String lower = message.toLowerCase(java.util.Locale.ROOT);
+        if (lower.startsWith("auth fail") || lower.startsWith("auth cancel")) return "认证失败";
+        if (lower.contains("cannot be bound")) return "手机上的监听端口被占用，或系统不允许使用";
+        if (lower.contains("remote port forwarding failed")) return "服务器拒绝了远程转发，端口可能已被占用";
+        return message;
     }
 
     private static boolean networkFailure(Exception error) {
@@ -146,15 +158,25 @@ public final class SshTunnelService extends Service {
         return message.contains("timeout: socket is not established") || message.contains("connection is closed by foreign host");
     }
 
-    private void status(String message) {
+    static String title(String state) {
+        switch (state) {
+            case CONNECTING: return "正在连接";
+            case CONNECTED: return "转发中";
+            case RETRYING: return "连接断开";
+            case FAILED: return "启动失败";
+            default: return "未开启";
+        }
+    }
+
+    private void status(String state, String message) {
         if (destroyed) return;
-        prefs(this).edit().putString("status", message).apply();
+        prefs(this).edit().putString("state", state).putString("status", message).apply();
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE;
         PendingIntent open = PendingIntent.getActivity(this, 20, new Intent(this, SshForwardingActivity.class), flags);
         PendingIntent stop = PendingIntent.getService(this, 21, new Intent(this, SshTunnelService.class).setAction(STOP), flags);
         startForeground(2, new NotificationCompat.Builder(this, CHANNEL).setSmallIcon(R.drawable.ic_terminal)
-                .setContentTitle("bakaSSH · SSH 转发").setContentText(message).setContentIntent(open)
-                .setOngoing(true).setSilent(true).setOnlyAlertOnce(true).addAction(0, "停止转发", stop).build());
+                .setContentTitle("端口转发 · " + title(state)).setContentText(message).setContentIntent(open)
+                .setOngoing(true).setSilent(true).setOnlyAlertOnce(true).addAction(0, "停止", stop).build());
     }
 
     @Override public IBinder onBind(Intent intent) { return null; }

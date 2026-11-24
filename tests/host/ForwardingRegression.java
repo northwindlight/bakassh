@@ -17,6 +17,9 @@ public final class ForwardingRegression {
         check(plan.port == 2222 && plan.aliveSeconds == 15 && plan.rules.size() == 2, "parse standard options");
         check(plan.host.equals("2001:db8::2") && plan.rules.get(1).target.equals("2001:db8::1"), "IPv6 brackets");
         check(SshForwarding.parse(plan.command()).command().equals(plan.command()), "graph/command round-trip");
+        check(SshForwarding.parse(plan.pretty()).command().equals(plan.command()), "multi-line command round-trip");
+        check(SshForwarding.parseDraft("ssh -N -p 2200 user@server").rules.isEmpty(), "draft without rules");
+        rejects("ssh -N user@server");
         check(SshForwarding.parse("ssh -N -g -L2222:localhost:22 -luser server").rules.get(0).bind.equals("0.0.0.0"), "-g bind semantics");
         check(SshForwarding.parse("ssh -N \\\n -L 2222:localhost:22 user@server").rules.size() == 1, "line continuation");
         rejects("ssh -L 2222:localhost:22 user@server");

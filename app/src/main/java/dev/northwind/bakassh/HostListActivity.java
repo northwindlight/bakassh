@@ -43,7 +43,7 @@ public class HostListActivity extends AppCompatActivity {
     private BaseAdapter adapter;
     private ListView list;
     private View emptyStateView;
-    private TextView subtitleView;
+    private TextView subtitleView, forwardingLabel;
     private View activeSessions;
     private TextView activeSessionsLabel;
     private final SessionService.Listener sessionListener = new SessionService.Listener() {
@@ -90,7 +90,8 @@ public class HostListActivity extends AppCompatActivity {
         });
 
         header.findViewById(R.id.chip_manage_keys).setOnClickListener(v -> manageKeysDialog());
-        header.findViewById(R.id.chip_extra_keys).setOnClickListener(v -> extraKeysDialog());
+        forwardingLabel = header.findViewById(R.id.tv_home_forwarding);
+        header.findViewById(R.id.chip_forwarding).setOnClickListener(v -> startActivity(new Intent(this, SshForwardingActivity.class)));
         findViewById(R.id.chip_settings).setOnClickListener(v -> settingsDialog());
 
         adapter = new BaseAdapter() {
@@ -162,18 +163,19 @@ public class HostListActivity extends AppCompatActivity {
 
     private void showHostStorageError() {
         new MaterialAlertDialogBuilder(this).setTitle("暂时无法读取主机配置")
-                .setMessage("读取或加密迁移未完成，原数据已保留。请重试后再编辑主机。")
+                .setMessage("原数据没有改动，可以重试。")
                 .setPositiveButton("重试", (d, w) -> recreate()).setNegativeButton("关闭", null).show();
     }
 
     private void updateListState() {
         if (hosts.isEmpty()) {
             emptyStateView.setVisibility(View.VISIBLE);
-            subtitleView.setText("随时连接你的设备");
+            subtitleView.setVisibility(View.GONE);
         } else {
             emptyStateView.setVisibility(View.GONE);
             list.setVisibility(View.VISIBLE);
-            subtitleView.setText(hosts.size() + " 台设备，随时连接");
+            subtitleView.setVisibility(View.VISIBLE);
+            subtitleView.setText(hosts.size() + " 台");
         }
     }
 
@@ -197,6 +199,21 @@ public class HostListActivity extends AppCompatActivity {
         observedService = SessionService.current();
         if (observedService != null) observedService.addListener(sessionListener);
         updateActiveSessions();
+        updateForwarding();
+    }
+
+    /** 主页转发入口的副标题：未开启 / 转发中 · N 条 / 正在连接 / 启动失败。 */
+    private void updateForwarding() {
+        android.content.SharedPreferences p = SshTunnelService.prefs(this);
+        String state = p.getString("state", SshTunnelService.IDLE);
+        boolean enabled = p.getBoolean("enabled", false);
+        if (!enabled && !SshTunnelService.FAILED.equals(state)) state = SshTunnelService.IDLE;
+        String label = SshTunnelService.title(state);
+        if (SshTunnelService.CONNECTED.equals(state)) {
+            try { label += " · " + SshForwarding.parse(p.getString("command", "")).rules.size() + " 条"; }
+            catch (IllegalArgumentException ignored) { }
+        }
+        forwardingLabel.setText(label);
     }
 
     @Override protected void onStop() {
@@ -248,8 +265,9 @@ public class HostListActivity extends AppCompatActivity {
     private void showHostActionMenu(View anchor, int pos) {
         Host h = hosts.get(pos);
         androidx.appcompat.widget.PopupMenu menu = new androidx.appcompat.widget.PopupMenu(this, anchor);
-        String[] actions = {"连接", "编辑", "复制 SSH 命令", "删除", "主机公钥 / 指纹", "SSH 转发"};
-        for (int i = 0; i < actions.length; i++) menu.getMenu().add(0, i, i, actions[i]);
+        String[] actions = {"连接", "编辑", "复制 SSH 命令", "删除", "主机指纹", "端口转发"};
+        int[] order = {0, 1, 3, 5, 4, 2}; // 删除放最后
+        for (int i = 0; i < actions.length; i++) menu.getMenu().add(0, i, order[i], actions[i]);
         menu.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
                 case 5: startActivity(new Intent(this, SshForwardingActivity.class).putExtra("host_id", h.id)); break;
@@ -269,15 +287,15 @@ public class HostListActivity extends AppCompatActivity {
         ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
         if (cm != null) {
             cm.setPrimaryClip(ClipData.newPlainText("SSH Command", cmd));
-            Toast.makeText(this, "已复制连接命令: " + cmd, Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "已复制：" + cmd, Toast.LENGTH_SHORT).show();
         }
     }
 
     private void confirmDelete(int pos) {
         Host h = hosts.get(pos);
         new MaterialAlertDialogBuilder(this)
-                .setTitle("删除主机")
-                .setMessage("确认删除主机 \"" + h.title() + "\"？此操作无法撤销。")
+                .setTitle("删除「" + h.title() + "」？")
+                .setMessage("删除后无法恢复。")
                 .setPositiveButton("删除", (d, w) -> {
                     List<Host> updated = new ArrayList<>(hosts);
                     updated.remove(pos);
@@ -285,7 +303,7 @@ public class HostListActivity extends AppCompatActivity {
                     hosts = updated;
                     adapter.notifyDataSetChanged();
                     updateListState();
-                    Toast.makeText(this, "已删除主机", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, "已删除", Toast.LENGTH_SHORT).show();
                 })
                 .setNegativeButton("取消", null)
                 .show();
@@ -320,7 +338,7 @@ public class HostListActivity extends AppCompatActivity {
         etPassword.setText(h.password);
         etPassword.setSaveEnabled(false);
         if (h.passwordUnavailable) ((TextInputLayout) layoutPassword).setHelperText(
-                "原密码无法解密。重新输入可替换，留空保存将清除原密码；原主机配置仍保留。");
+                "原密码无法解密。输入新密码替换，留空则清除。");
 
         final String[] currentAuth = new String[]{h.authType != null ? h.authType : "publickey"};
         final String[] selectedKeyId = new String[]{h.keyId != null ? h.keyId : "default"};
@@ -415,7 +433,7 @@ public class HostListActivity extends AppCompatActivity {
             adapter.notifyDataSetChanged();
             updateListState();
             dialog.dismiss();
-            Toast.makeText(this, "已保存主机配置", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "已保存", Toast.LENGTH_SHORT).show();
         });
 
         showPage(dialog);
@@ -468,7 +486,7 @@ public class HostListActivity extends AppCompatActivity {
 
         lv.setAdapter(keyAdapter);
         TextView noKeys = new TextView(this);
-        noKeys.setText("还没有密钥\n生成一个，或导入已有的私钥文件。");
+        noKeys.setText("还没有密钥\n生成新的，或导入私钥文件");
         noKeys.setGravity(android.view.Gravity.CENTER);
         noKeys.setTextSize(15);
         noKeys.setLineSpacing(dp(4), 1f);
@@ -532,7 +550,7 @@ public class HostListActivity extends AppCompatActivity {
             if (cm != null) {
                 cm.setPrimaryClip(ClipData.newPlainText("SSH 公钥", k.publicKey));
             }
-            Toast.makeText(this, "已复制公钥到剪贴板", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "已复制公钥", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
         });
 
@@ -586,7 +604,7 @@ public class HostListActivity extends AppCompatActivity {
                         ((EditorDialog) dialog).setBusy(false);
                         dialog.dismiss();
                         etPass.setText("");
-                        Toast.makeText(HostListActivity.this, "已生成密钥: " + item.name, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(HostListActivity.this, "已生成：" + item.name, Toast.LENGTH_SHORT).show();
                         onRefresh.run();
                         showKeyDetailDialog(item);
                     });
@@ -638,7 +656,7 @@ public class HostListActivity extends AppCompatActivity {
         confirm.setOnClickListener(v -> {
             byte[] data = importBytes != null ? importBytes.clone()
                     : content.getText().toString().getBytes(StandardCharsets.UTF_8);
-            if (data.length == 0) { error.setText("请选择私钥文件，或粘贴私钥文本。"); return; }
+            if (data.length == 0) { error.setText("选择私钥文件，或粘贴私钥文本"); return; }
             String nickname = name.getText().toString().trim();
             if (nickname.isEmpty()) { EditorDialog.fieldError(name, "请输入密钥名称"); return; }
             String password = pass.getText().toString();
@@ -728,7 +746,7 @@ public class HostListActivity extends AppCompatActivity {
             } catch (Exception e) {
                 runOnUiThread(() -> {
                     if (importRoot != root) return;
-                    status.setText("无法读取文件，请重新选择");
+                    status.setText("读不了这个文件，换一个试试");
                     ((TextView) root.findViewById(R.id.tv_import_error)).setText(e.getMessage());
                     root.findViewById(R.id.btn_confirm_import).setEnabled(true);
                     root.findViewById(R.id.btn_choose_key_file).setEnabled(true);
@@ -777,14 +795,11 @@ public class HostListActivity extends AppCompatActivity {
             if (k.isDefault && !KeyItem.DEFAULT_ID.equals(k.id))
                 inUse.addAll(HostStore.getHostsUsingKey(this, KeyItem.DEFAULT_ID));
         } catch (IllegalStateException error) { hostsReadable = false; showHostStorageError(); return; }
-        String msg = "确认删除密钥 \"" + k.name + "\"？";
-        if (!inUse.isEmpty()) {
-            msg += "\n\n有 " + inUse.size() + " 台主机使用此密钥。"
-                    + (keys.size() > 1 ? "删除后将改用默认密钥。" : "再次连接前需要生成或导入密钥。");
-        }
+        String msg = inUse.isEmpty() ? "删除后无法恢复。" : inUse.size() + " 台主机在用它，删除后"
+                + (keys.size() > 1 ? "改用默认密钥。" : "这些主机要重新配置密钥才能连接。");
 
         new MaterialAlertDialogBuilder(this)
-                .setTitle("删除密钥")
+                .setTitle("删除密钥「" + k.name + "」？")
                 .setMessage(msg)
                 .setPositiveButton("删除", (d, w) -> {
                     boolean ok = KeyManager.deleteKey(this, k.id);
@@ -799,7 +814,7 @@ public class HostListActivity extends AppCompatActivity {
                         if (hostChanged) {
                             if (!HostStore.save(this, hosts)) { onRefresh.run(); return; }
                         }
-                        Toast.makeText(this, "已删除密钥", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(this, "已删除", Toast.LENGTH_SHORT).show();
                         onRefresh.run();
                     }
                 })
@@ -821,12 +836,11 @@ public class HostListActivity extends AppCompatActivity {
         root.findViewById(R.id.btn_cancel_settings).setOnClickListener(v -> dialog.cancel());
         root.findViewById(R.id.settings_extra_keys).setOnClickListener(v -> extraKeysDialog());
         root.findViewById(R.id.settings_background).setOnClickListener(v -> BackgroundSettings.show(this));
-        root.findViewById(R.id.settings_ssh_forwarding).setOnClickListener(v -> startActivity(new Intent(this, SshForwardingActivity.class)));
         root.findViewById(R.id.settings_about).setOnClickListener(v -> aboutDialog());
         ((TextView) root.findViewById(R.id.tv_settings_version)).setText(getString(R.string.about_version, versionName()));
         SessionService service = SessionService.current();
         ((TextView) root.findViewById(R.id.tv_settings_background)).setText(service != null && service.foregroundActive()
-                ? "前台服务运行中 · " + service.sessions().size() + " 个会话" : getString(R.string.background_settings_help));
+                ? "后台运行中 · " + service.sessions().size() + " 个会话" : getString(R.string.background_settings_help));
         root.findViewById(R.id.btn_save_settings).setOnClickListener(v -> {
             int inset, cols;
             try { inset = Integer.parseInt(etInset.getText().toString().trim()); }

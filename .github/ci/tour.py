@@ -266,10 +266,56 @@ def home_running():
     shot("18-home-running")
 
 
+def banner_via_host(port):
+    """在 CI 宿主机上连 127.0.0.1:port，读 SSH 握手横幅。"""
+    import socket
+    with socket.create_connection(("127.0.0.1", port), timeout=5) as conn:
+        conn.settimeout(5)
+        return conn.recv(64).decode("latin-1", "replace")
+
+
+def forwarding():
+    # 主机指纹已在终端步骤信任；Homelab 保存了密码，启动时不需要再输入。
+    tap("chip_forwarding")
+    shot("25-forward-empty")
+    tap("tunnel_add")
+    fill("rule_port", "8022")
+    fill("rule_target_port", "2222")
+    shot("26-forward-rule-dialog")
+    tap(text="保存")
+    tap("tunnel_add")
+    tap("rule_remote")
+    fill("rule_port", "9000")
+    fill("rule_target_port", "8022")
+    tap(text="保存")
+    shot("27-forward-rules")
+    tap("tunnel_start")
+    find(text="转发中", timeout=40)
+    shot("28-forward-running")
+    # -L：手机 127.0.0.1:8022 → 服务器 127.0.0.1:2222（sshd 自己）
+    local = (sh("echo | toybox nc -w 3 127.0.0.1 8022", check=False) or b"").decode("latin-1", "replace")
+    log(f"  -L 8022 收到：{local.strip()[:40]!r}")
+    if not local.startswith("SSH-"):
+        raise RuntimeError("-L 转发没有收到 SSH 横幅")
+    # -R：服务器 127.0.0.1:9000 → 手机 127.0.0.1:8022 → 再经 -L 回到 sshd
+    remote = banner_via_host(9000)
+    log(f"  -R 9000 收到：{remote.strip()[:40]!r}")
+    if not remote.startswith("SSH-"):
+        raise RuntimeError("-R 转发没有收到 SSH 横幅")
+    tap("tunnel_manual")
+    hide_ime()
+    shot("29-forward-command")
+    tap("tunnel_graphical")
+    back()
+
+
 def dark_and_palette():
     sh("cmd uimode night yes")
     time.sleep(3)
     shot("19-home-dark")
+    tap("chip_forwarding")
+    shot("30-forward-dark")
+    back()
     tap("card_active_sessions")
     shot("20-sessions-sheet-dark")
     back()
@@ -305,6 +351,7 @@ for name, action in [
     ("重新连接", reconnect),
     ("终端菜单", overflow),
     ("主页运行中", home_running),
+    ("端口转发", forwarding),
     ("深色与取色", dark_and_palette),
 ]:
     step(name, action)

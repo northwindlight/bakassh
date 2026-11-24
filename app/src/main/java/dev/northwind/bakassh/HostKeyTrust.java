@@ -29,7 +29,7 @@ final class HostKeyTrust {
         final Challenge received;
         final String previous;
         Changed(Challenge received, byte[] old) throws Exception {
-            super("主机指纹已变化，已阻止连接；请核实服务器身份后在主机菜单中处理");
+            super("主机指纹变了，已阻止连接");
             this.received = received;
             previous = fingerprint(old);
         }
@@ -64,11 +64,11 @@ final class HostKeyTrust {
             return;
         }
         if (confirmation == null || !confirmation.confirm(challenge) || Thread.currentThread().isInterrupted())
-            throw new IOException("未信任此主机，已取消连接");
+            throw new IOException("未信任主机，已取消");
         if (!store.remember(endpoint, key)) {
             old = store.load(endpoint);
             if (old != null) throw new Changed(challenge, old);
-            throw new IOException("无法保存主机指纹，已取消连接");
+            throw new IOException("指纹没能保存，已取消");
         }
     }
 

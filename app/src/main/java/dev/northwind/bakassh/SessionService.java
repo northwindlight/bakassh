@@ -69,7 +69,7 @@ public final class SessionService extends Service implements TerminalSession.Lis
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel channel = new NotificationChannel(CHANNEL, "SSH 会话",
                     NotificationManager.IMPORTANCE_LOW);
-            channel.setDescription("保持 SSH 会话运行，点击返回终端");
+            channel.setDescription("SSH 会话在后台运行时显示");
             getSystemService(NotificationManager.class).createNotificationChannel(channel);
         }
     }
@@ -224,8 +224,8 @@ public final class SessionService extends Service implements TerminalSession.Lis
         PendingIntent close = PendingIntent.getService(this, 2,
                 new Intent(this, SessionService.class).setAction(CLOSE_ALL), immutable);
         return new NotificationCompat.Builder(this, CHANNEL)
-                .setSmallIcon(R.drawable.ic_terminal).setContentTitle("bakaSSH · " + active + " 个活动会话")
-                .setContentText(active > 0 ? "常驻后台 · 休眠锁已开启" : "点击返回终端")
+                .setSmallIcon(R.drawable.ic_terminal).setContentTitle(active + " 个会话运行中")
+                .setContentText("点按返回终端")
                 .setContentIntent(content).setOngoing(true).setSilent(true).setOnlyAlertOnce(true)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .addAction(0, "断开全部", close).build();
