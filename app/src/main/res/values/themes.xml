@@ -7,7 +7,7 @@
         <item name="boxCornerRadiusBottomEnd">12dp</item>
     </style>
     <!-- 分组小标题，与设置页一致 -->
-    <style name="Baka.SectionLabel">
+    <style name="Baka.SectionLabel" parent="">
         <item name="android:layout_width">match_parent</item>
         <item name="android:layout_height">wrap_content</item>
         <item name="android:textSize">14sp</item>
