@@ -98,7 +98,7 @@
     <string name="about_releases_url" translatable="false">https://github.com/northwindlight/bakassh/releases</string>
     <string name="about_licenses">开源组件与许可</string>
     <string name="about_licenses_help">libvterm、ConnectBot、JSch 等</string>
-    <string name="about_licenses_url" translatable="false">https://github.com/northwindlight/bakassh/blob/master/NOTICE-third-party.md</string>
+    <string name="about_licenses_url" translatable="false">https://github.com/northwindlight/bakassh/blob/main/NOTICE-third-party.md</string>
     <string name="link_copied">无法打开浏览器，已复制链接</string>
     <string name="reconnect">重新连接</string>
     <string name="close_session">关闭会话</string>
