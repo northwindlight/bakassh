@@ -329,8 +329,8 @@ public final class SshForwardingActivity extends AppCompatActivity {
         targetPort.setText(old == null ? "" : String.valueOf(old.targetPort));
         Runnable describe = () -> {
             boolean remote = direction.getCheckedButtonId() == R.id.rule_remote;
-            explain.setText(remote ? "服务器上开一个端口，连进来的流量经手机转给目标。"
-                    : "手机上开一个端口，连进来的流量经服务器转给目标。");
+            explain.setText(remote ? "服务器上开端口，流量经手机转给目标。"
+                    : "手机上开端口，流量经服务器转给目标。");
             listenLabel.setText(remote ? "服务器上监听" : "手机上监听");
             targetLabel.setText(remote ? "目标（从手机看）" : "目标（从服务器看）");
             hint.setText(remote ? "监听 0.0.0.0 需要服务器开启 GatewayPorts。"

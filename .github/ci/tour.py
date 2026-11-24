@@ -290,10 +290,18 @@ def forwarding():
     tap(text="保存")
     shot("27-forward-rules")
     tap("tunnel_start")
-    find(text="转发中", timeout=40)
-    shot("28-forward-running")
-    # -L：手机 127.0.0.1:8022 → 服务器 127.0.0.1:2222（sshd 自己）
-    local = (sh("echo | toybox nc -w 3 127.0.0.1 8022", check=False) or b"").decode("latin-1", "replace")
+    try:
+        find(text="转发中", timeout=40)
+        shot("28-forward-running")
+        tap("tunnel_manual")
+        hide_ime()
+        shot("29-forward-command")
+        tap("tunnel_graphical")
+    finally:
+        back()
+    # -L：手机 127.0.0.1:8022 → 服务器 127.0.0.1:2222（sshd 自己）。经 adb forward 从宿主机连入手机端口。
+    adb("forward", "tcp:18022", "tcp:8022")
+    local = banner_via_host(18022)
     log(f"  -L 8022 收到：{local.strip()[:40]!r}")
     if not local.startswith("SSH-"):
         raise RuntimeError("-L 转发没有收到 SSH 横幅")
@@ -302,11 +310,6 @@ def forwarding():
     log(f"  -R 9000 收到：{remote.strip()[:40]!r}")
     if not remote.startswith("SSH-"):
         raise RuntimeError("-R 转发没有收到 SSH 横幅")
-    tap("tunnel_manual")
-    hide_ime()
-    shot("29-forward-command")
-    tap("tunnel_graphical")
-    back()
 
 
 def dark_and_palette():

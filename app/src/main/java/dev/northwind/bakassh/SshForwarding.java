@@ -45,8 +45,8 @@ final class SshForwarding {
         private String command(String gap) {
             StringBuilder out = new StringBuilder("ssh -N -p ").append(port);
             out.append(gap).append("-o ExitOnForwardFailure=yes");
-            out.append(gap).append("-o ServerAliveInterval=").append(aliveSeconds)
-                    .append(" -o ServerAliveCountMax=").append(aliveCount);
+            out.append(gap).append("-o ServerAliveInterval=").append(aliveSeconds);
+            out.append(gap).append("-o ServerAliveCountMax=").append(aliveCount);
             for (Rule rule : rules) out.append(gap).append(rule.remote ? "-R " : "-L ").append(quote(rule.specification()));
             return out.append(gap).append(quote(user + "@" + bracket(host))).toString();
         }
