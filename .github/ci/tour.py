@@ -54,15 +54,18 @@ def center(node):
 
 
 def dismiss_system_dialogs(found):
-    """模拟器偶发“某应用无响应”弹窗（例如 Pixel Launcher），点“等待”后继续。"""
-    for node in found:
-        if node.get("resource-id") == "android:id/aerr_wait":
-            x, y = center(node)
-            sh(f"input tap {x} {y}")
-            log("  已关闭系统无响应弹窗")
-            time.sleep(1)
-            return True
-    return False
+    """模拟器偶发“某应用无响应”弹窗。桌面（Pixel Launcher）不是被测对象，直接关闭，
+    否则点“等待”后它会反复弹出并吞掉返回键；其他应用仍点“等待”。"""
+    ids = {node.get("resource-id"): node for node in found}
+    if "android:id/aerr_wait" not in ids:
+        return False
+    launcher = any("Launcher" in (node.get("text") or "") for node in found)
+    target = ids.get("android:id/aerr_close") if launcher else None
+    x, y = center(target if target is not None else ids["android:id/aerr_wait"])
+    sh(f"input tap {x} {y}")
+    log("  已关闭桌面无响应弹窗" if target is not None else "  已关闭系统无响应弹窗")
+    time.sleep(2)
+    return True
 
 
 def find(rid=None, text=None, contains=None, timeout=20, scroll=False):
