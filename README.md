@@ -22,6 +22,10 @@ bakaSSH 保留 libvterm 的终端仿真和 JSch 的 SSH 传输，重点打磨 An
 
 ## 真机滚动实测
 
+2026-11-27，bakaSSH 0.4.8 与五款 Android 客户端在同一台 rpi5 上复测。209×193 下翻阅战国现场，bakaSSH 和 Termius 都能滚动远端正文；手指移动期间分别为 **64.06 和 85.08 FPS**。报告含固定中文负载、Claude / Codex 长会话、JuiceSSH 崩溃复测和可运行脚本。[六款客户端完整报告](benchmarks/android-scroll-20261127/README.md)
+
+### 2026 年 10 月基线
+
 2026-10-16，OPPO PLB110 / Android 16，真实 SSH + tmux TUI，关闭输入法。
 以下三组均核对了实际终端 / PTY 为 **154 列 × 134 行**，使用相同的手机端往返滑动脚本与 Perfetto FrameTimeline 统计。
 

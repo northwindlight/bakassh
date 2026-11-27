@@ -1,0 +1,2766 @@
+{
+  "frame_timeline": {
+    "baka209": [
+      {
+        "target": "zperf-fixed",
+        "aggregate": {
+          "frames": 412,
+          "seconds": 6.9981,
+          "fps": 58.87,
+          "p50_gap_ms": 13.109,
+          "p95_gap_ms": 36.005,
+          "max_gap_ms": 137.808692,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 361,
+          "seconds": 5.64153,
+          "fps": 63.99,
+          "p50_gap_ms": 12.426,
+          "p95_gap_ms": 27.686,
+          "max_gap_ms": 48.430771,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 129,
+            "seconds": 2.32003,
+            "fps": 55.6,
+            "p50_gap_ms": 15.261,
+            "p95_gap_ms": 39.732,
+            "max_gap_ms": 81.022769,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 136,
+            "seconds": 2.30182,
+            "fps": 59.08,
+            "p50_gap_ms": 13.134,
+            "p95_gap_ms": 33.732,
+            "max_gap_ms": 137.808692,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 147,
+            "seconds": 2.37625,
+            "fps": 61.86,
+            "p50_gap_ms": 11.986,
+            "p95_gap_ms": 32.396,
+            "max_gap_ms": 134.012693,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          300
+        ],
+        "position_unique": 35
+      },
+      {
+        "target": "zg-mixed",
+        "aggregate": {
+          "frames": 416,
+          "seconds": 7.08828,
+          "fps": 58.69,
+          "p50_gap_ms": 11.739,
+          "p95_gap_ms": 32.217,
+          "max_gap_ms": 210.397308,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 384,
+          "seconds": 5.72882,
+          "fps": 67.03,
+          "p50_gap_ms": 11.553,
+          "p95_gap_ms": 27.923,
+          "max_gap_ms": 58.679462,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 133,
+            "seconds": 2.23774,
+            "fps": 59.43,
+            "p50_gap_ms": 11.873,
+            "p95_gap_ms": 34.208,
+            "max_gap_ms": 207.41546,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 141,
+            "seconds": 2.40957,
+            "fps": 58.52,
+            "p50_gap_ms": 11.682,
+            "p95_gap_ms": 31.881,
+            "max_gap_ms": 206.683,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 142,
+            "seconds": 2.44097,
+            "fps": 58.17,
+            "p50_gap_ms": 12.182,
+            "p95_gap_ms": 30.276,
+            "max_gap_ms": 210.397308,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          255
+        ],
+        "position_unique": 35
+      },
+      {
+        "target": "zperf-long-claude",
+        "aggregate": {
+          "frames": 403,
+          "seconds": 7.19564,
+          "fps": 56.01,
+          "p50_gap_ms": 12.121,
+          "p95_gap_ms": 36.387,
+          "max_gap_ms": 203.636769,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 373,
+          "seconds": 5.83501,
+          "fps": 63.92,
+          "p50_gap_ms": 11.681,
+          "p95_gap_ms": 33.467,
+          "max_gap_ms": 60.312307,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 128,
+            "seconds": 2.35888,
+            "fps": 54.26,
+            "p50_gap_ms": 12.865,
+            "p95_gap_ms": 34.681,
+            "max_gap_ms": 203.636769,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 132,
+            "seconds": 2.45379,
+            "fps": 53.79,
+            "p50_gap_ms": 12.076,
+            "p95_gap_ms": 39.552,
+            "max_gap_ms": 192.709538,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 143,
+            "seconds": 2.38298,
+            "fps": 60.01,
+            "p50_gap_ms": 11.461,
+            "p95_gap_ms": 35.992,
+            "max_gap_ms": 197.027077,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      },
+      {
+        "target": "zperf-long-codex",
+        "aggregate": {
+          "frames": 436,
+          "seconds": 7.07942,
+          "fps": 61.59,
+          "p50_gap_ms": 14.286,
+          "p95_gap_ms": 27.844,
+          "max_gap_ms": 90.019769,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 374,
+          "seconds": 5.71912,
+          "fps": 65.39,
+          "p50_gap_ms": 13.558,
+          "p95_gap_ms": 26.632,
+          "max_gap_ms": 42.733231,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 140,
+            "seconds": 2.33705,
+            "fps": 59.9,
+            "p50_gap_ms": 13.622,
+            "p95_gap_ms": 27.69,
+            "max_gap_ms": 90.019769,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 151,
+            "seconds": 2.35621,
+            "fps": 64.09,
+            "p50_gap_ms": 15.015,
+            "p95_gap_ms": 25.774,
+            "max_gap_ms": 73.554615,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 145,
+            "seconds": 2.38616,
+            "fps": 60.77,
+            "p50_gap_ms": 14.273,
+            "p95_gap_ms": 32.49,
+            "max_gap_ms": 84.882,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      }
+    ],
+    "term209": [
+      {
+        "target": "zperf-fixed",
+        "aggregate": {
+          "frames": 158,
+          "seconds": 6.80624,
+          "fps": 23.21,
+          "p50_gap_ms": 37.956,
+          "p95_gap_ms": 65.062,
+          "max_gap_ms": 96.082077,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 132,
+          "seconds": 5.44862,
+          "fps": 24.23,
+          "p50_gap_ms": 36.064,
+          "p95_gap_ms": 57.677,
+          "max_gap_ms": 96.082077,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 41,
+            "seconds": 2.22474,
+            "fps": 18.43,
+            "p50_gap_ms": 43.857,
+            "p95_gap_ms": 77.051,
+            "max_gap_ms": 91.865691,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 57,
+            "seconds": 2.2597,
+            "fps": 25.22,
+            "p50_gap_ms": 34.846,
+            "p95_gap_ms": 58.186,
+            "max_gap_ms": 67.928001,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 60,
+            "seconds": 2.3218,
+            "fps": 25.84,
+            "p50_gap_ms": 36.224,
+            "p95_gap_ms": 57.481,
+            "max_gap_ms": 96.082077,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          305
+        ],
+        "position_unique": 17
+      },
+      {
+        "target": "zg-mixed",
+        "aggregate": {
+          "frames": 5,
+          "seconds": 6.677,
+          "fps": 0.75,
+          "p50_gap_ms": 460.534,
+          "p95_gap_ms": 797.563,
+          "max_gap_ms": 835.010385,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 4,
+          "seconds": 5.3205,
+          "fps": 0.75,
+          "p50_gap_ms": 86.058,
+          "p95_gap_ms": 86.058,
+          "max_gap_ms": 86.058384,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 3,
+            "seconds": 2.23362,
+            "fps": 1.34,
+            "p50_gap_ms": 460.534,
+            "p95_gap_ms": 797.563,
+            "max_gap_ms": 835.010385,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 1,
+            "seconds": 2.21366,
+            "fps": 0.45,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 1,
+            "seconds": 2.22972,
+            "fps": 0.45,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          290
+        ],
+        "position_unique": 5
+      },
+      {
+        "target": "zperf-claude",
+        "aggregate": {
+          "frames": 3,
+          "seconds": 6.60999,
+          "fps": 0.45,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 3,
+          "seconds": 5.25329,
+          "fps": 0.57,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 1,
+            "seconds": 2.19787,
+            "fps": 0.45,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 1,
+            "seconds": 2.20872,
+            "fps": 0.45,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 1,
+            "seconds": 2.20341,
+            "fps": 0.45,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      },
+      {
+        "target": "zperf-codex",
+        "aggregate": {
+          "frames": 3,
+          "seconds": 6.61056,
+          "fps": 0.45,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 2,
+          "seconds": 5.25528,
+          "fps": 0.38,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 1,
+            "seconds": 2.19108,
+            "fps": 0.46,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 1,
+            "seconds": 2.19308,
+            "fps": 0.46,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 1,
+            "seconds": 2.2264,
+            "fps": 0.45,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      }
+    ],
+    "termrepeat": [
+      {
+        "target": "zg-mixed",
+        "aggregate": {
+          "frames": 4,
+          "seconds": 6.7127,
+          "fps": 0.6,
+          "p50_gap_ms": 63.941,
+          "p95_gap_ms": 63.941,
+          "max_gap_ms": 63.94123,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 3,
+          "seconds": 5.35444,
+          "fps": 0.56,
+          "p50_gap_ms": 63.941,
+          "p95_gap_ms": 63.941,
+          "max_gap_ms": 63.94123,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 2,
+            "seconds": 2.26874,
+            "fps": 0.88,
+            "p50_gap_ms": 63.941,
+            "p95_gap_ms": 63.941,
+            "max_gap_ms": 63.94123,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 1,
+            "seconds": 2.21868,
+            "fps": 0.45,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 1,
+            "seconds": 2.22529,
+            "fps": 0.45,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          195
+        ],
+        "position_unique": 6
+      }
+    ],
+    "termlong": [
+      {
+        "target": "zperf-long-claude",
+        "aggregate": {
+          "frames": 162,
+          "seconds": 6.7266,
+          "fps": 24.08,
+          "p50_gap_ms": 34.182,
+          "p95_gap_ms": 65.235,
+          "max_gap_ms": 448.459154,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 143,
+          "seconds": 5.36651,
+          "fps": 26.65,
+          "p50_gap_ms": 32.778,
+          "p95_gap_ms": 55.305,
+          "max_gap_ms": 67.606385,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 64,
+            "seconds": 2.23633,
+            "fps": 28.62,
+            "p50_gap_ms": 28.755,
+            "p95_gap_ms": 48.019,
+            "max_gap_ms": 92.305077,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 49,
+            "seconds": 2.23281,
+            "fps": 21.95,
+            "p50_gap_ms": 40.823,
+            "p95_gap_ms": 75.943,
+            "max_gap_ms": 130.339463,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 49,
+            "seconds": 2.25746,
+            "fps": 21.71,
+            "p50_gap_ms": 34.268,
+            "p95_gap_ms": 61.989,
+            "max_gap_ms": 448.459154,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      },
+      {
+        "target": "zperf-long-codex",
+        "aggregate": {
+          "frames": 95,
+          "seconds": 6.75889,
+          "fps": 14.06,
+          "p50_gap_ms": 60.001,
+          "p95_gap_ms": 128.427,
+          "max_gap_ms": 144.388538,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 86,
+          "seconds": 5.4029,
+          "fps": 15.92,
+          "p50_gap_ms": 58.571,
+          "p95_gap_ms": 92.278,
+          "max_gap_ms": 102.29054,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 30,
+            "seconds": 2.26155,
+            "fps": 13.27,
+            "p50_gap_ms": 57.38,
+            "p95_gap_ms": 130.803,
+            "max_gap_ms": 144.388538,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 30,
+            "seconds": 2.24481,
+            "fps": 13.36,
+            "p50_gap_ms": 61.082,
+            "p95_gap_ms": 117.77,
+            "max_gap_ms": 129.977308,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 35,
+            "seconds": 2.25253,
+            "fps": 15.54,
+            "p50_gap_ms": 60.583,
+            "p95_gap_ms": 125.941,
+            "max_gap_ms": 129.723539,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      }
+    ],
+    "juice209": [
+      {
+        "target": "zperf-long-claude",
+        "aggregate": {
+          "frames": 284,
+          "seconds": 7.0831,
+          "fps": 40.1,
+          "p50_gap_ms": 11.063,
+          "p95_gap_ms": 25.912,
+          "max_gap_ms": 645.098231,
+          "jank_pct": 95.07,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 233,
+          "seconds": 5.7251,
+          "fps": 40.7,
+          "p50_gap_ms": 10.934,
+          "p95_gap_ms": 25.887,
+          "max_gap_ms": 93.166538,
+          "jank_pct": 96.14,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 152,
+            "seconds": 2.36791,
+            "fps": 64.19,
+            "p50_gap_ms": 11.011,
+            "p95_gap_ms": 26.001,
+            "max_gap_ms": 212.866461,
+            "jank_pct": 93.42,
+            "dropped": 0
+          },
+          {
+            "frames": 122,
+            "seconds": 2.36225,
+            "fps": 51.65,
+            "p50_gap_ms": 11.251,
+            "p95_gap_ms": 25.681,
+            "max_gap_ms": 645.098231,
+            "jank_pct": 96.72,
+            "dropped": 0
+          },
+          {
+            "frames": 10,
+            "seconds": 2.35295,
+            "fps": 4.25,
+            "p50_gap_ms": 10.435,
+            "p95_gap_ms": 18.112,
+            "max_gap_ms": 22.337769,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      },
+      {
+        "target": "zperf-long-codex",
+        "aggregate": {
+          "frames": 0,
+          "seconds": 7.02248,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 0,
+          "seconds": 5.66238,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 0,
+            "seconds": 2.35499,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.35861,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.30888,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      }
+    ],
+    "juicefixed": [
+      {
+        "target": "zperf-fixed",
+        "aggregate": {
+          "frames": 43,
+          "seconds": 7.04573,
+          "fps": 6.1,
+          "p50_gap_ms": 13.124,
+          "p95_gap_ms": 28.97,
+          "max_gap_ms": 116.136232,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 37,
+          "seconds": 5.68731,
+          "fps": 6.51,
+          "p50_gap_ms": 12.906,
+          "p95_gap_ms": 20.865,
+          "max_gap_ms": 116.136232,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 43,
+            "seconds": 2.29798,
+            "fps": 18.71,
+            "p50_gap_ms": 13.124,
+            "p95_gap_ms": 28.97,
+            "max_gap_ms": 116.136232,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.36216,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.38559,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          25
+        ],
+        "position_unique": 3
+      },
+      {
+        "target": "zg-mixed",
+        "aggregate": {
+          "frames": 0,
+          "seconds": 6.92249,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 0,
+          "seconds": 5.56561,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 0,
+            "seconds": 2.35979,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.31197,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.25073,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      }
+    ],
+    "juice-stress-phases": [
+      {
+        "target": "zg-mixed block 1",
+        "aggregate": {
+          "frames": 72,
+          "seconds": 4.54453,
+          "fps": 15.84,
+          "p50_gap_ms": 28.879,
+          "p95_gap_ms": 100.96,
+          "max_gap_ms": 147.160614,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 64,
+          "seconds": 3.64039,
+          "fps": 17.58,
+          "p50_gap_ms": 25.057,
+          "p95_gap_ms": 73.155,
+          "max_gap_ms": 107.066461,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 34,
+            "seconds": 2.26863,
+            "fps": 14.99,
+            "p50_gap_ms": 30.862,
+            "p95_gap_ms": 99.895,
+            "max_gap_ms": 147.160614,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 38,
+            "seconds": 2.2759,
+            "fps": 16.7,
+            "p50_gap_ms": 25.265,
+            "p95_gap_ms": 90.185,
+            "max_gap_ms": 124.106076,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          350
+        ],
+        "position_unique": 4
+      },
+      {
+        "target": "zg-mixed block 2",
+        "aggregate": {
+          "frames": 92,
+          "seconds": 6.87751,
+          "fps": 13.38,
+          "p50_gap_ms": 38.43,
+          "p95_gap_ms": 95.48,
+          "max_gap_ms": 121.032538,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 79,
+          "seconds": 5.51905,
+          "fps": 14.31,
+          "p50_gap_ms": 35.655,
+          "p95_gap_ms": 86.131,
+          "max_gap_ms": 109.640077,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 31,
+            "seconds": 2.31998,
+            "fps": 13.36,
+            "p50_gap_ms": 32.891,
+            "p95_gap_ms": 84.804,
+            "max_gap_ms": 116.090231,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 36,
+            "seconds": 2.32001,
+            "fps": 15.52,
+            "p50_gap_ms": 35.655,
+            "p95_gap_ms": 80.012,
+            "max_gap_ms": 108.036077,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 25,
+            "seconds": 2.23752,
+            "fps": 11.17,
+            "p50_gap_ms": 46.637,
+            "p95_gap_ms": 107.897,
+            "max_gap_ms": 121.032538,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          350
+        ],
+        "position_unique": 3
+      },
+      {
+        "target": "zg-mixed block 3",
+        "aggregate": {
+          "frames": 94,
+          "seconds": 6.98646,
+          "fps": 13.45,
+          "p50_gap_ms": 35.377,
+          "p95_gap_ms": 96.492,
+          "max_gap_ms": 160.730077,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 84,
+          "seconds": 5.62918,
+          "fps": 14.92,
+          "p50_gap_ms": 30.764,
+          "p95_gap_ms": 91.007,
+          "max_gap_ms": 107.314385,
+          "jank_pct": 100.0,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 28,
+            "seconds": 2.30453,
+            "fps": 12.15,
+            "p50_gap_ms": 42.888,
+            "p95_gap_ms": 91.084,
+            "max_gap_ms": 137.017846,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 31,
+            "seconds": 2.34266,
+            "fps": 13.23,
+            "p50_gap_ms": 38.971,
+            "p95_gap_ms": 123.192,
+            "max_gap_ms": 160.730077,
+            "jank_pct": 100.0,
+            "dropped": 0
+          },
+          {
+            "frames": 35,
+            "seconds": 2.33927,
+            "fps": 14.96,
+            "p50_gap_ms": 28.138,
+            "p95_gap_ms": 71.471,
+            "max_gap_ms": 95.361308,
+            "jank_pct": 100.0,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          325
+        ],
+        "position_unique": 4
+      }
+    ],
+    "cb209": [
+      {
+        "target": "zperf-fixed",
+        "aggregate": {
+          "frames": 0,
+          "seconds": 6.91676,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 0,
+          "seconds": 5.55505,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 0,
+            "seconds": 2.25878,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.3649,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.29309,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          300,
+          300
+        ],
+        "position_unique": 1
+      },
+      {
+        "target": "zg-mixed",
+        "aggregate": {
+          "frames": 0,
+          "seconds": 7.13234,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 0,
+          "seconds": 5.77258,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 0,
+            "seconds": 2.34883,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.39559,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.38792,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      },
+      {
+        "target": "zperf-long-claude",
+        "aggregate": {
+          "frames": 0,
+          "seconds": 7.15792,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 0,
+          "seconds": 5.79651,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 0,
+            "seconds": 2.37462,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.37046,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.41283,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      },
+      {
+        "target": "zperf-long-codex",
+        "aggregate": {
+          "frames": 0,
+          "seconds": 7.05332,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 0,
+          "seconds": 5.69556,
+          "fps": 0.0,
+          "p50_gap_ms": null,
+          "p95_gap_ms": null,
+          "max_gap_ms": null,
+          "jank_pct": null,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 0,
+            "seconds": 2.30114,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.36004,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          },
+          {
+            "frames": 0,
+            "seconds": 2.39214,
+            "fps": 0.0,
+            "p50_gap_ms": null,
+            "p95_gap_ms": null,
+            "max_gap_ms": null,
+            "jank_pct": null,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      }
+    ],
+    "baka335": [
+      {
+        "target": "zperf-fixed",
+        "aggregate": {
+          "frames": 358,
+          "seconds": 7.02685,
+          "fps": 50.95,
+          "p50_gap_ms": 12.677,
+          "p95_gap_ms": 46.817,
+          "max_gap_ms": 131.500693,
+          "jank_pct": 60.89,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 313,
+          "seconds": 5.66568,
+          "fps": 55.24,
+          "p50_gap_ms": 11.991,
+          "p95_gap_ms": 34.925,
+          "max_gap_ms": 80.73223,
+          "jank_pct": 59.42,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 104,
+            "seconds": 2.28617,
+            "fps": 45.49,
+            "p50_gap_ms": 21.182,
+            "p95_gap_ms": 53.11,
+            "max_gap_ms": 96.743,
+            "jank_pct": 85.58,
+            "dropped": 0
+          },
+          {
+            "frames": 126,
+            "seconds": 2.3315,
+            "fps": 54.04,
+            "p50_gap_ms": 11.957,
+            "p95_gap_ms": 43.921,
+            "max_gap_ms": 121.188307,
+            "jank_pct": 40.48,
+            "dropped": 0
+          },
+          {
+            "frames": 128,
+            "seconds": 2.40919,
+            "fps": 53.13,
+            "p50_gap_ms": 12.476,
+            "p95_gap_ms": 43.164,
+            "max_gap_ms": 131.500693,
+            "jank_pct": 60.94,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          570
+        ],
+        "position_unique": 44
+      },
+      {
+        "target": "zg-mixed",
+        "aggregate": {
+          "frames": 419,
+          "seconds": 7.1326,
+          "fps": 58.74,
+          "p50_gap_ms": 11.487,
+          "p95_gap_ms": 40.684,
+          "max_gap_ms": 191.854615,
+          "jank_pct": 64.92,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 385,
+          "seconds": 5.7653,
+          "fps": 66.78,
+          "p50_gap_ms": 11.345,
+          "p95_gap_ms": 36.782,
+          "max_gap_ms": 84.366,
+          "jank_pct": 62.6,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 129,
+            "seconds": 2.34439,
+            "fps": 55.02,
+            "p50_gap_ms": 11.54,
+            "p95_gap_ms": 71.944,
+            "max_gap_ms": 172.335077,
+            "jank_pct": 50.39,
+            "dropped": 0
+          },
+          {
+            "frames": 144,
+            "seconds": 2.34555,
+            "fps": 61.39,
+            "p50_gap_ms": 11.415,
+            "p95_gap_ms": 37.969,
+            "max_gap_ms": 191.854615,
+            "jank_pct": 90.28,
+            "dropped": 0
+          },
+          {
+            "frames": 146,
+            "seconds": 2.44266,
+            "fps": 59.77,
+            "p50_gap_ms": 11.433,
+            "p95_gap_ms": 37.676,
+            "max_gap_ms": 187.470077,
+            "jank_pct": 52.74,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          570
+        ],
+        "position_unique": 46
+      },
+      {
+        "target": "zperf-claude",
+        "aggregate": {
+          "frames": 478,
+          "seconds": 7.27723,
+          "fps": 65.68,
+          "p50_gap_ms": 11.001,
+          "p95_gap_ms": 24.34,
+          "max_gap_ms": 210.017001,
+          "jank_pct": 9.83,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 472,
+          "seconds": 5.90489,
+          "fps": 79.93,
+          "p50_gap_ms": 10.977,
+          "p95_gap_ms": 23.853,
+          "max_gap_ms": 31.753154,
+          "jank_pct": 9.75,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 152,
+            "seconds": 2.32615,
+            "fps": 65.34,
+            "p50_gap_ms": 11.075,
+            "p95_gap_ms": 22.373,
+            "max_gap_ms": 210.017001,
+            "jank_pct": 6.58,
+            "dropped": 0
+          },
+          {
+            "frames": 163,
+            "seconds": 2.48578,
+            "fps": 65.57,
+            "p50_gap_ms": 10.999,
+            "p95_gap_ms": 24.95,
+            "max_gap_ms": 189.393077,
+            "jank_pct": 1.84,
+            "dropped": 0
+          },
+          {
+            "frames": 163,
+            "seconds": 2.4653,
+            "fps": 66.12,
+            "p50_gap_ms": 10.959,
+            "p95_gap_ms": 24.326,
+            "max_gap_ms": 200.237,
+            "jank_pct": 20.86,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      },
+      {
+        "target": "zperf-codex",
+        "aggregate": {
+          "frames": 478,
+          "seconds": 7.30886,
+          "fps": 65.4,
+          "p50_gap_ms": 10.953,
+          "p95_gap_ms": 24.393,
+          "max_gap_ms": 210.157539,
+          "jank_pct": 10.67,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 471,
+          "seconds": 5.93904,
+          "fps": 79.31,
+          "p50_gap_ms": 10.941,
+          "p95_gap_ms": 23.7,
+          "max_gap_ms": 26.817154,
+          "jank_pct": 10.83,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 158,
+            "seconds": 2.39335,
+            "fps": 66.02,
+            "p50_gap_ms": 11.005,
+            "p95_gap_ms": 24.388,
+            "max_gap_ms": 186.519077,
+            "jank_pct": 6.33,
+            "dropped": 0
+          },
+          {
+            "frames": 154,
+            "seconds": 2.46307,
+            "fps": 62.52,
+            "p50_gap_ms": 10.818,
+            "p95_gap_ms": 24.828,
+            "max_gap_ms": 210.157539,
+            "jank_pct": 13.64,
+            "dropped": 0
+          },
+          {
+            "frames": 166,
+            "seconds": 2.45244,
+            "fps": 67.69,
+            "p50_gap_ms": 11.012,
+            "p95_gap_ms": 22.943,
+            "max_gap_ms": 191.442077,
+            "jank_pct": 12.05,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      }
+    ],
+    "bakalong335": [
+      {
+        "target": "zperf-long-claude",
+        "aggregate": {
+          "frames": 450,
+          "seconds": 6.98305,
+          "fps": 64.44,
+          "p50_gap_ms": 11.43,
+          "p95_gap_ms": 35.852,
+          "max_gap_ms": 191.193923,
+          "jank_pct": 72.44,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 418,
+          "seconds": 5.62158,
+          "fps": 74.36,
+          "p50_gap_ms": 11.269,
+          "p95_gap_ms": 30.911,
+          "max_gap_ms": 40.063846,
+          "jank_pct": 71.53,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 145,
+            "seconds": 2.31739,
+            "fps": 62.57,
+            "p50_gap_ms": 12.499,
+            "p95_gap_ms": 38.219,
+            "max_gap_ms": 100.539231,
+            "jank_pct": 84.14,
+            "dropped": 0
+          },
+          {
+            "frames": 154,
+            "seconds": 2.23995,
+            "fps": 68.75,
+            "p50_gap_ms": 10.995,
+            "p95_gap_ms": 27.536,
+            "max_gap_ms": 178.802076,
+            "jank_pct": 57.14,
+            "dropped": 0
+          },
+          {
+            "frames": 151,
+            "seconds": 2.42571,
+            "fps": 62.25,
+            "p50_gap_ms": 11.833,
+            "p95_gap_ms": 34.138,
+            "max_gap_ms": 191.193923,
+            "jank_pct": 76.82,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      },
+      {
+        "target": "zperf-long-codex",
+        "aggregate": {
+          "frames": 451,
+          "seconds": 6.90437,
+          "fps": 65.32,
+          "p50_gap_ms": 12.258,
+          "p95_gap_ms": 32.787,
+          "max_gap_ms": 199.884385,
+          "jank_pct": 90.47,
+          "dropped": 0
+        },
+        "moving": {
+          "frames": 404,
+          "seconds": 5.54581,
+          "fps": 72.85,
+          "p50_gap_ms": 11.523,
+          "p95_gap_ms": 29.431,
+          "max_gap_ms": 43.085847,
+          "jank_pct": 89.36,
+          "dropped": 0
+        },
+        "rounds": [
+          {
+            "frames": 139,
+            "seconds": 2.23767,
+            "fps": 62.12,
+            "p50_gap_ms": 14.344,
+            "p95_gap_ms": 30.923,
+            "max_gap_ms": 39.856384,
+            "jank_pct": 92.81,
+            "dropped": 0
+          },
+          {
+            "frames": 150,
+            "seconds": 2.34268,
+            "fps": 64.03,
+            "p50_gap_ms": 10.886,
+            "p95_gap_ms": 34.151,
+            "max_gap_ms": 199.884385,
+            "jank_pct": 78.67,
+            "dropped": 0
+          },
+          {
+            "frames": 162,
+            "seconds": 2.32402,
+            "fps": 69.71,
+            "p50_gap_ms": 12.141,
+            "p95_gap_ms": 34.027,
+            "max_gap_ms": 60.614615,
+            "jank_pct": 99.38,
+            "dropped": 0
+          }
+        ],
+        "position_range": [
+          0,
+          0
+        ],
+        "position_unique": 1
+      }
+    ]
+  },
+  "surface_flinger": {
+    "termigo77": [
+      {
+        "target": "zperf-read",
+        "range": [
+          300,
+          300
+        ],
+        "anchor": 0,
+        "round_frames": [
+          196,
+          199,
+          147
+        ],
+        "seconds": 7.0836,
+        "surface_fps": 76.51
+      }
+    ],
+    "termigoAlternate": [
+      {
+        "target": "zg-mixed",
+        "range": [
+          0,
+          0
+        ],
+        "anchor": 0,
+        "round_frames": [
+          173,
+          177,
+          181
+        ],
+        "seconds": 6.8527,
+        "surface_fps": 77.49
+      }
+    ],
+    "termigoNative": [
+      {
+        "target": "zg-mixed",
+        "range": [
+          0,
+          0
+        ],
+        "anchor": 0,
+        "round_frames": [
+          175,
+          180,
+          181
+        ],
+        "seconds": 6.8521,
+        "surface_fps": 78.22
+      }
+    ],
+    "termigoV209": [
+      {
+        "target": "zperf-fixed",
+        "range": [
+          300,
+          300
+        ],
+        "anchor": 0,
+        "round_frames": [
+          54,
+          57,
+          56
+        ],
+        "seconds": 6.7677,
+        "surface_fps": 24.68
+      },
+      {
+        "target": "zg-mixed",
+        "range": [
+          0,
+          0
+        ],
+        "anchor": 0,
+        "round_frames": [
+          176,
+          179,
+          180
+        ],
+        "seconds": 6.8334,
+        "surface_fps": 78.29
+      },
+      {
+        "target": "zperf-long-claude",
+        "range": [
+          0,
+          0
+        ],
+        "anchor": 0,
+        "round_frames": [
+          98,
+          101,
+          100
+        ],
+        "seconds": 6.7927,
+        "surface_fps": 44.02
+      },
+      {
+        "target": "zperf-long-codex",
+        "range": [
+          0,
+          0
+        ],
+        "anchor": 0,
+        "round_frames": [
+          85,
+          91,
+          90
+        ],
+        "seconds": 6.8294,
+        "surface_fps": 38.95
+      }
+    ],
+    "termius209": [
+      {
+        "target": "zperf-fixed",
+        "range": [
+          0,
+          300
+        ],
+        "anchor": 0,
+        "round_frames": [
+          185,
+          186,
+          187
+        ],
+        "seconds": 6.9685,
+        "surface_fps": 80.07
+      },
+      {
+        "target": "zg-mixed",
+        "range": [
+          0,
+          160
+        ],
+        "anchor": 0,
+        "round_frames": [
+          198,
+          197,
+          201
+        ],
+        "seconds": 6.9665,
+        "surface_fps": 85.55
+      },
+      {
+        "target": "zperf-long-claude",
+        "range": [
+          0,
+          0
+        ],
+        "anchor": 53,
+        "round_frames": [
+          200,
+          210,
+          202
+        ],
+        "seconds": 7.0132,
+        "surface_fps": 87.26
+      },
+      {
+        "target": "zperf-long-codex",
+        "range": [
+          0,
+          0
+        ],
+        "anchor": 62,
+        "round_frames": [
+          205,
+          209,
+          212
+        ],
+        "seconds": 7.0392,
+        "surface_fps": 88.93
+      }
+    ],
+    "termius81": [
+      {
+        "target": "zperf-read",
+        "range": [
+          85,
+          295
+        ],
+        "anchor": 0,
+        "round_frames": [
+          190,
+          195,
+          196
+        ],
+        "seconds": 7.0895,
+        "surface_fps": 81.95
+      }
+    ]
+  },
+  "direct_ssh": {
+    "baka209": {
+      "pty": [
+        209,
+        193
+      ],
+      "canvas": [
+        200,
+        160
+      ],
+      "term": "xterm-256color",
+      "probes": {
+        "CUP": {
+          "expected": [
+            7,
+            11
+          ],
+          "actual": [
+            7,
+            11
+          ],
+          "ok": true
+        },
+        "CJK": {
+          "expected": [
+            4,
+            13
+          ],
+          "actual": [
+            4,
+            13
+          ],
+          "ok": true
+        },
+        "combining": {
+          "expected": [
+            4,
+            10
+          ],
+          "actual": [
+            4,
+            10
+          ],
+          "ok": true
+        },
+        "DECSC_DECRC": {
+          "expected": [
+            5,
+            9
+          ],
+          "actual": [
+            5,
+            9
+          ],
+          "ok": true
+        },
+        "scroll_region": {
+          "expected": [
+            8,
+            1
+          ],
+          "actual": [
+            8,
+            1
+          ],
+          "ok": true
+        }
+      },
+      "tests": {
+        "scroll": {
+          "ms": [
+            69.352424,
+            83.153178,
+            73.842249,
+            77.991647,
+            83.291642,
+            68.974756,
+            76.514089,
+            71.206557,
+            78.297167,
+            73.635785,
+            69.073274,
+            68.972349,
+            88.193005,
+            69.14746,
+            88.204505,
+            85.883333,
+            73.102284,
+            87.780263
+          ],
+          "total_bytes": 172476,
+          "sha256": "756c03a756c5028a71f358764a955274df77dce4d9d061f27502444e994cccd0"
+        },
+        "rewrite": {
+          "ms": [
+            83.555772,
+            65.665007,
+            74.039805,
+            69.167015,
+            68.580403,
+            83.036363,
+            83.927773,
+            75.297122,
+            74.433324,
+            68.815366,
+            80.072689,
+            74.660047,
+            79.299187,
+            73.790878,
+            69.336294,
+            74.556954,
+            67.271955,
+            84.963108
+          ],
+          "total_bytes": 878283,
+          "sha256": "2c356be2db5a106faf9da6df1e06b11863679aa562bc4ece9d57ea940d91aa5c"
+        }
+      },
+      "idle_cpr_ms": [
+        65.070617,
+        64.916135,
+        70.152444,
+        64.596153,
+        69.849073,
+        65.219469,
+        74.291195,
+        65.64947,
+        65.095728,
+        65.054543,
+        69.933036,
+        70.53889
+      ]
+    },
+    "baka335": {
+      "pty": [
+        335,
+        282
+      ],
+      "canvas": [
+        200,
+        160
+      ],
+      "term": "xterm-256color",
+      "probes": {
+        "CUP": {
+          "expected": [
+            7,
+            11
+          ],
+          "actual": [
+            7,
+            11
+          ],
+          "ok": true
+        },
+        "CJK": {
+          "expected": [
+            4,
+            13
+          ],
+          "actual": [
+            4,
+            13
+          ],
+          "ok": true
+        },
+        "combining": {
+          "expected": [
+            4,
+            10
+          ],
+          "actual": [
+            4,
+            10
+          ],
+          "ok": true
+        },
+        "DECSC_DECRC": {
+          "expected": [
+            5,
+            9
+          ],
+          "actual": [
+            5,
+            9
+          ],
+          "ok": true
+        },
+        "scroll_region": {
+          "expected": [
+            8,
+            1
+          ],
+          "actual": [
+            8,
+            1
+          ],
+          "ok": true
+        }
+      },
+      "tests": {
+        "scroll": {
+          "ms": [
+            77.95896,
+            79.727702,
+            63.532113,
+            58.638646,
+            59.071276,
+            63.70091,
+            68.877804,
+            83.674928,
+            85.081633,
+            77.408644,
+            78.389775,
+            89.45036,
+            78.288349,
+            73.852512,
+            93.576271,
+            81.50737,
+            80.998278,
+            79.29272
+          ],
+          "total_bytes": 172476,
+          "sha256": "756c03a756c5028a71f358764a955274df77dce4d9d061f27502444e994cccd0"
+        },
+        "rewrite": {
+          "ms": [
+            74.003901,
+            74.488957,
+            78.675609,
+            79.256702,
+            75.546957,
+            88.715877,
+            74.395993,
+            68.740377,
+            64.713003,
+            63.412798,
+            80.222759,
+            73.999215,
+            73.590549,
+            59.030017,
+            79.081109,
+            68.543822,
+            59.070832,
+            64.02754
+          ],
+          "total_bytes": 878283,
+          "sha256": "2c356be2db5a106faf9da6df1e06b11863679aa562bc4ece9d57ea940d91aa5c"
+        }
+      },
+      "idle_cpr_ms": [
+        70.03473,
+        60.322814,
+        59.640739,
+        74.505216,
+        70.579972,
+        64.763077,
+        65.238078,
+        70.137842,
+        69.504249,
+        69.561267,
+        65.464819,
+        59.97361
+      ]
+    },
+    "cb209": {
+      "pty": [
+        209,
+        193
+      ],
+      "canvas": [
+        200,
+        160
+      ],
+      "term": "xterm-256color",
+      "probes": {
+        "CUP": {
+          "expected": [
+            7,
+            11
+          ],
+          "actual": [
+            7,
+            11
+          ],
+          "ok": true
+        },
+        "CJK": {
+          "expected": [
+            4,
+            13
+          ],
+          "actual": [
+            4,
+            13
+          ],
+          "ok": true
+        },
+        "combining": {
+          "expected": [
+            4,
+            10
+          ],
+          "actual": [
+            4,
+            10
+          ],
+          "ok": true
+        },
+        "DECSC_DECRC": {
+          "expected": [
+            5,
+            9
+          ],
+          "actual": [
+            5,
+            9
+          ],
+          "ok": true
+        },
+        "scroll_region": {
+          "expected": [
+            8,
+            1
+          ],
+          "actual": [
+            8,
+            1
+          ],
+          "ok": true
+        }
+      },
+      "tests": {
+        "scroll": {
+          "ms": [
+            168.759496,
+            174.222432,
+            205.648271,
+            102.675479,
+            162.896317,
+            162.847003,
+            84.239479,
+            133.037019,
+            154.252338,
+            193.524692,
+            149.012124,
+            133.095315,
+            118.391657,
+            149.243624,
+            73.677644,
+            158.891643,
+            180.275629,
+            76.624556
+          ],
+          "total_bytes": 172476,
+          "sha256": "756c03a756c5028a71f358764a955274df77dce4d9d061f27502444e994cccd0"
+        },
+        "rewrite": {
+          "ms": [
+            290.018416,
+            322.584239,
+            315.670003,
+            314.007222,
+            302.427218,
+            308.007913,
+            326.452634,
+            242.814712,
+            269.941191,
+            318.557822,
+            301.914049,
+            315.503927,
+            313.643645,
+            305.529203,
+            324.154054,
+            305.418166,
+            258.758686,
+            289.362394
+          ],
+          "total_bytes": 878283,
+          "sha256": "2c356be2db5a106faf9da6df1e06b11863679aa562bc4ece9d57ea940d91aa5c"
+        }
+      },
+      "idle_cpr_ms": [
+        74.946443,
+        60.608841,
+        76.547353,
+        63.419865,
+        60.382118,
+        84.123775,
+        71.543102,
+        58.538651,
+        69.715803,
+        60.265728,
+        60.252711,
+        59.951765
+      ]
+    },
+    "juice209": {
+      "pty": [
+        209,
+        193
+      ],
+      "canvas": [
+        200,
+        160
+      ],
+      "term": "xterm-256color",
+      "probes": {
+        "CUP": {
+          "expected": [
+            7,
+            11
+          ],
+          "actual": [
+            7,
+            11
+          ],
+          "ok": true
+        },
+        "CJK": {
+          "expected": [
+            4,
+            13
+          ],
+          "actual": [
+            4,
+            13
+          ],
+          "ok": true
+        },
+        "combining": {
+          "expected": [
+            4,
+            10
+          ],
+          "actual": [
+            4,
+            10
+          ],
+          "ok": true
+        },
+        "DECSC_DECRC": {
+          "expected": [
+            5,
+            9
+          ],
+          "actual": [
+            5,
+            9
+          ],
+          "ok": true
+        },
+        "scroll_region": {
+          "expected": [
+            8,
+            1
+          ],
+          "actual": [
+            8,
+            1
+          ],
+          "ok": true
+        }
+      },
+      "tests": {
+        "scroll": {
+          "ms": [
+            73.327847,
+            78.971293,
+            73.684274,
+            75.064705,
+            67.185918,
+            91.969207,
+            72.84853,
+            73.644663,
+            64.199612,
+            68.839628,
+            68.654627,
+            72.261399,
+            79.952018,
+            69.496333,
+            67.912846,
+            74.621185,
+            77.253027,
+            74.283443
+          ],
+          "total_bytes": 172476,
+          "sha256": "756c03a756c5028a71f358764a955274df77dce4d9d061f27502444e994cccd0"
+        },
+        "rewrite": {
+          "ms": [
+            118.730745,
+            118.834522,
+            105.20692,
+            154.092756,
+            99.241177,
+            189.010913,
+            174.230473,
+            114.258414,
+            114.441045,
+            129.090336,
+            125.181822,
+            119.084782,
+            135.212282,
+            108.725394,
+            133.792851,
+            119.136005,
+            119.313616,
+            118.835929
+          ],
+          "total_bytes": 878283,
+          "sha256": "2c356be2db5a106faf9da6df1e06b11863679aa562bc4ece9d57ea940d91aa5c"
+        }
+      },
+      "idle_cpr_ms": [
+        69.988281,
+        74.785778,
+        64.914911,
+        75.388355,
+        70.174059,
+        64.750447,
+        60.030857,
+        69.374481,
+        65.307968,
+        55.034821,
+        64.962744,
+        65.573524
+      ]
+    },
+    "term209": {
+      "pty": [
+        209,
+        193
+      ],
+      "canvas": [
+        200,
+        160
+      ],
+      "term": "xterm-256color",
+      "probes": {
+        "CUP": {
+          "expected": [
+            7,
+            11
+          ],
+          "actual": [
+            7,
+            11
+          ],
+          "ok": true
+        },
+        "CJK": {
+          "expected": [
+            4,
+            13
+          ],
+          "actual": [
+            4,
+            13
+          ],
+          "ok": true
+        },
+        "combining": {
+          "expected": [
+            4,
+            10
+          ],
+          "actual": [
+            4,
+            10
+          ],
+          "ok": true
+        },
+        "DECSC_DECRC": {
+          "expected": [
+            5,
+            9
+          ],
+          "actual": [
+            5,
+            9
+          ],
+          "ok": true
+        },
+        "scroll_region": {
+          "expected": [
+            8,
+            1
+          ],
+          "actual": [
+            8,
+            1
+          ],
+          "ok": true
+        }
+      },
+      "tests": {
+        "scroll": {
+          "ms": [
+            153.90484,
+            143.845652,
+            163.107599,
+            104.563363,
+            172.73447,
+            164.411344,
+            167.152781,
+            149.015338,
+            158.68034,
+            148.524761,
+            169.092362,
+            143.721019,
+            123.696792,
+            148.808558,
+            143.762187,
+            143.291388,
+            159.533193,
+            153.61304
+          ],
+          "total_bytes": 172476,
+          "sha256": "756c03a756c5028a71f358764a955274df77dce4d9d061f27502444e994cccd0"
+        },
+        "rewrite": {
+          "ms": [
+            388.725569,
+            465.467227,
+            399.25361,
+            379.133492,
+            364.162894,
+            469.621165,
+            399.33844,
+            414.290553,
+            432.691127,
+            444.153652,
+            394.02036,
+            415.148627,
+            488.754862,
+            419.587643,
+            404.056635,
+            405.163048,
+            408.16465,
+            444.681646
+          ],
+          "total_bytes": 878283,
+          "sha256": "2c356be2db5a106faf9da6df1e06b11863679aa562bc4ece9d57ea940d91aa5c"
+        }
+      },
+      "idle_cpr_ms": [
+        65.4998,
+        64.817297,
+        79.630283,
+        65.307985,
+        80.13623,
+        91.88524,
+        78.065221,
+        64.971335,
+        85.122342,
+        84.953508,
+        79.976951,
+        64.878482
+      ]
+    },
+    "termigo209": {
+      "pty": [
+        209,
+        193
+      ],
+      "canvas": [
+        200,
+        160
+      ],
+      "term": "xterm-256color",
+      "probes": {
+        "CUP": {
+          "expected": [
+            7,
+            11
+          ],
+          "actual": [
+            6,
+            10
+          ],
+          "ok": false
+        },
+        "CJK": {
+          "expected": [
+            4,
+            13
+          ],
+          "actual": [
+            3,
+            12
+          ],
+          "ok": false
+        },
+        "combining": {
+          "expected": [
+            4,
+            10
+          ],
+          "actual": [
+            3,
+            10
+          ],
+          "ok": false
+        },
+        "DECSC_DECRC": {
+          "expected": [
+            5,
+            9
+          ],
+          "actual": [
+            4,
+            8
+          ],
+          "ok": false
+        },
+        "scroll_region": {
+          "expected": [
+            8,
+            1
+          ],
+          "actual": [
+            7,
+            0
+          ],
+          "ok": false
+        }
+      },
+      "tests": {},
+      "idle_cpr_ms": [
+        59.711999,
+        65.113543,
+        60.197649,
+        64.748357,
+        60.132686,
+        59.81937,
+        60.054796,
+        69.952198,
+        65.14021,
+        69.800586,
+        60.168278,
+        64.447246
+      ],
+      "error": "('unexpected final cursor position', [0, 0])"
+    },
+    "termius209": {
+      "pty": [
+        209,
+        193
+      ],
+      "canvas": [
+        200,
+        160
+      ],
+      "term": "xterm-256color",
+      "probes": {
+        "CUP": {
+          "expected": [
+            7,
+            11
+          ],
+          "actual": [
+            7,
+            11
+          ],
+          "ok": true
+        },
+        "CJK": {
+          "expected": [
+            4,
+            13
+          ],
+          "actual": [
+            4,
+            13
+          ],
+          "ok": true
+        },
+        "combining": {
+          "expected": [
+            4,
+            10
+          ],
+          "actual": [
+            4,
+            10
+          ],
+          "ok": true
+        },
+        "DECSC_DECRC": {
+          "expected": [
+            5,
+            9
+          ],
+          "actual": [
+            5,
+            9
+          ],
+          "ok": true
+        },
+        "scroll_region": {
+          "expected": [
+            8,
+            1
+          ],
+          "actual": [
+            8,
+            1
+          ],
+          "ok": true
+        }
+      },
+      "tests": {
+        "scroll": {
+          "ms": [
+            63.244963,
+            69.343782,
+            78.456251,
+            63.683709,
+            78.287231,
+            89.203149,
+            59.367006,
+            75.891403,
+            64.257921,
+            78.331656,
+            63.345574,
+            68.817607,
+            58.169526,
+            78.678697,
+            64.556812,
+            63.300036,
+            58.533327,
+            63.568522
+          ],
+          "total_bytes": 172476,
+          "sha256": "756c03a756c5028a71f358764a955274df77dce4d9d061f27502444e994cccd0"
+        },
+        "rewrite": {
+          "ms": [
+            64.553682,
+            69.306354,
+            74.122045,
+            87.052803,
+            74.877184,
+            78.103522,
+            64.01247,
+            86.419777,
+            69.450559,
+            69.381002,
+            73.844412,
+            74.02121,
+            70.322052,
+            68.849607,
+            79.214905,
+            79.309906,
+            69.088978,
+            88.575711
+          ],
+          "total_bytes": 878283,
+          "sha256": "2c356be2db5a106faf9da6df1e06b11863679aa562bc4ece9d57ea940d91aa5c"
+        }
+      },
+      "idle_cpr_ms": [
+        70.023996,
+        59.777901,
+        74.397886,
+        70.480113,
+        64.552444,
+        60.556818,
+        60.084609,
+        60.020107,
+        64.908226,
+        59.93231,
+        60.654597,
+        59.286319
+      ]
+    }
+  }
+}

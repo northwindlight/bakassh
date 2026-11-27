@@ -1,0 +1,188 @@
+{
+  "baka209": [
+    {
+      "target": "zperf-fixed",
+      "interval": "phase",
+      "frames": 414,
+      "duration_ns": 6998102154,
+      "fps": 59.16,
+      "p50_ms": 10.959,
+      "p95_ms": 32.826
+    },
+    {
+      "target": "zperf-fixed",
+      "interval": "stroke",
+      "frames": 347,
+      "duration_ns": 5641531923,
+      "fps": 61.51,
+      "p50_ms": 10.956,
+      "p95_ms": 22.01
+    },
+    {
+      "target": "zg-mixed",
+      "interval": "phase",
+      "frames": 417,
+      "duration_ns": 7088284769,
+      "fps": 58.83,
+      "p50_ms": 10.958,
+      "p95_ms": 32.805
+    },
+    {
+      "target": "zg-mixed",
+      "interval": "stroke",
+      "frames": 367,
+      "duration_ns": 5728816696,
+      "fps": 64.06,
+      "p50_ms": 10.955,
+      "p95_ms": 21.949
+    },
+    {
+      "target": "zperf-long-claude",
+      "interval": "phase",
+      "frames": 403,
+      "duration_ns": 7195644078,
+      "fps": 56.01,
+      "p50_ms": 10.963,
+      "p95_ms": 32.843
+    },
+    {
+      "target": "zperf-long-claude",
+      "interval": "stroke",
+      "frames": 353,
+      "duration_ns": 5835005692,
+      "fps": 60.5,
+      "p50_ms": 10.96,
+      "p95_ms": 32.814
+    },
+    {
+      "target": "zperf-long-codex",
+      "interval": "phase",
+      "frames": 435,
+      "duration_ns": 7079423539,
+      "fps": 61.45,
+      "p50_ms": 10.969,
+      "p95_ms": 21.985
+    },
+    {
+      "target": "zperf-long-codex",
+      "interval": "stroke",
+      "frames": 358,
+      "duration_ns": 5719117232,
+      "fps": 62.6,
+      "p50_ms": 10.961,
+      "p95_ms": 21.962
+    }
+  ],
+  "bakalong335": [
+    {
+      "target": "zperf-long-claude",
+      "interval": "phase",
+      "frames": 450,
+      "duration_ns": 6983045231,
+      "fps": 64.44,
+      "p50_ms": 10.954,
+      "p95_ms": 22.016
+    },
+    {
+      "target": "zperf-long-claude",
+      "interval": "stroke",
+      "frames": 405,
+      "duration_ns": 5621575001,
+      "fps": 72.04,
+      "p50_ms": 10.953,
+      "p95_ms": 21.92
+    },
+    {
+      "target": "zperf-long-codex",
+      "interval": "phase",
+      "frames": 450,
+      "duration_ns": 6904374462,
+      "fps": 65.18,
+      "p50_ms": 10.954,
+      "p95_ms": 22.006
+    },
+    {
+      "target": "zperf-long-codex",
+      "interval": "stroke",
+      "frames": 398,
+      "duration_ns": 5545811385,
+      "fps": 71.77,
+      "p50_ms": 10.952,
+      "p95_ms": 21.94
+    }
+  ],
+  "termius209": [
+    {
+      "target": "zperf-fixed",
+      "interval": "phase",
+      "frames": 558,
+      "duration_ns": 6968522924,
+      "fps": 80.07,
+      "p50_ms": 10.955,
+      "p95_ms": 21.906
+    },
+    {
+      "target": "zperf-fixed",
+      "interval": "stroke",
+      "frames": 447,
+      "duration_ns": 5607244386,
+      "fps": 79.72,
+      "p50_ms": 10.955,
+      "p95_ms": 21.906
+    },
+    {
+      "target": "zg-mixed",
+      "interval": "phase",
+      "frames": 596,
+      "duration_ns": 6966525000,
+      "fps": 85.55,
+      "p50_ms": 10.95,
+      "p95_ms": 11.127
+    },
+    {
+      "target": "zg-mixed",
+      "interval": "stroke",
+      "frames": 477,
+      "duration_ns": 5606509615,
+      "fps": 85.08,
+      "p50_ms": 10.951,
+      "p95_ms": 11.192
+    },
+    {
+      "target": "zperf-long-claude",
+      "interval": "phase",
+      "frames": 612,
+      "duration_ns": 7013180077,
+      "fps": 87.26,
+      "p50_ms": 10.951,
+      "p95_ms": 11.044
+    },
+    {
+      "target": "zperf-long-claude",
+      "interval": "stroke",
+      "frames": 488,
+      "duration_ns": 5651139077,
+      "fps": 86.35,
+      "p50_ms": 10.95,
+      "p95_ms": 11.039
+    },
+    {
+      "target": "zperf-long-codex",
+      "interval": "phase",
+      "frames": 626,
+      "duration_ns": 7039160846,
+      "fps": 88.93,
+      "p50_ms": 10.95,
+      "p95_ms": 11.057
+    },
+    {
+      "target": "zperf-long-codex",
+      "interval": "stroke",
+      "frames": 502,
+      "duration_ns": 5674982923,
+      "fps": 88.46,
+      "p50_ms": 10.95,
+      "p95_ms": 11.055
+    }
+  ]
+}

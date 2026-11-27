@@ -1,0 +1,38 @@
+环境与准备
+1. 控制端需要 Python 3.10+、adb、ssh、scp。本次使用 Windows PowerShell。ADB 仅连接一台已授权的 PLB110。设置 $env:ADB 为本机 platform-tools/adb.exe 的绝对路径，可用 adb devices -l 检查。rpi5 是控制端 SSH 别名。ssh rpi5 应能直接登录拥有目标 tmux 会话的用户。先记录 wm size、wm density、各应用字号、前台页面、原有 tmux 客户端和窗口大小，便于恢复。
+2. 在本目录运行下列命令，保存 $d。样例命令使用本次的相同测试会话名。用 tmux has-session 确认这些 zperf-* 名字空闲，避免复用其他人的测试窗口。不要对生产会话执行 kill-session。
+   $d = (ssh rpi5 'mktemp -d /tmp/zgperf.XXXXXXXX').Trim()
+   scp fixture.py direct.py anchors.py monitor.py "rpi5:${d}/"
+   & $env:ADB push zg-gesture.jar /data/local/tmp/zg-gesture.jar
+   & $env:ADB shell chmod 444 /data/local/tmp/zg-gesture.jar
+   & $env:ADB push perf.cfg /data/misc/perfetto-configs/zg-perf.cfg
+   ssh rpi5 "python3 $d/fixture.py --hash"
+   ssh rpi5 "tmux new-session -d -s zperf-lobby -x 209 -y 192"
+   ssh rpi5 "tmux new-session -d -s zperf-fixed -x 200 -y 160 'exec python3 $d/fixture.py'"
+   单独对新建的测试会话启用 mouse on，如果当前配置已继承该选项则可跳过。历史应至少保留 500 行，本场实际超过 1,500 行。fixture 生成 2,400 行及结束标记，386,078 字节，SHA-256 为 e21499f53de8e3e655fa3098cd1fe709bc78597afa1d939f63a0a624d7bbb7b9。三轮开始前位于距底部 300 行；三轮连续运行。切换客户端时会重置这一位置。
+3. 可选的长会话使用测试专用分支。示例命令在 rpi5 上执行，CLAUDE_ID 和 CODEX_ID 换成已有会话 UUID。请使用自己的长会话。Claude 如出现工作目录确认，在自己的受信项目中操作。
+   tmux new-session -d -s zperf-long-claude -c "$HOME" "~/.npm-global/bin/claude --resume $CLAUDE_ID --fork-session"
+   tmux new-session -d -s zperf-long-codex -c "$HOME" "~/bin/codex fork $CODEX_ID"
+   tmux send-keys -t zperf-long-claude C-o
+   tmux send-keys -t zperf-long-codex C-t
+   两个原生界面分别确认 detailed transcript 和历史记录能翻页。每种客户端都测同一对分支。measure.py 对长会话先 End、两次 PageUp，再做触摸和单独的翻页键检查。通过相邻画面中至少三行唯一正文同时移动相同行数确认历史确实移动。设定中不会向模型提交提示词。
+4. 在待测手机应用前台连到 rpi5，执行 tmux attach -t zperf-lobby；对真实场景也可先执行 tmux attach -t zg-mixed。隐藏键盘。控制端通过下列命令辨认刚连接的唯一 tty，避免选错其他客户端：
+   ssh rpi5 "tmux list-clients -F '#{client_tty} #{session_name} #{client_width}x#{client_height}'"
+   bakaSSH 目标列数可在设置中指定，Termux 用捏合调整字号，JuiceSSH 本机已保留小字号配置，ConnectBot 在终端菜单设置行列。逻辑分辨率见两份分组报告；每次以 rpi5 实际 PTY 为准。测试会切换这个 tty 所附的 tmux 会话；保持应用在前台，不要并行使用同一手机。
+5. 例，TTY、label、包名按实际修改，label 每次使用新名字：
+   python measure.py run1 dev.northwind.bakassh /dev/pts/X $d --targets zperf-fixed zg-mixed zperf-long-claude zperf-long-codex
+   python run_direct.py /dev/pts/X run1 $d
+   python analyze.py run1.json "$d/zgperf-run1.pftrace" --tp /path/to/trace_processor_shell
+   measure.py 的 --targets 参数指定场景。其他包名为 com.termux、com.sonelli.juicessh、org.connectbot。analyze 的 --tp 指向 rpi5 上可执行的 Perfetto trace_processor_shell，本轮为 v58.2。Direct 通过 tmux detach-client -E 在同一真实 SSH PTY 上运行，结束后重新接入 lobby。稳定后再切换 app。直接应答测试不需要真实聊天历史。
+6. JuiceSSH 长时间滚动专项需全新连接、209×193、终端前台，设备已启用活动日志。脚本持续采样直至 300 秒、SSH/前台/进程变化或 Android 事件出现。
+   python stress.py /dev/pts/X $d --seconds 300
+   如有故障，先保存 dumpsys activity exit-info、crash buffer 和相关 ANR 主线程栈，再开启下一次连接。本次逐段结果见 results.json。
+7. 历史对照的数据来自 2026-10-16。今天的抬手间隔、Android 调度、窗口和真实会话状态均可能与旧测不同。固定场景中把 hash、实际 PTY、应用版本和窗口设置一并核对。
+
+手势驱动编译（先编译，再执行第 2 步）
+  javac --release 8 -cp <android.jar> Gesture.java
+  d8 --lib <android.jar> --output zg-gesture.jar Gesture.class
+  这是由 ADB shell 执行的 Android 17 触控测试驱动。时间戳是 elapsedRealtimeNanos（BOOTTIME）。每轮 3 次滑动，三轮共 9 次，每次 800 逻辑 px、60 个 MOVE，每次间隔至少 8 ms，抬手后暂停 150 ms，轮间暂停 350 ms。默认 x=628、y 中心=900，可用 --x、--y 调整，跨客户端比较时应相同。
+
+恢复
+恢复刚才记录的应用字号、显示覆盖和前台状态。只分离本次的 tty，依次关闭本次创建的 zperf-* 测试会话。zg-mixed 保留；若它在测试前没有附着客户端，按原记录恢复其窗口尺寸与 window-size 策略。原来有显示覆盖时恢复原覆盖值。原来是出厂显示参数时可以 adb shell wm size reset 和 adb shell wm density reset。
