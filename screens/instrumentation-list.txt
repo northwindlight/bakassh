@@ -1,0 +1,1 @@
+instrumentation:dev.northwind.bakassh.test/dev.northwind.bakassh.ZoomInstrumentation (target=dev.northwind.bakassh)

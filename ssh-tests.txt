@@ -1,0 +1,25 @@
+PASS SSH XTVERSION exchange without user input
+PASS SSH input and PTY resizing
+PASS shell EOF closes SSH resources
+PASS cancelled session cannot reconnect
+PASS simultaneous sessions keep independent native screens and query replies without a View
+PASS resizing one session preserves the other PTY
+PASS Claude-style mouse modes, paste and modified/application keys over SSH
+PASS closing one session releases its handle and preserves the other connection
+PASS EOF releases IO while retaining the final screen for review
+PASS disconnected sessions retain locally scrollable history
+PASS repeated close during connection cannot revive or use freed terminals
+PASS host fingerprints match OpenSSH and include an explicit endpoint port
+PASS missing host-verification policy fails closed
+PASS rejecting an unknown host sends neither password nor public-key authentication
+PASS first connection waits for explicit approval before saving a key and authenticating
+PASS a matching saved key reconnects without a prompt for a different account/authentication method
+PASS trust storage failure blocks authentication despite a positive response
+PASS concurrent first approvals cannot overwrite a different key
+PASS closing a connection interrupts pending confirmation and rejects late approval
+PASS closing a session cancels its service-owned host-key request
+PASS changed server key is blocked before authentication and never offered automatic replacement
+PASS standard SSH parsing, IPv6, mode round-trip, and rejected shell/security overrides
+PASS real SSH -L / direct-tcpip and -R / forwarded-tcpip binary transfers, without shell channels
+PASS SSH disconnect releases local forwarding listener
+PASS a failed second rule rolls back the SSH connection and first listener

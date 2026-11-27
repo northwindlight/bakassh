@@ -1,0 +1,2 @@
+PASS live font rendering, per-frame native grids, pointer transitions, cancellation, glyph state isolation, solid CJK cursor, borrowed session handles
+

@@ -1,0 +1,47 @@
+[步骤] 空主页
+  截图 01-home-empty.png
+[步骤] 编辑页校验
+  截图 02-editor-error.png
+[步骤] 添加主机
+  截图 03-editor-filled.png
+  截图 04-home-hosts.png
+[步骤] 设置与关于
+  截图 05-settings.png
+  截图 06-about.png
+[步骤] 密钥
+  截图 07-keys-empty.png
+  截图 08-key-generate.png
+  截图 09-key-detail.png
+  截图 10-keys-list.png
+[步骤] 连接终端
+  截图 11-hostkey.png
+  截图 12-terminal.png
+[步骤] 修饰键
+  截图 13-terminal-ctrl.png
+[步骤] 会话侧栏
+  截图 14-drawer.png
+[步骤] 断开连接
+  截图 15-disconnected.png
+[步骤] 重新连接
+  截图 16-reconnected.png
+[步骤] 终端菜单
+  截图 17-terminal-menu.png
+[步骤] 主页运行中
+  截图 18-home-running.png
+[步骤] 端口转发
+  截图 25-forward-empty.png
+  截图 26-forward-rule-dialog.png
+  截图 27-forward-rules.png
+  截图 28-forward-running.png
+  截图 29-forward-command.png
+  -L 8022 收到：'SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.2'
+  -R 9000 收到：'SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.2'
+[步骤] 深色与取色
+  截图 19-home-dark.png
+  截图 30-forward-dark.png
+  截图 20-sessions-sheet-dark.png
+  截图 21-home-dark-orange.png
+  截图 22-home-light-orange.png
+  截图 23-sessions-sheet-light-orange.png
+  截图 24-drawer-orange.png
+完成，失败 0 项
